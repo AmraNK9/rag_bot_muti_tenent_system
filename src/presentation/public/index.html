@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot SaaS Prototype Testing Console</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon"></div>
+        <div class="logo-text">
+          <h2>Antigravity</h2>
+          <span>TESTING CONSOLE</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="overview">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          Overview
+        </button>
+        <button class="nav-item" data-tab="embeddings">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          Embeddings
+        </button>
+        <button class="nav-item" data-tab="chromadb">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+          ChromaDB Manager
+        </button>
+        <button class="nav-item" data-tab="bots">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+          Chat Simulator
+        </button>
+        <button class="nav-item" data-tab="deepseek">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/></svg>
+          DeepSeek LLM
+        </button>
+        <button class="nav-item" data-tab="myanmar">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+          Myanmar Chunker
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="connection-status">
+          <span class="status-dot online"></span>
+          <span class="status-text">Connected to Local Engine</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Navigation / Status Header -->
+      <header class="content-header">
+        <div class="header-title">
+          <h1 id="active-tab-title">Overview</h1>
+          <p id="active-tab-desc">Chatbot Prototype dashboard state and quick operations.</p>
+        </div>
+        <div class="header-widgets">
+          <div class="widget-badge">
+            <span class="badge-label">DB Engine</span>
+            <span class="badge-value" id="badge-db">SQLite Fallback</span>
+          </div>
+          <div class="widget-badge">
+            <span class="badge-label">LLM Provider</span>
+            <span class="badge-value" id="badge-llm">DeepSeek Mock</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dynamic Tab Contents -->
+      <div class="tab-viewport">
+
+        <!-- 1. Overview Tab -->
+        <section class="tab-pane active" id="tab-overview">
+          <div class="dashboard-grid">
+            <div class="card stat-card glow-violet">
+              <h3>Total Businesses</h3>
+              <p class="stat-number" id="stat-businesses-count">0</p>
+              <span class="stat-detail">Registered in SQLite/MySQL</span>
+            </div>
+            <div class="card stat-card glow-blue">
+              <h3>Active Chatbots</h3>
+              <p class="stat-number" id="stat-chatbots-count">0</p>
+              <span class="stat-detail">Configured with token auth</span>
+            </div>
+            <div class="card stat-card glow-cyan">
+              <h3>Vector Store</h3>
+              <p class="stat-status" id="stat-chroma-status">Chroma Online</p>
+              <span class="stat-detail">Local fallback map active</span>
+            </div>
+          </div>
+
+          <div class="section-grid mt-6">
+            <!-- Business Creation -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Register Business Profile</h3>
+              </div>
+              <form id="form-register-business" class="interactive-form">
+                <div class="form-group">
+                  <label for="biz-name">Business Name</label>
+                  <input type="text" id="biz-name" required placeholder="e.g. SmartGadgets Co.">
+                </div>
+                <div class="form-group">
+                  <label for="biz-desc">Detailed Information (Facts/Context for Bot)</label>
+                  <textarea id="biz-desc" rows="4" required placeholder="SmartGadgets sells mobile phones and smartwatches. We are located in Yangon..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Profile</button>
+              </form>
+            </div>
+
+            <!-- Bot Onboarding -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Onboard Telegram / FB Chatbot</h3>
+              </div>
+              <form id="form-create-chatbot" class="interactive-form">
+                <div class="form-group">
+                  <label for="bot-business-id">Assign to Business</label>
+                  <select id="bot-business-id" required>
+                    <option value="" disabled selected>Select a business</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="bot-name">Chatbot Name</label>
+                    <input type="text" id="bot-name" required placeholder="e.g. SalesAgent">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="bot-type">Platform Type</label>
+                    <select id="bot-type" required>
+                      <option value="telegram" selected>Telegram</option>
+                      <option value="facebook">Facebook</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="bot-token">Bot Token / API Key</label>
+                  <input type="text" id="bot-token" required placeholder="e.g. mock-token or 123456:ABC-DEF...">
+                </div>
+                <button type="submit" class="btn btn-primary">Initialize Bot</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card mt-6">
+            <div class="card-header">
+              <h3>System Registries</h3>
+            </div>
+            <div class="table-container">
+              <table id="table-chatbots">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Bot Name</th>
+                    <th>Platform</th>
+                    <th>Assigned Business</th>
+                    <th>API Token</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="5" class="text-center">Loading registry tables...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Embeddings Tab -->
+        <section class="tab-pane" id="tab-embeddings">
+          <div class="section-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3>Voyage AI Embedding Tester</h3>
+                <p class="subtitle">Enter text to compute vector representation (1024 dimensions).</p>
+              </div>
+              <form id="form-test-embedding" class="interactive-form">
+                <div class="form-group">
+                  <label for="emb-text">Text Input</label>
+                  <textarea id="emb-text" rows="5" required placeholder="Samsung ဖုန်း ဈေးနှုန်း ဘယ်လောက်ရှိပါသလဲ?"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Generate Embeddings</button>
+              </form>
+            </div>
+
+            <div class="card flex flex-column">
+              <div class="card-header">
+                <h3>Vector Representation</h3>
+              </div>
+              <div class="response-box flex-1" id="emb-vector-output">
+                <div class="placeholder-text">Submit text on the left to see the high-dimensional embedding vector...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. ChromaDB Manager Tab -->
+        <section class="tab-pane" id="tab-chromadb">
+          <div class="dashboard-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3>Initialize Collection</h3>
+              </div>
+              <form id="form-chroma-init" class="interactive-form">
+                <div class="form-group">
+                  <label for="chroma-init-name">Collection Name</label>
+                  <input type="text" id="chroma-init-name" required placeholder="e.g. business_1">
+                </div>
+                <button type="submit" class="btn btn-secondary">Create / Verify Collection</button>
+              </form>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h3>Add Document Chunk</h3>
+              </div>
+              <form id="form-chroma-add" class="interactive-form">
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="chroma-add-coll">Collection</label>
+                    <input type="text" id="chroma-add-coll" required placeholder="e.g. business_1">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="chroma-add-id">Doc ID</label>
+                    <input type="text" id="chroma-add-id" required placeholder="e.g. doc_101">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="chroma-add-text">Document Chunk Content</label>
+                  <textarea id="chroma-add-text" rows="2" required placeholder="Samsung s24 Ultra is priced at 500,000 MMK."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Store Document</button>
+              </form>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h3>Query Search Collection</h3>
+              </div>
+              <form id="form-chroma-search" class="interactive-form">
+                <div class="form-group">
+                  <label for="chroma-search-coll">Collection</label>
+                  <input type="text" id="chroma-search-coll" required placeholder="e.g. business_1">
+                </div>
+                <div class="form-group">
+                  <label for="chroma-search-text">Query Text</label>
+                  <input type="text" id="chroma-search-text" required placeholder="Samsung ဖုန်း ဈေးနှုန်း ဘယ်လောက်လဲ?">
+                </div>
+                <button type="submit" class="btn btn-secondary">Semantic Search</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card mt-6">
+            <div class="card-header">
+              <h3>Operation Results</h3>
+            </div>
+            <div class="response-box" id="chroma-op-output">
+              <div class="placeholder-text">ChromaDB operation logs and search results will appear here...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Chat Simulator Tab -->
+        <section class="tab-pane" id="tab-bots">
+          <div class="chat-dashboard">
+            <!-- Sidebar: Configuration -->
+            <div class="chat-config-panel">
+              <div class="card height-100">
+                <div class="card-header">
+                  <h3>Chat Settings</h3>
+                </div>
+                <div class="interactive-form">
+                  <div class="form-group">
+                    <label for="chat-bot-id">Active Chatbot</label>
+                    <select id="chat-bot-id" required>
+                      <option value="" disabled selected>Select a chatbot</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="chat-sender-id">User ID (Simulated)</label>
+                    <input type="number" id="chat-sender-id" value="777123" placeholder="777123">
+                  </div>
+                  <hr class="card-divider">
+                  <div class="form-group">
+                    <label>RAG Knowledge Base Ingestion</label>
+                    <p class="subtitle mb-2">Ingest knowledge documents for this bot.</p>
+                    <textarea id="chat-ingest-text" rows="5" placeholder="Enter document content to ingest..."></textarea>
+                  </div>
+                  <button id="btn-ingest-knowledge" class="btn btn-secondary btn-block">Ingest Documents</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Window -->
+            <div class="chat-window-panel">
+              <div class="card height-100 flex flex-column">
+                <div class="chat-header">
+                  <div class="bot-avatar">🤖</div>
+                  <div class="chat-bot-info">
+                    <h4 id="chat-bot-title-display">Select Chatbot</h4>
+                    <span id="chat-bot-status-display">Offline</span>
+                  </div>
+                  <button id="btn-clear-chat" class="btn btn-small">Clear UI</button>
+                </div>
+                
+                <div class="chat-messages" id="chat-conversation-area">
+                  <div class="chat-notice">Select a chatbot, input a sender ID, and start typing below to simulate Telegram webhook events.</div>
+                </div>
+
+                <div class="chat-input-area">
+                  <input type="text" id="chat-message-input" placeholder="Type a message to simulate Telegram Webhook..." disabled>
+                  <button id="btn-send-message" class="btn btn-primary" disabled>Send</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Inspect Panel: Db logs / RAG summaries -->
+            <div class="chat-inspect-panel">
+              <div class="card height-100 flex flex-column">
+                <div class="card-header">
+                  <h3>History & Summary Engine</h3>
+                </div>
+                <div class="inspect-nav">
+                  <button class="inspect-tab-btn active" data-inspect="logs">Message Table</button>
+                  <button class="inspect-tab-btn" data-inspect="summary">Summaries</button>
+                </div>
+                <div class="inspect-content flex-1" id="inspect-viewport">
+                  <!-- Logs -->
+                  <div class="inspect-pane active" id="inspect-pane-logs">
+                    <div class="db-logs-list" id="db-messages-list">
+                      <div class="placeholder-text">Messages logged in DB will show up here...</div>
+                    </div>
+                  </div>
+                  <!-- Summaries -->
+                  <div class="inspect-pane" id="inspect-pane-summary">
+                    <div class="db-logs-list" id="db-summaries-list">
+                      <div class="placeholder-text">History summaries will show up here...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. DeepSeek Tab -->
+        <section class="tab-pane" id="tab-deepseek">
+          <div class="section-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3>Direct LLM Completion Playground</h3>
+                <p class="subtitle">Directly test the DeepSeek chat endpoint without RAG/DB side-effects.</p>
+              </div>
+              <form id="form-test-deepseek" class="interactive-form">
+                <div class="form-group">
+                  <label for="ds-system">System Prompt</label>
+                  <textarea id="ds-system" rows="3" placeholder="You are a helpful customer service chatbot. Use friendly language."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="ds-prompt">User Prompt</label>
+                  <textarea id="ds-prompt" rows="5" required placeholder="Hi, what products do you sell?"></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="ds-temp">Temperature</label>
+                    <input type="number" id="ds-temp" min="0" max="2" step="0.1" value="0.7">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Generate Response</button>
+              </form>
+            </div>
+
+            <div class="card flex flex-column">
+              <div class="card-header">
+                <h3>Model Response</h3>
+              </div>
+              <div class="response-box flex-1" id="ds-response-output">
+                <div class="placeholder-text">Model generation results will show up here...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. Myanmar Chunker Tab -->
+        <section class="tab-pane" id="tab-myanmar">
+          <div class="section-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3>Myanmar Chunker Test</h3>
+                <p class="subtitle">Test how the text chunker handles Myanmar language segmentation and overlap.</p>
+              </div>
+              <form id="form-test-myanmar" class="interactive-form">
+                <div class="form-group">
+                  <label for="myanmar-text">Myanmar Text</label>
+                  <textarea id="myanmar-text" rows="6" required>ပထမစာပိုဒ်။ ဤသည်မှာ မြန်မာဘာသာစကားအတွက် စမ်းသပ်ထားသော စာသားဖြစ်သည်။
+
+ဒုတိယစာပိုဒ်။ ဤနေရာတွင် RAG စနစ်၏ လုပ်ဆောင်ပုံကို ရှင်းပြထားပါသည်။ Vector Database တွင် သိမ်းဆည်းရန်အတွက် ဖြစ်သည်။</textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="myanmar-size">Max Chunk Size (Characters)</label>
+                    <input type="number" id="myanmar-size" value="60">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="myanmar-overlap">Overlap (Characters)</label>
+                    <input type="number" id="myanmar-overlap" value="10">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Chunk Text</button>
+              </form>
+            </div>
+
+            <div class="card flex flex-column">
+              <div class="card-header">
+                <h3>Extracted Chunks</h3>
+              </div>
+              <div class="response-box flex-1" id="myanmar-chunks-output">
+                <div class="placeholder-text">Chunked segments will display here...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
