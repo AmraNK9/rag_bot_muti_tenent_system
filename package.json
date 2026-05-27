@@ -12,15 +12,16 @@
     "test": "jest"
   },
   "dependencies": {
+    "@ngrok/ngrok": "^1.7.0",
     "@types/express": "^5.0.6",
     "chromadb": "^1.8.1",
-    "cloudflared": "^0.7.1",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "mysql2": "^3.9.8",
     "sequelize": "^6.37.3"
   },
   "devDependencies": {
+    "@types/localtunnel": "^2.0.4",
     "@types/node": "^20.19.41",
     "@types/validator": "^13.11.10",
     "sqlite3": "^6.0.1",

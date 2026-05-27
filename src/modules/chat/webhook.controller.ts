@@ -12,12 +12,12 @@ export interface TelegramWebhookUpdate {
   message?: {
     message_id: number;
     from: {
-      id: number;
+      id: string;
       first_name?: string;
       username?: string;
     };
     chat: {
-      id: number;
+      id: string;
       type: string;
     };
     text?: string;
@@ -47,8 +47,10 @@ export class WebhookController {
     const userText = update.message.text;
 
     try {
+      console.log("sender_id",senderId);
+      console.log("type of senderId ->", typeof senderId);
       // 1. Save user's message in the DB (triggers background summarization if count hits 20)
-      await this.chatMemoryService.saveMessage(chatbotId, senderId, userText, true);
+      // await this.chatMemoryService.saveMessage(chatbotId, senderId, userText, true);
 
       // 2. Compute the response (Hybrid search -> Prompt Factory -> DeepSeek)
       const assistantReply = await this.retrievalGenService.generateResponse({
@@ -78,7 +80,7 @@ export class WebhookController {
    */
   private async deliverTelegramMessage(
     chatbotId: number,
-    chatId: number,
+    chatId: string,
     text: string
   ): Promise<void> {
     // Retrieve chatbot credentials

@@ -19,7 +19,7 @@ export class TelegramService {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: webhookUrl }),
+      body: JSON.stringify({ url: webhookUrl ,drop_pending_updates: true}),
     });
 
     const data = await response.json() as { ok: boolean; description: string };

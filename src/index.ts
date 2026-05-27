@@ -86,18 +86,18 @@ async function bootstrap() {
     console.error('Error during DB execution seeding check:', error);
   }
 
-  // 4. Start Cloudflare Quick Tunnel to expose local server over HTTPS
-  // Telegram requires HTTPS — cloudflared creates a free ephemeral public URL
-  // with no account, no authtoken, and no IP restrictions.
+  // 4. Start ngrok tunnel to expose local server over HTTPS
+  // Telegram requires HTTPS — ngrok creates a stable public HTTPS URL.
+  // Requires NGROK_AUTHTOKEN in .env and VPN when connecting from Myanmar.
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   try {
     const publicUrl = await tunnelService.startTunnel(port);
-    console.log(`\n[3] Cloudflare tunnel active:`);
+    console.log(`\n[3] ngrok tunnel active:`);
     console.log(`    📡 Public URL  : ${publicUrl}`);
     console.log(`    🔗 Webhook URL : ${publicUrl}/webhook/<businessId>/<chatbotId>`);
     console.log(`    ℹ️  Call POST /api/test/chatbot/register-webhook to bind to Telegram.`);
   } catch (err) {
-    console.warn(`\n[3] ⚠️  Cloudflare tunnel failed to start:`, err);
+    console.warn(`\n[3] ⚠️  ngrok tunnel failed to start:`, err);
     console.warn(`    Server will run locally only — real Telegram webhooks will not work.`);
   }
 

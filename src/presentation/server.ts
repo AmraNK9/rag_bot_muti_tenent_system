@@ -50,7 +50,7 @@ app.post(
   async (req: Request, res: Response) => {
     const chatbotId = Number(req.params.chatbotId);
     const businessId = Number(req.params.businessId);
-
+    
     // Always respond 200 immediately — Telegram retries on non-2xx responses
     res.sendStatus(200);
 

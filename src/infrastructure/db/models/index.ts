@@ -24,7 +24,7 @@ export class ChatBot extends Model<InferAttributes<ChatBot>, InferCreationAttrib
 export class Messages extends Model<InferAttributes<Messages>, InferCreationAttributes<Messages>> {
   declare id: CreationOptional<number>;
   declare chatbot_id: ForeignKey<ChatBot['id']>;
-  declare sender_id: number;
+  declare sender_id: string;
   declare message: string;
   declare sent_date: CreationOptional<Date>;
 }
@@ -32,7 +32,7 @@ export class Messages extends Model<InferAttributes<Messages>, InferCreationAttr
 export class SummerizeMessages extends Model<InferAttributes<SummerizeMessages>, InferCreationAttributes<SummerizeMessages>> {
   declare id: CreationOptional<number>;
   declare chatbot_id: ForeignKey<ChatBot['id']>;
-  declare sender_id: number;
+  declare sender_id: string;
   declare summary: string;
   declare created_at: CreationOptional<Date>;
 }
@@ -121,7 +121,7 @@ export function initModels(sequelize: Sequelize) {
         allowNull: false,
       },
       sender_id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING(255),
         allowNull: false,
       },
       message: {

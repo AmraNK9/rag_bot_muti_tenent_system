@@ -1,55 +1,53 @@
-import { Tunnel } from 'cloudflared';
+import ngrok from '@ngrok/ngrok';
 
 /**
- * TunnelService (Cloudflare Quick Tunnel implementation)
+ * TunnelService (ngrok implementation)
  *
- * Infrastructure-layer service that manages a Cloudflare Quick Tunnel,
+ * Infrastructure-layer service that manages an ngrok tunnel,
  * exposing the local Express server over a public HTTPS URL so that
  * Telegram can reach our webhook endpoint.
  *
- * Uses the `cloudflared` npm package (event-based Tunnel class).
- * No account, no auth token — Quick Tunnels are completely free and
- * have no IP restrictions.
+ * Uses the `@ngrok/ngrok` npm package.
+ * Requires NGROK_AUTHTOKEN in .env — get a free token at https://ngrok.com
+ * Must be run with VPN if connecting from Myanmar (IP restriction applies).
  *
- * Public URL format: https://<random>.trycloudflare.com
+ * Public URL format: https://<random>.ngrok-free.app
  */
 export class TunnelService {
-  private cfTunnel: Tunnel | null = null;
+  private listener: Awaited<ReturnType<typeof ngrok.forward>> | null = null;
   private publicUrl: string | null = null;
 
   /**
-   * Starts a Cloudflare Quick Tunnel forwarding to the given local port.
-   * Waits until the tunnel is ready and the public URL is available.
+   * Starts an ngrok tunnel forwarding to the given local port.
+   * Resolves with the public HTTPS URL when the tunnel is ready.
+   *
+   * Requires NGROK_AUTHTOKEN environment variable.
    *
    * @param port - Local port the Express server is listening on
    */
-  startTunnel(port: number): Promise<string> {
-    return new Promise((resolve, reject) => {
-      console.log(`[TunnelService] Starting Cloudflare Quick Tunnel → localhost:${port} ...`);
+  async startTunnel(port: number): Promise<string> {
+    const authtoken = process.env.NGROK_AUTHTOKEN;
+    const domain = process.env.NGROK_DOMAIN; 
+    if (!authtoken) {
+      throw new Error(
+        'NGROK_AUTHTOKEN is not set in .env. ' +
+        'Get a free token at https://ngrok.com and add it to your .env file.'
+      );
+    }
 
-      // Create a Quick Tunnel (no token needed)
-      const cfTunnel = Tunnel.quick(`http://localhost:${port}`);
-      this.cfTunnel = cfTunnel;
+    console.log(`[TunnelService] Starting ngrok tunnel → localhost:${port} ...`);
 
-      // The 'url' event fires once cloudflared has established the tunnel
-      cfTunnel.once('url', (url: string) => {
-        this.publicUrl = url;
-        console.log(`[TunnelService] ✅ Tunnel active → ${url}`);
-        resolve(url);
-      });
-
-      // Catch startup errors
-      cfTunnel.once('error', (err: Error) => {
-        reject(new Error(`Cloudflare tunnel error: ${err.message}`));
-      });
-
-      // If the process exits before emitting 'url', reject
-      cfTunnel.once('exit', (code: number | null) => {
-        if (!this.publicUrl) {
-          reject(new Error(`Cloudflare tunnel process exited early (code ${code}).`));
-        }
-      });
+    this.listener = await ngrok.forward({
+      addr: port,
+      authtoken,
+      domain,
     });
+
+    this.publicUrl = this.listener.url()!;
+
+    console.log(`[TunnelService] ✅ ngrok tunnel active → ${this.publicUrl}`);
+
+    return this.publicUrl;
   }
 
   /**
@@ -60,14 +58,14 @@ export class TunnelService {
   }
 
   /**
-   * Stops the active Cloudflare tunnel.
+   * Stops the active ngrok tunnel.
    */
-  stopTunnel(): void {
-    if (this.cfTunnel) {
-      this.cfTunnel.stop();
-      this.cfTunnel = null;
+  async stopTunnel(): Promise<void> {
+    if (this.listener) {
+      await this.listener.close();
+      this.listener = null;
       this.publicUrl = null;
-      console.log('[TunnelService] Tunnel stopped.');
+      console.log('[TunnelService] ngrok tunnel stopped.');
     }
   }
 }
