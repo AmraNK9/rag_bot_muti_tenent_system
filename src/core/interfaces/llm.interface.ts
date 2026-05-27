@@ -31,6 +31,15 @@ export interface ILLMService {
   ): Promise<string>;
 
   /**
+   * Generates a chat completion as a stream of text chunks.
+   * Each yielded string is a partial token/content delta from the LLM.
+   */
+  generateCompletionStream(
+    messages: ChatMessage[],
+    options?: CompletionOptions
+  ): AsyncIterable<string>;
+
+  /**
    * Calls the LLM with tool schemas and returns the structured tool arguments if triggered,
    * or a fallback text response.
    */

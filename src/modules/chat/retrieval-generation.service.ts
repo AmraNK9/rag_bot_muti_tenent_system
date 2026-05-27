@@ -5,52 +5,73 @@ import { IToolCallingRegistry } from '../../core/interfaces/tool.interface';
 import { ISystemPromptFactory } from '../../core/interfaces/prompt.interface';
 import { ChatBot, Business } from '../../infrastructure/db/models';
 import { ChatMemoryService } from './chat-memory.service';
+import { LocalKeywordExtractor } from './local-keyword-extractor';
 
 export class RetrievalGenerationService {
+  private localExtractor: LocalKeywordExtractor;
+
   constructor(
     private llmService: ILLMService,
     private embeddingService: IEmbeddingService,
     private vectorStore: IVectorStoreService,
     private toolRegistry: IToolCallingRegistry,
     private promptFactory: ISystemPromptFactory,
-    private chatMemoryService: ChatMemoryService
-  ) {}
+    private chatMemoryService: ChatMemoryService,
+    private useToolCallingForExtraction: boolean = false
+  ) {
+    this.localExtractor = new LocalKeywordExtractor();
+  }
 
   /**
    * Main flow: Keyword extraction -> Hybrid Search -> Context Aggregation -> Generation
+   * Optimized with parallel execution for independent operations.
    */
   async generateResponse(params: {
     chatbotId: number;
-    senderId: number;
+    senderId: string;
     userMessage: string;
   }): Promise<string> {
+    const stream = this.generateResponseStream(params);
+    let fullResponse = '';
+    for await (const chunk of stream) {
+      fullResponse += chunk;
+    }
+    return fullResponse;
+  }
+
+  /**
+   * Streaming version of generateResponse.
+   * Yields text chunks as they arrive from the LLM.
+   * Also returns chatbot token via the optional callback for delivery optimization.
+   */
+  async *generateResponseStream(params: {
+    chatbotId: number;
+    senderId: string;
+    userMessage: string;
+  }): AsyncIterable<string> {
     const { chatbotId, senderId, userMessage } = params;
 
-    // 1. Fetch ChatBot and associated Business using Sequelize joins
-    const chatbot = await ChatBot.findOne({
-      where: { id: chatbotId },
-      include: [{ model: Business, as: 'business' }],
-    });
+    // ── Phase A: Parallel independent operations ──────────────────────────
+    // These three operations have no dependencies on each other.
+    const [chatbot, extractedKeywords, memoryContext] = await Promise.all([
+      // 1. Fetch ChatBot and associated Business using Sequelize joins
+      ChatBot.findOne({
+        where: { id: chatbotId },
+        include: [{ model: Business, as: 'business' }],
+      }),
+
+      // 2. Keyword extraction (local or tool-calling)
+      this.extractKeywords(userMessage),
+
+      // 3. Fetch chat memory context (last 10 messages + summary)
+      this.chatMemoryService.getContextForChat(chatbotId, senderId),
+    ]);
+
     if (!chatbot || !chatbot.business) {
       throw new Error(`ChatBot with ID ${chatbotId} or its associated Business profile was not found.`);
     }
 
-    // 2. Query Extraction: trigger DeepSeek tool calling to extract keywords
-    const extractionTool = this.toolRegistry.getTool('QueryExtractionTool');
-    let extractedKeywords: string[] = [];
-
-    if (extractionTool) {
-      const toolResult = await this.llmService.executeToolCalling(
-        [{ role: 'user', content: userMessage }],
-        [extractionTool.definition]
-      );
-      if (toolResult && toolResult.toolName === 'QueryExtractionTool') {
-        const executed = await extractionTool.execute(toolResult.arguments);
-        extractedKeywords = executed.exact_keywords || [];
-      }
-    }
-
-    // 3. Search: Perform Hybrid Search in ChromaDB
+    // ── Phase B: Hybrid search (depends on Phase A results) ───────────────
     const retrievedDocs = await this.hybridSearch({
       chatbotId,
       businessId: chatbot.business_id,
@@ -61,7 +82,8 @@ export class RetrievalGenerationService {
 
     const contextText = retrievedDocs.map(doc => doc.text).join('\n---\n');
 
-    // 4. Prompt Strategy: Build standard system prompt
+    // ── Phase C: Build prompt & stream LLM response ──────────────────────
+    // Build system prompt with RAG context
     const systemPrompt = this.promptFactory.getPrompt(chatbot.type, {
       botName: chatbot.name,
       businessName: chatbot.business.name,
@@ -69,23 +91,17 @@ export class RetrievalGenerationService {
       botType: chatbot.type,
     });
 
-    // 5. Memory Management: Fetch context (last 10 messages + summary)
-    const { summary, recentMessages } = await this.chatMemoryService.getContextForChat(
-      chatbotId,
-      senderId
-    );
-
-    // 6. Build final messages payload
-    const messagesPayload: ChatMessage[] = [];
-
-    // Prepend system prompt loaded with RAG context
     let finalSystemPrompt = systemPrompt;
     if (contextText) {
       finalSystemPrompt += `\n\n[Context: Verified Business facts. Use ONLY this information to respond if applicable]:\n${contextText}`;
     }
+
+    // Build messages payload
+    const messagesPayload: ChatMessage[] = [];
     messagesPayload.push({ role: 'system', content: finalSystemPrompt });
 
     // Inject history summary if exists
+    const { summary, recentMessages } = memoryContext;
     if (summary) {
       messagesPayload.push({
         role: 'system',
@@ -96,15 +112,39 @@ export class RetrievalGenerationService {
     // Append last 10 messages
     for (const msg of recentMessages) {
       messagesPayload.push({
-        role: msg.sender_id === senderId ? 'user' : 'assistant',
+        role: String(msg.sender_id) === String(senderId) ? 'user' : 'assistant',
         content: msg.message,
       });
     }
 
-    // Generate reply using DeepSeek
-    const botReply = await this.llmService.generateCompletion(messagesPayload);
+    // Stream response from LLM
+    yield* this.llmService.generateCompletionStream(messagesPayload);
+  }
 
-    return botReply;
+  /**
+   * Extracts keywords using either local extraction (default) or LLM tool calling.
+   */
+  private async extractKeywords(userMessage: string): Promise<string[]> {
+    if (!this.useToolCallingForExtraction) {
+      // Local extraction: instant, no API call
+      const result = this.localExtractor.extract(userMessage);
+      return result.exact_keywords;
+    }
+
+    // Tool-calling extraction via LLM
+    const extractionTool = this.toolRegistry.getTool('QueryExtractionTool');
+    if (extractionTool) {
+      const toolResult = await this.llmService.executeToolCalling(
+        [{ role: 'user', content: userMessage }],
+        [extractionTool.definition]
+      );
+      if (toolResult && toolResult.toolName === 'QueryExtractionTool') {
+        const executed = await extractionTool.execute(toolResult.arguments);
+        return executed.exact_keywords || [];
+      }
+    }
+
+    return [];
   }
 
   /**

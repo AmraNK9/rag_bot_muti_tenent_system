@@ -11,7 +11,7 @@ export class ChatMemoryService {
    */
   async saveMessage(
     chatbotId: number,
-    senderId: number,
+    senderId: string,
     messageContent: string,
     isUser = true
   ): Promise<Messages> {
@@ -23,58 +23,68 @@ export class ChatMemoryService {
       sent_date: new Date(),
     });
 
-    try {
-      // 2. Fetch the latest summary to determine the time window
-      const latestSummary = await SummerizeMessages.findOne({
-        where: {
-          chatbot_id: chatbotId,
-          sender_id: senderId,
-        },
-        order: [['created_at', 'DESC']],
-      });
+    // 2. Fire-and-forget: trigger background summarization check.
+    //    This does NOT block the message save — the caller gets the result immediately.
+    void this.checkAndSummarize(chatbotId, senderId).catch(err => {
+      console.error('Background summarization failed (non-blocking):', err);
+    });
 
-      // 3. Count messages since the last summary
-      const unsummarizedCount = await Messages.count({
+    return message;
+  }
+
+  /**
+   * Checks if unsummarized message count has reached the threshold (20)
+   * and triggers LLM summarization if needed. Runs in the background.
+   */
+  private async checkAndSummarize(chatbotId: number, senderId: string): Promise<void> {
+    // Fetch the latest summary to determine the time window
+    const latestSummary = await SummerizeMessages.findOne({
+      where: {
+        chatbot_id: chatbotId,
+        sender_id: senderId,
+      },
+      order: [['created_at', 'DESC']],
+    });
+
+    // Count messages since the last summary
+    const unsummarizedCount = await Messages.count({
+      where: {
+        chatbot_id: chatbotId,
+        sender_id: senderId,
+        ...(latestSummary ? { sent_date: { [Op.gt]: latestSummary.created_at } } : {}),
+      },
+    });
+
+    // Summarize history if threshold (20 messages) is reached
+    if (unsummarizedCount >= 20) {
+      const messagesToSummarize = await Messages.findAll({
         where: {
           chatbot_id: chatbotId,
           sender_id: senderId,
           ...(latestSummary ? { sent_date: { [Op.gt]: latestSummary.created_at } } : {}),
         },
+        order: [['sent_date', 'ASC']],
       });
 
-      // 4. Summarize history if threshold (20 messages) is reached
-      if (unsummarizedCount >= 20) {
-        const messagesToSummarize = await Messages.findAll({
-          where: {
-            chatbot_id: chatbotId,
-            sender_id: senderId,
-            ...(latestSummary ? { sent_date: { [Op.gt]: latestSummary.created_at } } : {}),
-          },
-          order: [['sent_date', 'ASC']],
-        });
+      const historyPayload = messagesToSummarize.map(m => ({
+        sender: String(m.sender_id) === String(senderId) ? 'User' : 'Assistant',
+        text: m.message,
+      }));
 
-        const historyPayload = messagesToSummarize.map(m => ({
-          sender: m.sender_id === senderId ? 'User' : 'Assistant',
-          text: m.message,
-        }));
+      const newSummary = await this.llmService.summarizeChatHistory(
+        latestSummary ? latestSummary.summary : null,
+        historyPayload
+      );
 
-        const newSummary = await this.llmService.summarizeChatHistory(
-          latestSummary ? latestSummary.summary : null,
-          historyPayload
-        );
+      await SummerizeMessages.create({
+        chatbot_id: chatbotId,
+        sender_id: senderId,
+        summary: newSummary,
+        created_at: new Date(),
+      });
 
-        await SummerizeMessages.create({
-          chatbot_id: chatbotId,
-          sender_id: senderId,
-          summary: newSummary,
-          created_at: new Date(),
-        });
-      }
-    } catch (err) {
-      console.error('Failed executing automatic background summary:', err);
+      console.log(`[ChatMemory] Background summarization completed for chatbot=${chatbotId}, sender=${senderId}`);
     }
-
-    return message;
   }
 
   /**
@@ -82,7 +92,7 @@ export class ChatMemoryService {
    */
   async getContextForChat(
     chatbotId: number,
-    senderId: number
+    senderId: string
   ): Promise<{
     summary: string | null;
     recentMessages: Messages[];

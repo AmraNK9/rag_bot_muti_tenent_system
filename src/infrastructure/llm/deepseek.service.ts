@@ -34,6 +34,91 @@ export class DeepSeekService implements ILLMService {
     }
   }
 
+  async *generateCompletionStream(
+    messages: ChatMessage[],
+    options?: CompletionOptions
+  ): AsyncIterable<string> {
+    const systemPromptMessage = options?.systemPrompt
+      ? [{ role: 'system' as const, content: options.systemPrompt }]
+      : [];
+
+    const requestBody = {
+      model: 'deepseek-chat',
+      messages: [...systemPromptMessage, ...messages],
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: options?.maxTokens,
+      response_format: options?.responseFormat || undefined,
+      stream: true,
+    };
+
+    // Mock mode: simulate streaming by yielding words with small delays
+    if (this.apiKey === 'mock-key') {
+      const mockContent = `Mocked streaming response. Context: ${messages[0]?.content?.substring(0, 60) || ''}`;
+      const words = mockContent.split(' ');
+      for (const word of words) {
+        yield word + ' ';
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      return;
+    }
+
+    // Real streaming request
+    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`DeepSeek streaming API error (${response.status}): ${errText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('DeepSeek streaming response has no body');
+    }
+
+    // Parse SSE stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+          const data = trimmed.slice(6); // Remove 'data: ' prefix
+          if (data === '[DONE]') return;
+
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              yield delta;
+            }
+          } catch {
+            // Skip malformed JSON chunks
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   async executeToolCalling(
     messages: ChatMessage[],
     tools: ToolDefinition[],

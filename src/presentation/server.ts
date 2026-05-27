@@ -28,6 +28,12 @@ app.use('/api/test', testRouter);
 // Telegram requires a clean, public-facing URL with no shared auth token.
 //
 // Services are instantiated once here and reused for all incoming webhook calls.
+declare const process: {
+  env: {
+    USE_TOOL_CALLING_EXTRACTION?: string;
+  };
+};
+
 const _llmService = new DeepSeekService();
 const _embeddingService = new VoyageEmbeddingService();
 const _vectorStore = new ChromaVectorStoreService();
@@ -35,13 +41,19 @@ const _promptFactory = new SystemPromptFactory();
 const _toolRegistry = new ToolCallingRegistry();
 _toolRegistry.registerTool(new QueryExtractionTool());
 const _chatMemoryService = new ChatMemoryService(_llmService);
+
+// Keyword extraction: local (default, fast) or tool-calling (LLM-based, slower but more accurate)
+const _useToolCallingExtraction = process.env.USE_TOOL_CALLING_EXTRACTION === 'true';
+console.log(`[Config] Keyword extraction mode: ${_useToolCallingExtraction ? 'LLM Tool Calling' : 'Local (fast)'}`);
+
 const _retrievalGenService = new RetrievalGenerationService(
   _llmService,
   _embeddingService,
   _vectorStore,
   _toolRegistry,
   _promptFactory,
-  _chatMemoryService
+  _chatMemoryService,
+  _useToolCallingExtraction
 );
 const _webhookController = new WebhookController(_retrievalGenService, _chatMemoryService);
 

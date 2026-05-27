@@ -216,8 +216,8 @@ testRouter.post('/simulate-message', async (req: Request, res: Response) => {
       update_id: Math.floor(Math.random() * 100000) + 10000,
       message: {
         message_id: Math.floor(Math.random() * 1000) + 1,
-        from: { id: Number(senderId), username: 'simulated_user' },
-        chat: { id: Number(senderId), type: 'private' },
+        from: { id: String(senderId), username: 'simulated_user' },
+        chat: { id: String(senderId), type: 'private' },
         text: text,
         date: Math.floor(Date.now() / 1000)
       }
