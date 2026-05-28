@@ -14,6 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     myanmar: 'Test how the text chunker handles Myanmar language segmentation and overlap.'
   };
 
+  // Toggle custom prompt visibility based on bot role selection
+  const botRoleSelect = document.getElementById('bot-role');
+  const customPromptGroup = document.getElementById('custom-prompt-group');
+  if (botRoleSelect && customPromptGroup) {
+    botRoleSelect.addEventListener('change', () => {
+      customPromptGroup.style.display = botRoleSelect.value === 'custom' ? 'block' : 'none';
+    });
+  }
+
   navItems.forEach(item => {
     item.addEventListener('click', () => {
       const tabId = item.getAttribute('data-tab');
@@ -79,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const botsTableBody = document.querySelector('#table-chatbots tbody');
       if (botsTableBody && botData.chatbots) {
         if (botData.chatbots.length === 0) {
-          botsTableBody.innerHTML = '<tr><td colspan="5" class="text-center">No chatbots registered yet. Create one!</td></tr>';
+          botsTableBody.innerHTML = '<tr><td colspan="6" class="text-center">No chatbots registered yet. Create one!</td></tr>';
         } else {
           botsTableBody.innerHTML = '';
           botData.chatbots.forEach(bot => {
@@ -88,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${bot.id}</td>
               <td><strong>${bot.name}</strong></td>
               <td><span class="badge-value" style="text-transform: capitalize;">${bot.type}</span></td>
+              <td><span class="role-badge">${bot.bot_role || 'sales'}</span></td>
               <td>${bot.business ? bot.business.name : 'Unknown'} (ID: ${bot.business_id})</td>
               <td><code>${bot.token.substring(0, 15)}${bot.token.length > 15 ? '...' : ''}</code></td>
             `;
@@ -102,6 +112,23 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('badge-db').textContent = 'SQLite / MySQL';
       document.getElementById('stat-chroma-status').textContent = 'Chroma Store Ready';
 
+      // Fetch credits for the first business
+      if (bizData.businesses && bizData.businesses.length > 0) {
+        try {
+          const creditsRes = await fetch(`/api/test/business/${bizData.businesses[0].id}/credits`);
+          const creditsData = await creditsRes.json();
+          if (creditsData.success) {
+            document.getElementById('stat-credits-count').textContent = creditsData.activeMessagesCount;
+            const planLabel = creditsData.plan === 'subscription'
+              ? `${(creditsData.subscriptionPlan || 'basic').toUpperCase()} Plan`
+              : `${creditsData.plan.replace(/_/g, ' ')} Plan`;
+            document.getElementById('stat-plan-info').textContent = planLabel;
+          }
+        } catch (e) {
+          console.error('Failed to fetch credits:', e);
+        }
+      }
+
     } catch (err) {
       console.error('Failed to load overview data:', err);
     }
@@ -114,12 +141,13 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const name = document.getElementById('biz-name').value;
       const detailInfo = document.getElementById('biz-desc').value;
+      const password = document.getElementById('biz-password').value;
 
       try {
         const res = await fetch('/api/test/business', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, detailInfo })
+          body: JSON.stringify({ name, detailInfo, password: password || undefined })
         });
         const data = await res.json();
         if (data.success) {
@@ -144,12 +172,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = document.getElementById('bot-name').value;
       const type = document.getElementById('bot-type').value;
       const token = document.getElementById('bot-token').value;
+      const botRole = document.getElementById('bot-role').value;
+      const customSystemPrompt = document.getElementById('bot-custom-prompt').value;
 
       try {
         const res = await fetch('/api/test/chatbot', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ businessId, name, type, token })
+          body: JSON.stringify({
+            businessId, name, type, token,
+            botRole,
+            customSystemPrompt: botRole === 'custom' ? customSystemPrompt : undefined
+          })
         });
         const data = await res.json();
         if (data.success) {
@@ -325,76 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
       conversationArea.innerHTML = '';
 
       if (msgData.messages && msgData.messages.length > 0) {
-        // msgData.messages.forEach(msg => {
-          // Identify if message is from user (senderId matching) or assistant
-          // Let's see: We save messages in DB where sender_id is user's ID.
-          // Wait, in chat webhook, when user messages, sender_id is user's telegram ID (e.g. 777123).
-          // When chatbot responds, it saves with the same sender_id in the DB table!
-          // Wait, how do we distinguish? Let's check `WebhookController`:
-          // `saveMessage(chatbotId, senderId, userText, true)` -> true means isUser.
-          // Let's check `Messages` model. It doesn't have an `is_user` field! Wait, it saves with sender_id.
-          // Wait! In `ChatMemoryService.saveMessage`, how is it saved?
-          // Line 19: `Messages.create({ chatbot_id: chatbotId, sender_id: senderId, message: messageContent, sent_date: new Date() })`.
-          // Wait, both user and bot messages are stored with `sender_id: senderId`!
-          // Ah! How does RAG distinguish them when reconstructing history?
-          // In `ChatMemoryService.ts` line 56: `sender: m.sender_id === senderId ? 'User' : 'Assistant'`. But wait, if both are written with `sender_id: senderId`, then `m.sender_id === senderId` will ALWAYS be true!
-          // Oh, wait! In `ChatMemoryService.ts` line 56, wait, does it mean we should distinguish user vs bot?
-          // Actually, let's see. In `ChatMemoryService.ts`:
-          // Wait! Let's check if there is an `isUser` flag or similar in `Messages` model?
-          // No, the `Messages` model only has: `id`, `chatbot_id`, `sender_id`, `message`, `sent_date`.
-          // Wait! If they are both stored with `sender_id`, how do we know who sent it in the UI?
-          // Let's check the database schema:
-          // `Messages.init` has `chatbot_id`, `sender_id`, `message`, `sent_date`.
-          // Wait, in `WebhookController.handleTelegramWebhook`:
-          // `await this.chatMemoryService.saveMessage(chatbotId, senderId, userText, true);`
-          // `await this.chatMemoryService.saveMessage(chatbotId, senderId, assistantReply, false);`
-          // In `saveMessage`, `isUser` is passed but NOT saved in the database! It's just a parameter.
-          // Wait! Let's look closely at `ChatMemoryService.ts` line 12:
-          // `async saveMessage(chatbotId: number, senderId: number, messageContent: string, isUser = true): Promise<Messages>`
-          // Inside `saveMessage`, `isUser` is NOT saved in the model `Messages`! Let's look at `Messages.create`:
-          // ```typescript
-          // const message = await Messages.create({
-          //   chatbot_id: chatbotId,
-          //   sender_id: senderId,
-          //   message: messageContent,
-          //   sent_date: new Date(),
-          // });
-          // ```
-          // Wait, if it's not saved in the DB, is there a way to distinguish?
-          // Maybe we can distinguish user vs bot by looking at who sent what, or we can just alternate, or we can look at the text content?
-          // Wait! Is there another column in `Messages`?
-          // Let's re-read `models/index.ts`:
-          // ```typescript
-          // export class Messages extends Model<InferAttributes<Messages>, InferCreationAttributes<Messages>> {
-          //   declare id: CreationOptional<number>;
-          //   declare chatbot_id: ForeignKey<ChatBot['id']>;
-          //   declare sender_id: number;
-          //   declare message: string;
-          //   declare sent_date: CreationOptional<Date>;
-          // }
-          // ```
-          // No, there is no other column.
-          // Wait! If so, how does RAG service retrieve context and build final messages payload?
-          // Let's check `RetrievalGenerationService.ts` lines 97-102:
-          // ```typescript
-          // // Append last 10 messages
-          // for (const msg of recentMessages) {
-          //   messagesPayload.push({
-          //     role: msg.sender_id === senderId ? 'user' : 'assistant',
-          //     content: msg.message,
-          //   });
-          // }
-          // ```
-          // Oh, wait! If `msg.sender_id === senderId` is always true (since we save both with `senderId`), then the prompt history would treat both user and bot messages as sent by the `user`!
-          // Ah! That is a bug in their original scaffolding repository. But wait, we shouldn't break anything. We can make sure our UI renders alternating messages, or checks if the text looks like simulated user or chatbot, or we can just render the list.
-          // Wait! Let's see: if we send a message, we know which one is User (the one we type) and which is Bot (the response we get). If we load history from the DB, since they alternate (User then Bot then User then Bot), we can just assign the roles by alternating them! Or we can assume odd messages are User, even are Bot, or vice-versa.
-          // Let's see: `messages[0]` is User, `messages[1]` is Bot, `messages[2]` is User, etc. That's a very simple and working heuristic for rendering in the simulator!
-          // Let's implement that heuristic in the chat UI loader:
-          let isUser = true; // start with user
-          msgData.messages.forEach((msg, idx) => {
-            // Alternating user and bot for historical visual rendering
+          msgData.messages.forEach((msg) => {
+            // Use sender_type from DB to render user vs bot bubbles
+            const isUser = msg.sender_type === 'user';
             appendChatBubble(msg.message, isUser, msg.sent_date);
-            isUser = !isUser;
           });
         } else {
           conversationArea.innerHTML = '<div class="chat-notice">No messages in history. Send a message to start!</div>';

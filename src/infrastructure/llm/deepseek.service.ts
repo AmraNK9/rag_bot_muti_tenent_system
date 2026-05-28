@@ -1,4 +1,6 @@
+import { log } from 'console';
 import { ILLMService, ChatMessage, CompletionOptions, ToolDefinition, ToolCallResult } from '../../core/interfaces/llm.interface';
+import { debugLogger, DebugLogger } from '../../core/logger';
 declare const process: { env: { DEEPSEEK_API_KEY?: string; DEEPSEEK_BASE_URL?: string } };
 export class DeepSeekService implements ILLMService {
   private apiKey: string;
@@ -24,7 +26,8 @@ export class DeepSeekService implements ILLMService {
       max_tokens: options?.maxTokens,
       response_format: options?.responseFormat || undefined,
     };
-
+    console.log('DeepSeek request body:', requestBody);
+    debugLogger.log('DEEPSEEK_REQUEST', 'Sending completion request to DeepSeek API', requestBody);
     try {
       const response = await this.makeApiRequest('/v1/chat/completions', requestBody);
       return response.choices[0].message.content || '';
@@ -42,6 +45,8 @@ export class DeepSeekService implements ILLMService {
       ? [{ role: 'system' as const, content: options.systemPrompt }]
       : [];
 
+          debugLogger.log('LLM', 'System prompt message:', systemPromptMessage);
+
     const requestBody = {
       model: 'deepseek-chat',
       messages: [...systemPromptMessage, ...messages],
@@ -50,6 +55,8 @@ export class DeepSeekService implements ILLMService {
       response_format: options?.responseFormat || undefined,
       stream: true,
     };
+
+    debugLogger.log('DEEPSEEK_STREAM_REQUEST', 'Initiating streaming completion request to DeepSeek API', requestBody);
 
     // Mock mode: simulate streaming by yielding words with small delays
     if (this.apiKey === 'mock-key') {

@@ -2,15 +2,13 @@ import { ISystemPromptFactory, ISystemPromptStrategy, SystemPromptContext } from
 
 export class SalesPromptStrategy implements ISystemPromptStrategy {
   generate(context: SystemPromptContext): string {
-    return `You are a professional, highly engaging Sales Assistant for "${context.businessName}".
-Business Profile & Inventory Details:
-${context.businessDetailInfo}
-
-Your goals:
-1. Help customers discover relevant items/services.
-2. Provide pricing and specifications clearly.
-3. Help checkout and confirm payments if they indicate readiness.
-Maintain a warm, professional, sales-driven attitude.`;
+    return `You are a professional, highly engaging Sales Assistant for "${context.businessName}".<business_info>${context.businessDetailInfo}</business_info>
+CRITICAL INSTRUCTIONS (အထူးလိုက်နာရမည့် စည်းမျဉ်းများ):
+1. NO HALLUCINATION: ဖြေဆိုရာတွင် User ၏ မေးခွန်းနှင့်အတူ ပူးတွဲပေးထားသော <context> နှင့် အထက်ပါ <business_info> ထဲမှ အချက်အလက်များကိုသာ တိကျစွာ အခြေခံရမည်။
+2. <context> ထဲတွင် မပါဝင်သော ကုန်ပစ္စည်းများ၊ ဈေးနှုန်းများ၊ Promotion များနှင့် အခြားဝန်ဆောင်မှုများကို လုံးဝ (လုံးဝ) မိမိဘာသာ ဖန်တီးဖြေဆိုခြင်း မပြုလုပ်ရ။
+3. IF UNKNOWN: မေးမြန်းထားသော အချက်အလက်သည် ပေးထားသော <context> တွင် မပါဝင်ပါက "ဒီအချက်အလက်ကို လောလောဆယ် မသိရှိပါဘူးခင်ဗျာ/ရှင်။ သေချာစေရန် ဆိုင်ဝန်ထမ်းနှင့် ဆက်သွယ်ပေးပါမည်" ဟုသာ ရိုးသားစွာ ပြန်လည်ဖြေဆိုပါ။
+4. Customer ဝယ်ယူရန် စိတ်ဝင်စားပါက ဈေးနှုန်းနှင့် အချက်အလက်များကို ရှင်းလင်းစွာ ဖော်ပြပြီး ငွေချေရန် (Checkout) ကူညီပေးပါ။
+5. မြန်မာဘာသာစကားဖြင့် သဘာဝကျကျ၊ ယဉ်ကျေးပျူငှာစွာ (Warm & Professional) ဖြေဆိုပါ။`;
   }
 }
 
@@ -24,6 +22,21 @@ Your goals:
 1. Answer standard business queries (hours, address, policies) accurately based on the context.
 2. Avoid speculating. If context doesn't have the answer, politely offer to escalate to human staff.
 Be concise, friendly, and structured.`;
+  }
+}
+
+export class SupportPromptStrategy implements ISystemPromptStrategy {
+  generate(context: SystemPromptContext): string {
+    return `You are a helpful Customer Support Agent for "${context.businessName}".
+Business Information:
+${context.businessDetailInfo}
+
+Your goals:
+1. Troubleshoot customer issues empathetically and thoroughly.
+2. Provide step-by-step guidance when resolving problems.
+3. Escalate to human support if the issue is complex or sensitive.
+4. Follow up to ensure the customer's issue is fully resolved.
+Be patient, clear, and solution-oriented.`;
   }
 }
 
@@ -44,6 +57,7 @@ export class SystemPromptFactory implements ISystemPromptFactory {
     // Pre-register core strategies
     this.registerStrategy('sales', new SalesPromptStrategy());
     this.registerStrategy('faq', new FaqPromptStrategy());
+    this.registerStrategy('support', new SupportPromptStrategy());
     this.registerStrategy('custom', new CustomPromptStrategy());
   }
 
@@ -59,4 +73,28 @@ export class SystemPromptFactory implements ISystemPromptFactory {
     }
     return strategy.generate(context);
   }
+
+  /**
+   * Get prompt with custom system prompt override.
+   * If customPrompt is provided, use it with business context injected.
+   * Otherwise, fall back to the bot_role strategy.
+   */
+  getPromptWithCustomOverride(
+    botRole: string,
+    customPrompt: string | null,
+    context: SystemPromptContext
+  ): string {
+    if (customPrompt && customPrompt.trim().length > 0) {
+      // Inject business context into the custom prompt
+      return `${customPrompt}
+
+Business: "${context.businessName}"
+Business Information:
+${context.businessDetailInfo}`;
+    }
+
+    // Fall back to predefined strategy
+    return this.getPrompt(botRole, context);
+  }
 }
+

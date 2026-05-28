@@ -98,6 +98,11 @@
               <p class="stat-status" id="stat-chroma-status">Chroma Online</p>
               <span class="stat-detail">Local fallback map active</span>
             </div>
+            <div class="card stat-card glow-green">
+              <h3>Message Credits</h3>
+              <p class="stat-number" id="stat-credits-count">0</p>
+              <span class="stat-detail" id="stat-plan-info">Free Plan</span>
+            </div>
           </div>
 
           <div class="section-grid mt-6">
@@ -114,6 +119,10 @@
                 <div class="form-group">
                   <label for="biz-desc">Detailed Information (Facts/Context for Bot)</label>
                   <textarea id="biz-desc" rows="4" required placeholder="SmartGadgets sells mobile phones and smartwatches. We are located in Yangon..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="biz-password">Password (for API auth)</label>
+                  <input type="password" id="biz-password" placeholder="Set a login password (optional for testing)">
                 </div>
                 <button type="submit" class="btn btn-primary">Create Profile</button>
               </form>
@@ -148,6 +157,21 @@
                   <label for="bot-token">Bot Token / API Key</label>
                   <input type="text" id="bot-token" required placeholder="e.g. mock-token or 123456:ABC-DEF...">
                 </div>
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="bot-role">Bot Role (Prompt Strategy)</label>
+                    <select id="bot-role">
+                      <option value="sales" selected>Sales Assistant</option>
+                      <option value="faq">FAQ Bot</option>
+                      <option value="support">Support Agent</option>
+                      <option value="custom">Custom Prompt</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group" id="custom-prompt-group" style="display: none;">
+                  <label for="bot-custom-prompt">Custom System Prompt</label>
+                  <textarea id="bot-custom-prompt" rows="4" placeholder="You are a friendly assistant that..."></textarea>
+                </div>
                 <button type="submit" class="btn btn-primary">Initialize Bot</button>
               </form>
             </div>
@@ -164,13 +188,14 @@
                     <th>ID</th>
                     <th>Bot Name</th>
                     <th>Platform</th>
+                    <th>Bot Role</th>
                     <th>Assigned Business</th>
                     <th>API Token</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td colspan="5" class="text-center">Loading registry tables...</td>
+                    <td colspan="6" class="text-center">Loading registry tables...</td>
                   </tr>
                 </tbody>
               </table>

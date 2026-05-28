@@ -15,11 +15,12 @@ export class ChatMemoryService {
     messageContent: string,
     isUser = true
   ): Promise<Messages> {
-    // 1. Save the new message.
+    // 1. Save the new message with sender_type.
     const message = await Messages.create({
       chatbot_id: chatbotId,
       sender_id: senderId,
       message: messageContent,
+      sender_type: isUser ? 'user' : 'bot',
       sent_date: new Date(),
     });
 
@@ -67,7 +68,7 @@ export class ChatMemoryService {
       });
 
       const historyPayload = messagesToSummarize.map(m => ({
-        sender: String(m.sender_id) === String(senderId) ? 'User' : 'Assistant',
+        sender: m.sender_type === 'user' ? 'User' : 'Assistant',
         text: m.message,
       }));
 

@@ -1,6 +1,8 @@
 import { RetrievalGenerationService } from './retrieval-generation.service';
 import { ChatMemoryService } from './chat-memory.service';
 import { ChatBot } from '../../infrastructure/db/models';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { debugLogger } from '../../core/logger';
 declare const process: {
   env: {
     NODE_ENV?: string;
@@ -34,11 +36,14 @@ const TELEGRAM_EDIT_DEBOUNCE_MS = 500;
 export class WebhookController {
   /** In-memory cache for bot tokens to avoid redundant DB lookups */
   private tokenCache: Map<number, string> = new Map();
+  private subscriptionService: SubscriptionService;
 
   constructor(
     private retrievalGenService: RetrievalGenerationService,
     private chatMemoryService: ChatMemoryService
-  ) {}
+  ) {
+    this.subscriptionService = new SubscriptionService();
+  }
 
   /**
    * Receives incoming messages from Telegram Webhook, manages conversation logs,
@@ -62,6 +67,25 @@ export class WebhookController {
 
       // Send "typing" indicator immediately for better UX
       void this.sendChatAction(botToken, chatId, 'typing').catch(() => {});
+
+      // Credit check: resolve business_id from chatbot and check credits
+      const chatbot = await ChatBot.findByPk(chatbotId);
+      if (chatbot) {
+        const hasCredits = await this.subscriptionService.checkCredits(chatbot.business_id);
+        if (!hasCredits) {
+          debugLogger.log('CREDITS', `Business ${chatbot.business_id} has no credits remaining — blocking message`);
+          await this.sendTelegramMessage(botToken, chatId,
+            '⚠️ This bot\'s message credits have been exhausted. Please contact the business owner to top up credits.'
+          );
+          return { success: false, replyText: 'Credits exhausted' };
+        }
+        // Deduct one credit atomically
+        await this.subscriptionService.deductCredit(chatbot.business_id);
+        debugLogger.log('CREDITS', `Deducted 1 credit for Business ${chatbot.business_id}`);
+      }
+
+      // Save user's incoming message to DB first (so it appears in history)
+      await this.chatMemoryService.saveMessage(chatbotId, senderId, userText, true);
 
       // Stream response chunks and deliver progressively to Telegram
       const assistantReply = await this.streamAndDeliver(

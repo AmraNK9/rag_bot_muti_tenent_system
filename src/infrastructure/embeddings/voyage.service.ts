@@ -8,7 +8,7 @@ export class VoyageEmbeddingService implements IEmbeddingService {
   constructor(apiKey?: string, model?: string) {
     this.apiKey = apiKey || process.env.VOYAGE_API_KEY || 'mock-key';
     this.baseUrl = 'https://api.voyageai.com/v1';
-    this.model = model || 'voyage-multilingual-2';
+    this.model = model || 'voyage-4';
   }
 
   async embedQuery(text: string): Promise<number[]> {

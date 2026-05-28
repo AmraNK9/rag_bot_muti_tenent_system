@@ -49,38 +49,40 @@ async function bootstrap() {
     console.log('    Database initialized and schema synchronized.');
 
     // Seed default Business if none exists
-    let business = await Business.findOne({ where: { name: 'SmartGadgets' } });
-    if (!business) {
-      business = await businessService.signupBusiness(
-        'SmartGadgets', 
-        'SmartGadgets sells electronic items. Specializes in smartwatches and mobile phones. Located in Yangon.'
-      );
-      console.log(`    Seeded Business: "${business.name}" (ID: ${business.id})`);
-    } else {
-      console.log(`    Using existing Business: "${business.name}" (ID: ${business.id})`);
-    }
+    // let business = await Business.findOne({ where: { name: 'SmartGadgets' } });
+    // if (!business) {
+    //   business = await businessService.signupBusiness(
+    //     'SmartGadgets', 
+    //     'SmartGadgets sells electronic items. Specializes in smartwatches and mobile phones. Located in Yangon.',
+    //     'admin123' // Default seed password
+    //   );
+    //   console.log(`    Seeded Business: "${business.name}" (ID: ${business.id})`);
+    // } else {
+    //   console.log(`    Using existing Business: "${business.name}" (ID: ${business.id})`);
+    // }
 
-    // Seed default Chatbot if none exists
-    let chatbot = await ChatBot.findOne({ where: { name: 'SalesAgent', business_id: business.id } });
-    if (!chatbot) {
-      chatbot = await businessService.createChatBot({
-        businessId: business.id,
-        name: 'SalesAgent',
-        token: process.env.TELEGRAM_BOT_TOKEN || 'mock-telegram-token',
-        type: 'telegram'
-      });
-      console.log(`    Seeded Telegram Bot: "${chatbot.name}" (ID: ${chatbot.id})`);
+    // // Seed default Chatbot if none exists
+    // let chatbot = await ChatBot.findOne({ where: { name: 'SalesAgent', business_id: business.id } });
+    // if (!chatbot) {
+    //   chatbot = await businessService.createChatBot({
+    //     businessId: business.id,
+    //     name: 'SalesAgent',
+    //     token: process.env.TELEGRAM_BOT_TOKEN || 'mock-telegram-token',
+    //     type: 'telegram',
+    //     botRole: 'sales',
+    //   });
+    //   console.log(`    Seeded Telegram Bot: "${chatbot.name}" (ID: ${chatbot.id})`);
 
-      // Ingest default knowledge base documents
-      const ingestion = await knowledgeService.ingestDocument({
-        chatbotId: chatbot.id,
-        businessId: business.id,
-        documentText: 'Samsung s24 Ultra ဖုန်းသည် ကင်မရာကောင်းမွန်ပြီး စွမ်းဆောင်ရည်မြင့်မားသည်။ ဈေးနှုန်းမှာ ငါးသိန်းကျပ်ဖြစ်သည်။\n\nApple iPhone 15 Pro Max သည် မြန်ဆန်ပြီး ကင်မရာစနစ်အသစ် ပါဝင်သည်။ ဈေးနှုန်းမှာ ခြောက်သိန်းကျပ်ဖြစ်သည်။'
-      });
-      console.log(`    Knowledge base ingestion completed: Stored ${ingestion.chunkCount} chunks.`);
-    } else {
-      console.log(`    Using existing Telegram Bot: "${chatbot.name}" (ID: ${chatbot.id})`);
-    }
+    //   // Ingest default knowledge base documents
+    //   const ingestion = await knowledgeService.ingestDocument({
+    //     chatbotId: chatbot.id,
+    //     businessId: business.id,
+    //     documentText: 'Samsung s24 Ultra ဖုန်းသည် ကင်မရာကောင်းမွန်ပြီး စွမ်းဆောင်ရည်မြင့်မားသည်။ ဈေးနှုန်းမှာ ငါးသိန်းကျပ်ဖြစ်သည်။\n\nApple iPhone 15 Pro Max သည် မြန်ဆန်ပြီး ကင်မရာစနစ်အသစ် ပါဝင်သည်။ ဈေးနှုန်းမှာ ခြောက်သိန်းကျပ်ဖြစ်သည်။'
+    //   });
+    //   console.log(`    Knowledge base ingestion completed: Stored ${ingestion.chunkCount} chunks.`);
+    // } else {
+    //   console.log(`    Using existing Telegram Bot: "${chatbot.name}" (ID: ${chatbot.id})`);
+    // }
 
   } catch (error) {
     console.error('Error during DB execution seeding check:', error);
@@ -100,7 +102,7 @@ async function bootstrap() {
     console.warn(`\n[3] ⚠️  ngrok tunnel failed to start:`, err);
     console.warn(`    Server will run locally only — real Telegram webhooks will not work.`);
   }
-
+  
   // 5. Start the Express Presentation Server
   startServer(port);
 }

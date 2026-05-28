@@ -1,5 +1,6 @@
 import { IVectorStoreService, VectorDocument, VectorSearchResult } from '../../core/interfaces/vectorstore.interface';
 import { ChromaClient } from 'chromadb';
+import { debugLogger } from '../../core/logger';
 declare const process: { env: { CHROMA_URL?: string } };
 
 export class ChromaVectorStoreService implements IVectorStoreService {
@@ -26,7 +27,7 @@ export class ChromaVectorStoreService implements IVectorStoreService {
             metadata: {
                 // Voyage AI နဲ့ အခြား Text Embeddings တွေအတွက် 'cosine' distance ကို သုံးတာ အတိကျဆုံးပါ
                 "hnsw:space":  "cosine", 
-                "description": "Knowledge base for chatbot with Voyage 1024 Dims"
+                // "description": "Knowledge base for chatbot with Voyage 1024 Dims"
             }
         });
         return;
@@ -65,15 +66,16 @@ export class ChromaVectorStoreService implements IVectorStoreService {
     collectionName: string,
     queryEmbedding: number[],
     filter: Record<string, any>,
-    limit = 5
+    limit = 3
   ): Promise<VectorSearchResult[]> {
     const formattedName = this.formatCollectionName(collectionName);
     try {
+      debugLogger.log('VECTOR_SEARCH', `Searching collection: ${formattedName} with filter: ${JSON.stringify(filter)} and limit: ${limit}`);
       if (this.client) {
         const collection = await this.client.getOrCreateCollection({ name: formattedName });
         const results = await collection.query({
           queryEmbeddings: [queryEmbedding],
-          // where: filter,
+          where: filter && Object.keys(filter).length > 0 ? filter : {},
           nResults: limit
         });
 
@@ -88,6 +90,7 @@ export class ChromaVectorStoreService implements IVectorStoreService {
             });
           }
         }
+        debugLogger.log('VECTOR_SEARCH', `Chroma search results for collection: ${formattedName}`, searchResults);
         return searchResults;
       }
     } catch (e) {

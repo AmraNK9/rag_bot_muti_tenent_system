@@ -11,7 +11,8 @@ import { WebhookController } from '../../modules/chat/webhook.controller';
 import { BusinessService } from '../../modules/business/business.service';
 import { KnowledgeService } from '../../modules/knowledge/knowledge.service';
 import { chunkMyanmarText } from '../../modules/knowledge/myanmar-chunker';
-import { Business, ChatBot, Messages, SummerizeMessages } from '../../infrastructure/db/models';
+import { Business, ChatBot, Messages, SummerizeMessages, TopUpHistory } from '../../infrastructure/db/models';
+import { SubscriptionService } from '../../modules/subscription/subscription.service';
 import { ChatbotWebhookService } from '../../modules/chatbot/chatbot-webhook.service';
 import { TelegramService } from '../../infrastructure/telegram/telegram.service';
 import { tunnelService } from '../../infrastructure/tunnel/tunnel.service';
@@ -38,6 +39,7 @@ const retrievalGenService = new RetrievalGenerationService(
 const webhookController = new WebhookController(retrievalGenService, chatMemoryService);
 const businessService = new BusinessService(vectorStore);
 const knowledgeService = new KnowledgeService(embeddingService, vectorStore);
+const subscriptionService = new SubscriptionService();
 const telegramService = new TelegramService();
 const chatbotWebhookService = new ChatbotWebhookService(telegramService, tunnelService);
 
@@ -127,11 +129,11 @@ testRouter.post('/chroma/search', async (req: Request, res: Response) => {
 // 5. Business Signup
 testRouter.post('/business', async (req: Request, res: Response) => {
   try {
-    const { name, detailInfo } = req.body;
+    const { name, detailInfo, password } = req.body;
     if (!name || !detailInfo) {
       return res.status(400).json({ success: false, error: 'Missing parameters: "name" and "detailInfo" are required.' });
     }
-    const business = await businessService.signupBusiness(name, detailInfo);
+    const business = await businessService.signupBusiness(name, detailInfo, password);
     res.json({ success: true, business });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -151,7 +153,7 @@ testRouter.get('/businesses', async (req: Request, res: Response) => {
 // 7. Create Chatbot
 testRouter.post('/chatbot', async (req: Request, res: Response) => {
   try {
-    const { businessId, name, token, type, apiId, apiHash } = req.body;
+    const { businessId, name, token, type, apiId, apiHash, botRole, customSystemPrompt } = req.body;
     if (!businessId || !name || !token || !type) {
       return res.status(400).json({ success: false, error: 'Missing parameters: "businessId", "name", "token", and "type" are required.' });
     }
@@ -164,7 +166,9 @@ testRouter.post('/chatbot', async (req: Request, res: Response) => {
       token,
       type,
       apiId,
-      apiHash
+      apiHash,
+      botRole: botRole || 'sales',
+      customSystemPrompt: customSystemPrompt || undefined,
     });
     res.json({ success: true, chatbot });
   } catch (error: any) {
@@ -387,4 +391,30 @@ testRouter.get('/ngrok/url', (_req: Request, res: Response) => {
   res.json({ success: true, publicUrl: url });
 });
 
+// 19. Get Business Credits & Plan Info
+testRouter.get('/business/:id/credits', async (req: Request, res: Response) => {
+  try {
+    const businessId = Number(req.params.id);
+    if (!businessId) {
+      return res.status(400).json({ success: false, error: 'Invalid business ID.' });
+    }
+    const planInfo = await subscriptionService.getBusinessPlan(businessId);
+    res.json({ success: true, ...planInfo });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 20. Get Top-Up History
+testRouter.get('/business/:id/topup-history', async (req: Request, res: Response) => {
+  try {
+    const businessId = Number(req.params.id);
+    const history = await subscriptionService.getTopUpHistory(businessId);
+    res.json({ success: true, history });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default testRouter;
+
