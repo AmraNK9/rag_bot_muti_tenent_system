@@ -120,7 +120,7 @@ Authorization: Bearer <token_string>
 ```
 
 For the complete API route specs, request schemas, Axios setup, and React TypeScript interface declarations, check:
-👉 **[API Documentation / Integration Guide](C:\Users\USER\.gemini\antigravity\brain\514f925c-f8a7-4c32-b300-7da32e0d4374\api_documentation.md)**
+👉 **[API Documentation / Integration Guide](API_DOC.md)**
 
 ---
 
