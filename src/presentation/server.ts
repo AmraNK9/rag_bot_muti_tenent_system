@@ -25,18 +25,18 @@ declare const process: {
 
 const app = express();
 
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+// const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5000')//allow multiple origins separated by commas in the environment variable
+  // .split(',')
+  // .map((origin) => origin.trim())
+  // .filter(Boolean);
 
 app.use((req: Request, res: Response, next) => {
   const requestOrigin = req.headers.origin;
 
-  if (requestOrigin && (allowedOrigins.includes('*') || allowedOrigins.includes(requestOrigin))) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigins.includes('*') ? '*' : requestOrigin);
+  // if (requestOrigin && (allowedOrigins.includes('*') || allowedOrigins.includes(requestOrigin))) {
+    res.setHeader('Access-Control-Allow-Origin', '*' );
     res.setHeader('Vary', 'Origin');
-  }
+  // }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');

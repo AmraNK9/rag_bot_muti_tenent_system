@@ -28,6 +28,17 @@ export class SequelizeService {
             timestamps: false,
           },
         });
+      } else if (dbUrl.startsWith('sqlite:')) {
+        const storagePath = dbUrl.replace(/^sqlite:\/\/|^sqlite:/, '');
+        console.log(`Using file-based SQLite database at: ${storagePath || 'database.sqlite'}`);
+        SequelizeService.instance = new Sequelize({
+          dialect: 'sqlite',
+          storage: storagePath || 'database.sqlite',
+          logging: false,
+          define: {
+            timestamps: false,
+          },
+        });
       } else {
         SequelizeService.instance = new Sequelize(dbUrl, {
           dialect: 'mysql',
