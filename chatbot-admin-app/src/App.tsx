@@ -53,21 +53,16 @@ interface Message {
 interface KnowledgeChunk {
   id: string;
   text: string;
-  metadata?: {
-    chatbot_id?: number | string;
-    source?: string;
-  };
+  metadata?: { chatbot_id?: number | string; source?: string };
 }
 
 export default function App() {
-  // Auth state
   const [token, setToken] = useState<string | null>(localStorage.getItem('chatbot_admin_token'));
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [chatbot, setChatbot] = useState<ChatbotDetails | null>(null);
   const [credits, setCredits] = useState<number>(0);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  // Auth form state
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,14 +70,11 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [submittingAuth, setSubmittingAuth] = useState(false);
 
-  // Navigation tab: 'chats' | 'knowledge' | 'prompt' | 'profile'
   const [activeTab, setActiveTab] = useState<'chats' | 'knowledge' | 'prompt' | 'profile'>('chats');
 
-  // Conversations tab state
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(false);
 
-  // Active Chat Screen state (Overlay sub-page)
   const [activeChatSender, setActiveChatSender] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
@@ -90,24 +82,20 @@ export default function App() {
   const [sendingReply, setSendingReply] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Knowledge tab state
   const [chunks, setChunks] = useState<KnowledgeChunk[]>([]);
   const [loadingChunks, setLoadingChunks] = useState(false);
   const [ingestText, setIngestText] = useState('');
   const [ingesting, setIngesting] = useState(false);
 
-  // Prompt tab state
   const [systemPrompt, setSystemPrompt] = useState('');
   const [activePrompt, setActivePrompt] = useState('');
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [updatingPrompt, setUpdatingPrompt] = useState(false);
 
-  // Edit Chatbot (Profile) state
   const [editBotName, setEditBotName] = useState('');
   const [editBotDesc, setEditBotDesc] = useState('');
   const [updatingBot, setUpdatingBot] = useState(false);
 
-  // Standalone bot creation state
   const [newBotName, setNewBotName] = useState('');
   const [newBotToken, setNewBotToken] = useState('');
   const [newBotType, setNewBotType] = useState<'telegram' | 'facebook'>('telegram');
@@ -115,13 +103,11 @@ export default function App() {
   const [creatingBot, setCreatingBot] = useState(false);
   const [createBotError, setCreateBotError] = useState('');
 
-  // Knowledge edit state
   const [editingChunk, setEditingChunk] = useState<KnowledgeChunk | null>(null);
   const [editText, setEditText] = useState('');
   const [updatingChunk, setUpdatingChunk] = useState(false);
   const [editError, setEditError] = useState('');
 
-  // Referral / Upgrade states
   const [referralCode, setReferralCode] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<'lite' | 'basic' | 'pro' | null>(null);
   const [kpayDetails, setKpayDetails] = useState<{ resellerId: number | null; kpay_no: string; kpay_name: string; note?: string } | null>(null);
@@ -132,7 +118,6 @@ export default function App() {
   const [upgradeMsg, setUpgradeMsg] = useState('');
   const [businessPlanInfo, setBusinessPlanInfo] = useState<any>(null);
 
-  // Fetch admin profile and bot details
   const fetchProfile = useCallback(async () => {
     setLoadingProfile(true);
     try {
@@ -156,99 +141,69 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (token) {
-      fetchProfile();
-    }
+    if (token) fetchProfile();
   }, [token, fetchProfile]);
 
-  // Tab change reactions
   useEffect(() => {
     if (!token) return;
-    if (activeTab === 'chats') {
-      loadConversations();
-    } else if (activeTab === 'knowledge' && profile?.canManageKnowledge) {
-      loadKnowledge();
-    } else if (activeTab === 'prompt' && profile?.canManageSystemPrompt) {
-      loadSystemPrompt();
-    }
+    if (activeTab === 'chats') loadConversations();
+    else if (activeTab === 'knowledge' && profile?.canManageKnowledge) loadKnowledge();
+    else if (activeTab === 'prompt' && profile?.canManageSystemPrompt) loadSystemPrompt();
   }, [activeTab, token, profile]);
 
-  // Load chat list
   const loadConversations = async () => {
     setLoadingConvs(true);
     try {
       const data = await getConversations();
       setConversations(data.conversations || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingConvs(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoadingConvs(false); }
   };
 
-  // Load specific chat messages
   const loadMessagesForSender = async (senderId: string) => {
     setLoadingMsgs(true);
     try {
       const data = await getMessages(senderId, 100, 0);
       setMessages(data.messages || []);
-      // Scroll to bottom
       setTimeout(scrollToBottom, 80);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingMsgs(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoadingMsgs(false); }
   };
 
-  // Poll messages while active chat is open
   useEffect(() => {
     if (!activeChatSender) return;
     const interval = setInterval(() => {
-      getMessages(activeChatSender, 100, 0)
-        .then((data) => {
-          if (data.messages && data.messages.length !== messages.length) {
-            setMessages(data.messages);
-            scrollToBottom();
-          }
-        })
-        .catch(console.error);
+      getMessages(activeChatSender, 100, 0).then((data) => {
+        if (data.messages && data.messages.length !== messages.length) {
+          setMessages(data.messages);
+          scrollToBottom();
+        }
+      }).catch(console.error);
     }, 4000);
     return () => clearInterval(interval);
   }, [activeChatSender, messages.length]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
-  // Load knowledge chunks
   const loadKnowledge = async () => {
     setLoadingChunks(true);
     try {
       const data = await getKnowledgeChunks(100, 0);
       setChunks(data.chunks || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingChunks(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoadingChunks(false); }
   };
 
-  // Load System Prompt
   const loadSystemPrompt = async () => {
     setLoadingPrompt(true);
     try {
       const data = await getSystemPrompt();
       setSystemPrompt(data.customSystemPrompt || '');
       setActivePrompt(data.activePrompt || '');
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingPrompt(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoadingPrompt(false); }
   };
 
-  // Handlers
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -258,15 +213,11 @@ export default function App() {
       if (data.success && data.token) {
         localStorage.setItem('chatbot_admin_token', data.token);
         setToken(data.token);
-        // Clean fields
-        setEmail('');
-        setPassword('');
+        setEmail(''); setPassword('');
       }
     } catch (err: any) {
       setAuthError(err.response?.data?.error || 'Invalid credentials');
-    } finally {
-      setSubmittingAuth(false);
-    }
+    } finally { setSubmittingAuth(false); }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -274,26 +225,15 @@ export default function App() {
     setAuthError('');
     setSubmittingAuth(true);
     try {
-      const data = await apiRegister({
-        name,
-        email,
-        password,
-        referralCode: referralCode || undefined,
-      });
+      const data = await apiRegister({ name, email, password, referralCode: referralCode || undefined });
       if (data.success && data.token) {
         localStorage.setItem('chatbot_admin_token', data.token);
         setToken(data.token);
-        // Clean fields
-        setName('');
-        setEmail('');
-        setPassword('');
-        setReferralCode('');
+        setName(''); setEmail(''); setPassword(''); setReferralCode('');
       }
     } catch (err: any) {
       setAuthError(err.response?.data?.error || 'Registration failed');
-    } finally {
-      setSubmittingAuth(false);
-    }
+    } finally { setSubmittingAuth(false); }
   };
 
   const handleCreateChatbot = async (e: React.FormEvent) => {
@@ -307,15 +247,12 @@ export default function App() {
         localStorage.setItem('chatbot_admin_token', data.token);
         setToken(data.token);
         setChatbot(data.chatbot);
-        setNewBotName('');
-        setNewBotToken('');
+        setNewBotName(''); setNewBotToken('');
         fetchProfile();
       }
     } catch (err: any) {
       setCreateBotError(err.response?.data?.error || 'Failed to create chatbot');
-    } finally {
-      setCreatingBot(false);
-    }
+    } finally { setCreatingBot(false); }
   };
 
   const handleSelectPlan = async (plan: 'lite' | 'basic' | 'pro') => {
@@ -326,15 +263,11 @@ export default function App() {
     setReceiptFilename('');
     try {
       const data = await getPaymentMethods(plan);
-      if (data.success) {
-        setKpayDetails(data);
-      }
+      if (data.success) setKpayDetails(data);
     } catch (e) {
       console.error(e);
       alert('Failed to load payment details.');
-    } finally {
-      setLoadingKpay(false);
-    }
+    } finally { setLoadingKpay(false); }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,9 +275,7 @@ export default function App() {
     if (!file) return;
     setReceiptFilename(file.name);
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setReceiptBase64(reader.result as string);
-    };
+    reader.onloadend = () => setReceiptBase64(reader.result as string);
     reader.readAsDataURL(file);
   };
 
@@ -356,20 +287,16 @@ export default function App() {
     try {
       const data = await submitUpgrade(selectedPlan, receiptBase64, kpayDetails.resellerId);
       if (data.success) {
-        setUpgradeMsg('✅ Upgrade request submitted successfully! Waiting for Reseller verification.');
+        setUpgradeMsg('✅ Upgrade request submitted! Waiting for verification.');
         setTimeout(() => {
-          setSelectedPlan(null);
-          setKpayDetails(null);
-          setReceiptBase64(null);
-          setReceiptFilename('');
+          setSelectedPlan(null); setKpayDetails(null);
+          setReceiptBase64(null); setReceiptFilename('');
           fetchProfile();
         }, 2500);
       }
     } catch (err: any) {
       setUpgradeMsg(`❌ ${err.response?.data?.error || 'Upgrade failed'}`);
-    } finally {
-      setSubmittingUpgrade(false);
-    }
+    } finally { setSubmittingUpgrade(false); }
   };
 
   const handleUpdateChunk = async () => {
@@ -385,19 +312,14 @@ export default function App() {
       }
     } catch (err: any) {
       setEditError(err.response?.data?.error || 'Failed to update chunk');
-    } finally {
-      setUpdatingChunk(false);
-    }
+    } finally { setUpdatingChunk(false); }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('chatbot_admin_token');
     localStorage.removeItem('chatbot_admin_profile');
-    setToken(null);
-    setProfile(null);
-    setChatbot(null);
-    setActiveChatSender(null);
-    setMessages([]);
+    setToken(null); setProfile(null); setChatbot(null);
+    setActiveChatSender(null); setMessages([]);
   };
 
   const handleSendReply = async () => {
@@ -408,16 +330,13 @@ export default function App() {
       if (data.success && data.message) {
         setMessages((prev) => [...prev, data.message]);
         setReplyText('');
-        // Deduct 1 credit locally
         setCredits((prev) => Math.max(0, prev - 1));
         setTimeout(scrollToBottom, 50);
       }
     } catch (e) {
       console.error(e);
       alert('Failed to send reply');
-    } finally {
-      setSendingReply(false);
-    }
+    } finally { setSendingReply(false); }
   };
 
   const handleIngest = async (e: React.FormEvent) => {
@@ -433,9 +352,7 @@ export default function App() {
       }
     } catch (e: any) {
       alert(e.response?.data?.error || 'Ingest failed');
-    } finally {
-      setIngesting(false);
-    }
+    } finally { setIngesting(false); }
   };
 
   const handleDeleteChunk = async (docId: string) => {
@@ -443,9 +360,7 @@ export default function App() {
     try {
       await deleteChunk(docId);
       setChunks((prev) => prev.filter((c) => c.id !== docId));
-    } catch (e) {
-      alert('Failed to delete chunk');
-    }
+    } catch (e) { alert('Failed to delete chunk'); }
   };
 
   const handleUpdatePrompt = async (e: React.FormEvent) => {
@@ -453,14 +368,10 @@ export default function App() {
     setUpdatingPrompt(true);
     try {
       const result = await updateSystemPrompt(systemPrompt);
-      if (result.success) {
-        alert('System prompt updated successfully');
-      }
+      if (result.success) alert('System prompt updated successfully');
     } catch (e: any) {
       alert(e.response?.data?.error || 'Update failed');
-    } finally {
-      setUpdatingPrompt(false);
-    }
+    } finally { setUpdatingPrompt(false); }
   };
 
   const handleUpdateBotMetadata = async (e: React.FormEvent) => {
@@ -469,21 +380,12 @@ export default function App() {
     setUpdatingBot(true);
     try {
       const result = await updateChatbot(editBotName, editBotDesc);
-      if (result.success) {
-        setChatbot(result.chatbot);
-        alert('Chatbot details updated successfully');
-      }
-    } catch (e) {
-      alert('Failed to update chatbot');
-    } finally {
-      setUpdatingBot(false);
-    }
+      if (result.success) { setChatbot(result.chatbot); alert('Chatbot details updated successfully'); }
+    } catch (e) { alert('Failed to update chatbot'); }
+    finally { setUpdatingBot(false); }
   };
 
-  const getInitials = (str: string) => {
-    if (!str) return 'U';
-    return str.slice(-2).toUpperCase();
-  };
+  const getInitials = (str: string) => str ? str.slice(-2).toUpperCase() : 'U';
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -499,64 +401,79 @@ export default function App() {
   if (!token) {
     return (
       <div className="auth-wrapper">
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div style={{ fontSize: '3rem' }}>🤖</div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.3px', margin: '8px 0 2px' }}>Chatbot Admin Platform</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--tg-text-muted)' }}>Manage your automated agent & conversations</p>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{
+            width: '56px', height: '56px', borderRadius: '16px',
+            background: 'linear-gradient(135deg, #1f6feb 0%, #0d5bce 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.5rem', margin: '0 auto 14px',
+            boxShadow: '0 4px 20px rgba(31,111,235,0.3)'
+          }}>🤖</div>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-0.3px', marginBottom: '6px' }}>
+            Chatbot Admin
+          </h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            Manage your automated agent & conversations
+          </p>
         </div>
 
         <div className="auth-card">
           <div className="auth-tabs">
-            <button className={`auth-tab ${isLoginTab ? 'active' : ''}`} onClick={() => { setIsLoginTab(true); setAuthError(''); }}>Login</button>
-            <button className={`auth-tab ${!isLoginTab ? 'active' : ''}`} onClick={() => { setIsLoginTab(false); setAuthError(''); }}>Register Bot</button>
+            <button className={`auth-tab ${isLoginTab ? 'active' : ''}`} onClick={() => { setIsLoginTab(true); setAuthError(''); }}>
+              Sign In
+            </button>
+            <button className={`auth-tab ${!isLoginTab ? 'active' : ''}`} onClick={() => { setIsLoginTab(false); setAuthError(''); }}>
+              Register
+            </button>
           </div>
 
           {authError && (
-            <div style={{ padding: '8px 12px', background: 'rgba(236,59,59,0.1)', color: 'var(--tg-red)', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '16px' }}>
-              ⚠️ {authError}
-            </div>
+            <div className="alert-box alert-error">⚠️ {authError}</div>
           )}
 
           {isLoginTab ? (
             <form onSubmit={handleLogin}>
               <div className="form-group">
-                <label>Email Address</label>
-                <input className="form-control" type="email" required placeholder="name@domain.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <label>Email</label>
+                <input className="form-control" type="email" required placeholder="name@domain.com"
+                  value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="form-group">
                 <label>Password</label>
-                <input className="form-control" type="password" required placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input className="form-control" type="password" required placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
               <button className="btn btn-primary" style={{ marginTop: '8px' }} type="submit" disabled={submittingAuth}>
-                {submittingAuth ? 'Logging in...' : 'Sign In'}
+                {submittingAuth ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleRegister}>
-              <h3 style={{ fontSize: '0.85rem', color: 'var(--tg-blue)', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Register Standalone Account</h3>
               <div className="form-group">
                 <label>Your Name</label>
-                <input className="form-control" type="text" required placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} />
+                <input className="form-control" type="text" required placeholder="John Doe"
+                  value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="form-group">
-                <label>Email Address</label>
-                <input className="form-control" type="email" required placeholder="john@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <label>Email</label>
+                <input className="form-control" type="email" required placeholder="john@company.com"
+                  value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="form-group">
                 <label>Password</label>
-                <input className="form-control" type="password" required placeholder="Minimum 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input className="form-control" type="password" required placeholder="Minimum 6 characters"
+                  value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
               <div className="form-group">
-                <label>Referral Reseller Code (Optional)</label>
-                <input className="form-control" type="text" placeholder="e.g. 1002" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
+                <label>Referral Code <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '0.72rem' }}>(optional)</span></label>
+                <input className="form-control" type="text" placeholder="e.g. 1002"
+                  value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
               </div>
-
-              <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--tg-text-muted)', marginBottom: '14px', lineHeight: 1.4 }}>
-                ℹ️ Registering an account lets you create chatbots, customize system prompts, upload knowledge bases, and upgrade to premium plans.
-              </div>
-
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '12px 0', lineHeight: 1.5 }}>
+                Registering lets you create chatbots, customize prompts, upload knowledge bases, and subscribe to premium plans.
+              </p>
               <button className="btn btn-primary" type="submit" disabled={submittingAuth}>
-                {submittingAuth ? 'Creating Account...' : 'Register'}
+                {submittingAuth ? 'Creating Account...' : 'Create Account'}
               </button>
             </form>
           )}
@@ -565,31 +482,34 @@ export default function App() {
     );
   }
 
-  // ─── DEFERRED CHATBOT CREATION WIZARD ────────────────────────────────────
+  // ─── CHATBOT CREATION WIZARD ──────────────────────────────────────────────
   if (token && !loadingProfile && !chatbot) {
     return (
       <div className="auth-wrapper">
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div style={{ fontSize: '3.5rem' }}>✨</div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.3px', margin: '8px 0 2px' }}>Create Your Chatbot</h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '0 20px' }}>Let's set up your first chatbot assistant to start managing conversations.</p>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>✨</div>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-0.3px', marginBottom: '6px' }}>
+            Create Your Chatbot
+          </h1>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '300px', margin: '0 auto' }}>
+            Set up your first chatbot assistant to start managing conversations.
+          </p>
         </div>
 
         <div className="auth-card">
           {createBotError && (
-            <div style={{ padding: '8px 12px', background: 'rgba(236,59,59,0.1)', color: 'var(--tg-red)', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '16px' }}>
-              ⚠️ {createBotError}
-            </div>
+            <div className="alert-box alert-error">⚠️ {createBotError}</div>
           )}
-
           <form onSubmit={handleCreateChatbot}>
             <div className="form-group">
               <label>Bot Display Name</label>
-              <input className="form-control" type="text" required placeholder="e.g., My Business Assistant" value={newBotName} onChange={(e) => setNewBotName(e.target.value)} />
+              <input className="form-control" type="text" required placeholder="e.g., My Business Bot"
+                value={newBotName} onChange={(e) => setNewBotName(e.target.value)} />
             </div>
             <div className="form-group">
-              <label>Telegram Bot Token</label>
-              <input className="form-control" type="text" required placeholder="123456789:ABCDefgh..." value={newBotToken} onChange={(e) => setNewBotToken(e.target.value)} />
+              <label>Bot Token</label>
+              <input className="form-control" type="text" required placeholder="123456789:ABCDefgh..."
+                value={newBotToken} onChange={(e) => setNewBotToken(e.target.value)} />
             </div>
             <div className="form-group">
               <label>Platform</label>
@@ -599,21 +519,20 @@ export default function App() {
               </select>
             </div>
             <div className="form-group">
-              <label>Bot Persona/Role Strategy</label>
+              <label>Bot Role / Persona</label>
               <select className="form-control" value={newBotRole} onChange={(e) => setNewBotRole(e.target.value as any)}>
-                <option value="sales">Sales Representative (Lead gen & products)</option>
-                <option value="faq">FAQ Answering (Business policies & Q&A)</option>
-                <option value="support">Customer Support (Help desk assistant)</option>
-                <option value="custom">Custom Agent (Blank slate instructions)</option>
+                <option value="sales">Sales Representative</option>
+                <option value="faq">FAQ Answering</option>
+                <option value="support">Customer Support</option>
+                <option value="custom">Custom (Blank slate)</option>
               </select>
             </div>
-
             <button className="btn btn-primary" style={{ marginTop: '16px' }} type="submit" disabled={creatingBot}>
-              {creatingBot ? 'Creating Chatbot...' : '🚀 Create Chatbot'}
+              {creatingBot ? 'Creating...' : '🚀 Create Chatbot'}
             </button>
-
-            <button className="btn btn-ghost" style={{ marginTop: '8px', width: '100%' }} type="button" onClick={handleLogout}>
-              Logout
+            <button className="btn btn-ghost" style={{ marginTop: '10px', background: 'none', color: 'var(--text-muted)', border: 'none', fontSize: '0.82rem' }}
+              type="button" onClick={handleLogout}>
+              Sign out
             </button>
           </form>
         </div>
@@ -627,45 +546,51 @@ export default function App() {
       {/* HEADER */}
       <header className="app-header">
         <div>
-          <h2>{chatbot?.name || 'Loading bot...'}</h2>
+          <h2>{chatbot?.name || '...'}</h2>
           <div className="app-header-subtitle">
-            {profile?.isStandalone ? 'Standalone Bot' : 'Business Managed'} · {credits} Credits
+            {profile?.isStandalone ? 'Standalone' : 'Business'} · {credits} credits
           </div>
         </div>
-        <button className="btn btn-ghost" style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }} onClick={handleLogout}>
-          🚪 Logout
+        <button
+          className="btn btn-ghost"
+          style={{ width: 'auto', padding: '6px 12px', fontSize: '0.8rem', minHeight: '34px' }}
+          onClick={handleLogout}
+        >
+          Sign out
         </button>
       </header>
 
-      {/* CONTENT SCROLL AREA */}
+      {/* CONTENT */}
       <main className="app-content">
         {loadingProfile ? (
           <div className="loading-container">
             <div className="spinner" />
-            <p>Syncing credentials...</p>
+            <p>Loading...</p>
           </div>
         ) : (
           <>
-            {/* TABS CONTAINER */}
-
             {/* CHATS TAB */}
             {activeTab === 'chats' && (
               <div>
                 {loadingConvs ? (
                   <div className="loading-container">
                     <div className="spinner" />
-                    <p>Fetching active threads...</p>
+                    <p>Loading conversations...</p>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--tg-text-muted)' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>💬</div>
-                    <p>No active conversations yet.</p>
-                    <p style={{ fontSize: '0.75rem', marginTop: '4px' }}>Incoming telegram bot chats will populate here.</p>
+                  <div className="empty-state">
+                    <div className="empty-icon">💬</div>
+                    <p>No conversations yet.</p>
+                    <p style={{ fontSize: '0.75rem', marginTop: '4px' }}>Incoming chats will appear here.</p>
                   </div>
                 ) : (
                   <div className="chat-list">
                     {conversations.map((conv) => (
-                      <div key={conv.sender_id} className="chat-list-item" onClick={() => { setActiveChatSender(conv.sender_id); loadMessagesForSender(conv.sender_id); }}>
+                      <div
+                        key={conv.sender_id}
+                        className="chat-list-item"
+                        onClick={() => { setActiveChatSender(conv.sender_id); loadMessagesForSender(conv.sender_id); }}
+                      >
                         <div className="chat-list-avatar">{getInitials(conv.sender_id)}</div>
                         <div className="chat-list-details">
                           <div className="chat-list-meta">
@@ -673,7 +598,7 @@ export default function App() {
                             <div className="chat-list-time">{formatDate(conv.last_message_at)}</div>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div className="chat-list-preview">Click to view thread & reply</div>
+                            <div className="chat-list-preview">Tap to view thread</div>
                             <span className="chat-list-badge">{conv.message_count}</span>
                           </div>
                         </div>
@@ -684,64 +609,66 @@ export default function App() {
               </div>
             )}
 
-            {/* KNOWLEDGE BASE TAB */}
+            {/* KNOWLEDGE TAB */}
             {activeTab === 'knowledge' && (
               <div className="settings-list">
                 {!profile?.canManageKnowledge ? (
-                  <div className="settings-card" style={{ textAlign: 'center', color: 'var(--tg-text-muted)', padding: '24px' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🔒</div>
-                    <h3>Permission Required</h3>
-                    <p style={{ fontSize: '0.8rem', marginTop: '6px', lineHeight: 1.4 }}>
-                      Your admin account does not have permission to view or edit the chatbot's Knowledge Base. Please contact the Business Admin.
-                    </p>
+                  <div className="settings-card">
+                    <div className="empty-state" style={{ padding: '32px 16px' }}>
+                      <div className="empty-icon">🔒</div>
+                      <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>Permission Required</p>
+                      <p style={{ fontSize: '0.8rem' }}>Your account does not have access to the Knowledge Base. Contact the Business Admin.</p>
+                    </div>
                   </div>
                 ) : (
                   <>
                     <div className="settings-card">
-                      <div className="settings-card-title">📚 Ingest Document</div>
-                      <form onSubmit={handleIngest}>
-                        <div className="form-group">
-                          <label>Text Content (Myanmar text supported)</label>
-                          <textarea
-                            className="form-control"
-                            style={{ height: '120px', resize: 'vertical' }}
-                            required
-                            placeholder="ရိုက်ထည့်ရန် စာသား သို့မဟုတ် chunking လုပ်မည့် knowledge base သတင်းအချက်အလက်..."
-                            value={ingestText}
-                            onChange={(e) => setIngestText(e.target.value)}
-                          />
-                        </div>
-                        <button className="btn btn-primary" type="submit" disabled={ingesting || !ingestText.trim()}>
-                          {ingesting ? 'Chunking & Ingesting...' : 'Add Knowledge'}
-                        </button>
-                      </form>
+                      <div className="settings-card-title">Add Knowledge</div>
+                      <div className="settings-card-body">
+                        <form onSubmit={handleIngest}>
+                          <div className="form-group">
+                            <label>Text Content</label>
+                            <textarea
+                              className="form-control"
+                              style={{ height: '110px', resize: 'vertical' }}
+                              required
+                              placeholder="Enter text or knowledge base content to add..."
+                              value={ingestText}
+                              onChange={(e) => setIngestText(e.target.value)}
+                            />
+                          </div>
+                          <button className="btn btn-primary" type="submit" disabled={ingesting || !ingestText.trim()}>
+                            {ingesting ? 'Processing...' : 'Add to Knowledge Base'}
+                          </button>
+                        </form>
+                      </div>
                     </div>
 
                     <div className="settings-card">
-                      <div className="settings-card-title">Document Chunks ({chunks.length})</div>
+                      <div className="settings-card-title">
+                        Document Chunks ({chunks.length})
+                      </div>
                       {loadingChunks ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}><div className="spinner" /></div>
+                        <div className="loading-container" style={{ padding: '24px' }}>
+                          <div className="spinner" />
+                        </div>
                       ) : chunks.length === 0 ? (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', textAlign: 'center' }}>Knowledge base is currently empty.</p>
+                        <div className="empty-state" style={{ padding: '24px' }}>
+                          <p style={{ fontSize: '0.82rem' }}>Knowledge base is empty.</p>
+                        </div>
                       ) : (
-                        <div>
+                        <div style={{ padding: '10px 12px' }}>
                           {chunks.map((chunk) => (
                             <div key={chunk.id} className="chunk-card">
                               <div className="chunk-card-meta">
-                                <span>ID: {chunk.id.slice(0, 16)}...</span>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                  <button
-                                    className="btn btn-ghost"
-                                    style={{ color: 'var(--tg-blue)', width: 'auto', padding: '2px 6px', fontSize: '0.7rem', height: 'auto' }}
-                                    onClick={() => { setEditingChunk(chunk); setEditText(chunk.text); setEditError(''); }}
-                                  >
+                                <span>ID: {chunk.id.slice(0, 14)}…</span>
+                                <div className="chunk-actions">
+                                  <button className="chunk-btn chunk-btn-edit"
+                                    onClick={() => { setEditingChunk(chunk); setEditText(chunk.text); setEditError(''); }}>
                                     Edit
                                   </button>
-                                  <button
-                                    className="btn btn-ghost"
-                                    style={{ color: 'var(--tg-red)', width: 'auto', padding: '2px 6px', fontSize: '0.7rem', height: 'auto' }}
-                                    onClick={() => handleDeleteChunk(chunk.id)}
-                                  >
+                                  <button className="chunk-btn chunk-btn-delete"
+                                    onClick={() => handleDeleteChunk(chunk.id)}>
                                     Delete
                                   </button>
                                 </div>
@@ -753,32 +680,33 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Edit Chunk Dialog */}
+                    {/* Edit Chunk Modal */}
                     {editingChunk && (
-                      <div className="confirm-overlay" style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100
-                      }} onClick={() => setEditingChunk(null)}>
-                        <div className="confirm-box" style={{
-                          background: 'rgba(25, 25, 35, 0.95)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          borderRadius: '12px', padding: '20px', width: '90%', maxWidth: '500px'
-                        }} onClick={(e) => e.stopPropagation()}>
-                          <h3 style={{ margin: '0 0 12px 0' }}>✏️ Edit Chunk</h3>
-                          {editError && (
-                            <div style={{ color: 'var(--tg-red)', fontSize: '0.8rem', marginBottom: '10px' }}>⚠️ {editError}</div>
-                          )}
-                          <textarea
-                            className="form-control"
-                            style={{ height: '140px', resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                          />
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-                            <button className="btn btn-ghost" style={{ width: 'auto' }} onClick={() => setEditingChunk(null)}>Cancel</button>
-                            <button className="btn btn-primary" style={{ width: 'auto' }} disabled={updatingChunk || !editText.trim()} onClick={handleUpdateChunk}>
-                              {updatingChunk ? 'Saving...' : 'Save'}
+                      <div className="modal-backdrop" onClick={() => setEditingChunk(null)}>
+                        <div className="tg-modal" onClick={(e) => e.stopPropagation()}>
+                          <div className="tg-modal-header">
+                            <h3>Edit Chunk</h3>
+                            <button className="btn btn-ghost"
+                              style={{ width: 'auto', padding: '4px 10px', fontSize: '0.8rem', minHeight: '30px' }}
+                              onClick={() => setEditingChunk(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                          <div className="tg-modal-body">
+                            {editError && <div className="alert-box alert-error" style={{ marginBottom: '10px' }}>⚠️ {editError}</div>}
+                            <textarea
+                              className="form-control"
+                              style={{ height: '140px', resize: 'vertical' }}
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                            />
+                          </div>
+                          <div className="tg-modal-footer">
+                            <button className="btn btn-primary"
+                              style={{ width: 'auto', padding: '8px 20px' }}
+                              disabled={updatingChunk || !editText.trim()}
+                              onClick={handleUpdateChunk}>
+                              {updatingChunk ? 'Saving...' : 'Save Changes'}
                             </button>
                           </div>
                         </div>
@@ -789,246 +717,231 @@ export default function App() {
               </div>
             )}
 
-            {/* SYSTEM PROMPT TAB */}
+            {/* PROMPT TAB */}
             {activeTab === 'prompt' && (
               <div className="settings-list">
                 {!profile?.canManageSystemPrompt ? (
-                  <div className="settings-card" style={{ textAlign: 'center', color: 'var(--tg-text-muted)', padding: '24px' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🔒</div>
-                    <h3>Permission Required</h3>
-                    <p style={{ fontSize: '0.8rem', marginTop: '6px', lineHeight: 1.4 }}>
-                      Your admin account does not have permission to modify the chatbot's System Prompt. Please contact the Business Admin.
-                    </p>
+                  <div className="settings-card">
+                    <div className="empty-state" style={{ padding: '32px 16px' }}>
+                      <div className="empty-icon">🔒</div>
+                      <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>Permission Required</p>
+                      <p style={{ fontSize: '0.8rem' }}>Your account does not have access to modify the System Prompt.</p>
+                    </div>
                   </div>
                 ) : (
                   <div className="settings-card">
-                    <div className="settings-card-title">⚙️ Custom System Prompt</div>
-                    {loadingPrompt ? (
-                      <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}><div className="spinner" /></div>
-                    ) : (
-                      <form onSubmit={handleUpdatePrompt}>
-                        <div className="form-group">
-                          <label>Define Bot Persona and Instructions</label>
-                          <textarea
-                            className="form-control"
-                            style={{ height: '180px', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical' }}
-                            placeholder="Write custom instructions or leave empty to use system fallback template..."
-                            value={systemPrompt}
-                            onChange={(e) => setSystemPrompt(e.target.value)}
-                          />
-                        </div>
-
-                        {!systemPrompt && activePrompt && (
-                          <div style={{
-                            padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)',
-                            borderRadius: '8px', margin: '14px 0', fontSize: '0.8rem'
-                          }}>
-                            <div style={{ fontWeight: 'bold', color: 'var(--tg-blue)', marginBottom: '6px' }}>
-                              💡 Fallback Strategy Active: {chatbot?.bot_role?.toUpperCase() || 'SALES'}
-                            </div>
-                            <div style={{ whiteSpace: 'pre-wrap', color: 'var(--tg-text-muted)', maxHeight: '150px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.4 }}>
-                              {activePrompt}
-                            </div>
+                    <div className="settings-card-title">Custom System Prompt</div>
+                    <div className="settings-card-body">
+                      {loadingPrompt ? (
+                        <div className="loading-container" style={{ padding: '24px' }}><div className="spinner" /></div>
+                      ) : (
+                        <form onSubmit={handleUpdatePrompt}>
+                          <div className="form-group">
+                            <label>Bot Persona & Instructions</label>
+                            <textarea
+                              className="form-control"
+                              style={{ height: '180px', fontFamily: 'monospace', fontSize: '0.83rem', resize: 'vertical' }}
+                              placeholder="Write custom instructions or leave empty to use the default role template..."
+                              value={systemPrompt}
+                              onChange={(e) => setSystemPrompt(e.target.value)}
+                            />
                           </div>
-                        )}
 
-                        <button className="btn btn-primary" type="submit" disabled={updatingPrompt}>
-                          {updatingPrompt ? 'Saving Prompt...' : 'Update System Prompt'}
-                        </button>
-                      </form>
-                    )}
+                          {!systemPrompt && activePrompt && (
+                            <div style={{
+                              padding: '12px', background: 'rgba(255,255,255,0.03)',
+                              border: '1px dashed var(--border-light)', borderRadius: '8px',
+                              marginBottom: '14px'
+                            }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', marginBottom: '6px' }}>
+                                Active fallback: {chatbot?.bot_role?.toUpperCase() || 'SALES'} role
+                              </div>
+                              <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-muted)', maxHeight: '120px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.73rem', lineHeight: 1.4 }}>
+                                {activePrompt}
+                              </div>
+                            </div>
+                          )}
+
+                          <button className="btn btn-primary" type="submit" disabled={updatingPrompt}>
+                            {updatingPrompt ? 'Saving...' : 'Update System Prompt'}
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* PROFILE / SETTINGS TAB */}
+            {/* PROFILE TAB */}
             {activeTab === 'profile' && (
               <div className="settings-list">
                 {chatbot && profile?.isStandalone && (
                   <div className="settings-card">
-                    <div className="settings-card-title">🤖 Bot Information</div>
-                    <form onSubmit={handleUpdateBotMetadata}>
-                      <div className="form-group">
-                        <label>Bot Display Name</label>
-                        <input className="form-control" type="text" required value={editBotName} onChange={(e) => setEditBotName(e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label>Bot Description</label>
-                        <textarea className="form-control" style={{ height: '80px', resize: 'vertical' }} value={editBotDesc} onChange={(e) => setEditBotDesc(e.target.value)} placeholder="Introduce what this bot does..." />
-                      </div>
-                      <button className="btn btn-primary" type="submit" disabled={updatingBot}>
-                        {updatingBot ? 'Updating details...' : 'Save Bot Info'}
-                      </button>
-                    </form>
+                    <div className="settings-card-title">Bot Information</div>
+                    <div className="settings-card-body">
+                      <form onSubmit={handleUpdateBotMetadata}>
+                        <div className="form-group">
+                          <label>Bot Name</label>
+                          <input className="form-control" type="text" required value={editBotName}
+                            onChange={(e) => setEditBotName(e.target.value)} />
+                        </div>
+                        <div className="form-group">
+                          <label>Description</label>
+                          <textarea className="form-control" style={{ height: '72px', resize: 'vertical' }}
+                            value={editBotDesc} onChange={(e) => setEditBotDesc(e.target.value)}
+                            placeholder="What does this bot do?" />
+                        </div>
+                        <button className="btn btn-primary" type="submit" disabled={updatingBot}>
+                          {updatingBot ? 'Saving...' : 'Save Bot Info'}
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 )}
 
                 <div className="settings-card">
-                  <div className="settings-card-title">👤 Admin Account Details</div>
+                  <div className="settings-card-title">Account Details</div>
                   <div className="settings-row">
                     <div className="settings-label">Name</div>
                     <div className="settings-value">{profile?.name}</div>
                   </div>
                   <div className="settings-row">
                     <div className="settings-label">Email</div>
-                    <div className="settings-value">{profile?.email}</div>
+                    <div className="settings-value" style={{ fontSize: '0.8rem' }}>{profile?.email}</div>
                   </div>
                   <div className="settings-row">
                     <div className="settings-label">Account Type</div>
                     <div className="settings-value">
-                      {profile?.isStandalone ? (
-                        <span className="badge badge-green">Standalone Bot</span>
-                      ) : (
-                        <span className="badge badge-blue">Business Assigned</span>
-                      )}
+                      {profile?.isStandalone
+                        ? <span className="badge badge-green">Standalone</span>
+                        : <span className="badge badge-blue">Business</span>}
                     </div>
                   </div>
                   <div className="settings-row">
                     <div className="settings-label">Message Credits</div>
-                    <div className="settings-value" style={{ fontWeight: 'bold', color: 'var(--tg-blue)' }}>{credits}</div>
+                    <div className="settings-value" style={{ fontWeight: 700, color: 'var(--text-link)' }}>
+                      {credits}
+                    </div>
                   </div>
                 </div>
 
                 {profile?.isStandalone && (
                   <div className="settings-card">
-                    <div className="settings-card-title">💳 Subscription Plan & Upgrade</div>
-                    
-                    <div className="settings-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '16px' }}>
+                    <div className="settings-card-title">Subscription & Upgrade</div>
+                    <div className="settings-row">
                       <div className="settings-label">Active Plan</div>
-                      <div className="settings-value" style={{ textTransform: 'capitalize', fontWeight: 'bold', color: 'var(--tg-blue)' }}>
-                        {businessPlanInfo?.plan === 'subscription' ? `${businessPlanInfo?.subscriptionPlan} Plan 🚀` : 'Free Tier (Prepaid)'}
+                      <div className="settings-value" style={{ fontWeight: 600, color: 'var(--text-link)', textTransform: 'capitalize' }}>
+                        {businessPlanInfo?.plan === 'subscription'
+                          ? `${businessPlanInfo?.subscriptionPlan} Plan`
+                          : 'Free (Prepaid)'}
                       </div>
                     </div>
                     {businessPlanInfo?.subscriptionEndDate && (
-                      <div className="settings-row" style={{ marginBottom: '20px' }}>
-                        <div className="settings-label">Expiry Date</div>
-                        <div className="settings-value" style={{ color: 'var(--tg-text-muted)', fontSize: '0.82rem' }}>
+                      <div className="settings-row">
+                        <div className="settings-label">Expires</div>
+                        <div className="settings-value">
                           {new Date(businessPlanInfo.subscriptionEndDate).toLocaleDateString()}
                         </div>
                       </div>
                     )}
 
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem' }}>Choose Plan to Upgrade:</h4>
-                    <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '20px' }}>
-                      <div className={`plan-card-option ${selectedPlan === 'lite' ? 'selected' : ''}`} onClick={() => handleSelectPlan('lite')} style={{
-                        padding: '14px 10px', border: selectedPlan === 'lite' ? '2px solid var(--tg-blue)' : '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: '8px', cursor: 'pointer', textAlign: 'center', background: 'rgba(255,255,255,0.02)'
-                      }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Lite</div>
-                        <div style={{ color: 'var(--tg-blue)', fontSize: '0.95rem', margin: '4px 0', fontWeight: 'bold' }}>3,000 MMK</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)' }}>500 Msg Credits</div>
+                    <div style={{ padding: '14px' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '10px' }}>
+                        Choose a plan:
+                      </div>
+                      <div className="plans-grid">
+                        {(['lite', 'basic', 'pro'] as const).map((plan) => {
+                          const prices = { lite: '3,000', basic: '15,000', pro: '30,000' };
+                          const credits = { lite: '500', basic: '3,000', pro: '10,000' };
+                          return (
+                            <div
+                              key={plan}
+                              className={`plan-card-option ${selectedPlan === plan ? 'selected' : ''}`}
+                              onClick={() => handleSelectPlan(plan)}
+                            >
+                              <div style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'capitalize', marginBottom: '4px' }}>{plan}</div>
+                              <div style={{ color: 'var(--text-link)', fontSize: '0.85rem', fontWeight: 700 }}>{prices[plan]}</div>
+                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '3px' }}>{credits[plan]} msgs</div>
+                            </div>
+                          );
+                        })}
                       </div>
 
-                      <div className={`plan-card-option ${selectedPlan === 'basic' ? 'selected' : ''}`} onClick={() => handleSelectPlan('basic')} style={{
-                        padding: '14px 10px', border: selectedPlan === 'basic' ? '2px solid var(--tg-blue)' : '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: '8px', cursor: 'pointer', textAlign: 'center', background: 'rgba(255,255,255,0.02)'
-                      }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Basic</div>
-                        <div style={{ color: 'var(--tg-blue)', fontSize: '0.95rem', margin: '4px 0', fontWeight: 'bold' }}>15,000 MMK</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)' }}>3,000 Msg Credits</div>
-                      </div>
+                      {selectedPlan && (
+                        <div className="payment-checkout-box">
+                          {loadingKpay ? (
+                            <div className="loading-container" style={{ padding: '16px' }}><div className="spinner" /></div>
+                          ) : (
+                            <form onSubmit={handleSubmitUpgrade}>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                                KBZ Pay Transfer Details
+                              </div>
 
-                      <div className={`plan-card-option ${selectedPlan === 'pro' ? 'selected' : ''}`} onClick={() => handleSelectPlan('pro')} style={{
-                        padding: '14px 10px', border: selectedPlan === 'pro' ? '2px solid var(--tg-blue)' : '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: '8px', cursor: 'pointer', textAlign: 'center', background: 'rgba(255,255,255,0.02)'
-                      }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Pro</div>
-                        <div style={{ color: 'var(--tg-blue)', fontSize: '0.95rem', margin: '4px 0', fontWeight: 'bold' }}>30,000 MMK</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)' }}>10,000 Msg Credits</div>
-                      </div>
+                              <div className="settings-row" style={{ padding: '8px 0' }}>
+                                <div className="settings-label" style={{ fontSize: '0.8rem' }}>KPay Phone</div>
+                                <div className="settings-value" style={{ fontWeight: 700, color: 'var(--text-main)' }}>{kpayDetails?.kpay_no}</div>
+                              </div>
+                              <div className="settings-row" style={{ padding: '8px 0', borderBottom: 'none' }}>
+                                <div className="settings-label" style={{ fontSize: '0.8rem' }}>Account Name</div>
+                                <div className="settings-value" style={{ fontWeight: 700, color: 'var(--text-main)' }}>{kpayDetails?.kpay_name}</div>
+                              </div>
+
+                              <p style={{ fontSize: '0.73rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: '10px 0 12px' }}>
+                                Transfer the exact amount via KBZ Pay, then upload your transaction screenshot below.
+                              </p>
+
+                              <div className="form-group">
+                                <label>Upload KPay Screenshot</label>
+                                <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block', width: '100%' }}>
+                                  <input type="file" accept="image/*" required onChange={handleFileChange}
+                                    style={{ position: 'absolute', top: 0, left: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} />
+                                  <button className="btn btn-ghost" type="button"
+                                    style={{ width: '100%', fontSize: '0.83rem', borderStyle: 'dashed' }}>
+                                    {receiptFilename ? `📎 ${receiptFilename}` : '📁 Choose Screenshot'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {upgradeMsg && (
+                                <div style={{
+                                  padding: '8px 12px', borderRadius: '6px', fontSize: '0.8rem', margin: '10px 0',
+                                  background: upgradeMsg.startsWith('✅') ? 'rgba(63,185,80,0.1)' : 'rgba(248,81,73,0.1)',
+                                  color: upgradeMsg.startsWith('✅') ? 'var(--green)' : 'var(--red)',
+                                  border: `1px solid ${upgradeMsg.startsWith('✅') ? 'rgba(63,185,80,0.2)' : 'rgba(248,81,73,0.2)'}`
+                                }}>
+                                  {upgradeMsg}
+                                </div>
+                              )}
+
+                              <button className="btn btn-primary" style={{ marginTop: '10px' }} type="submit"
+                                disabled={submittingUpgrade || !receiptBase64}>
+                                {submittingUpgrade ? 'Submitting...' : 'Submit Upgrade Request'}
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      )}
                     </div>
-
-                    {selectedPlan && (
-                      <div className="payment-checkout-box" style={{
-                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-                        borderRadius: '8px', padding: '16px'
-                      }}>
-                        {loadingKpay ? (
-                          <div style={{ display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div>
-                        ) : (
-                          <form onSubmit={handleSubmitUpgrade}>
-                            <h4 style={{ margin: '0 0 12px 0', color: 'var(--tg-blue)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              💳 KBZ Pay Transfer Details
-                            </h4>
-                            
-                            <div className="settings-row" style={{ margin: '8px 0' }}>
-                              <div className="settings-label" style={{ fontSize: '0.8rem' }}>KPay Phone</div>
-                              <div className="settings-value" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{kpayDetails?.kpay_no}</div>
-                            </div>
-                            
-                            <div className="settings-row" style={{ margin: '8px 0' }}>
-                              <div className="settings-label" style={{ fontSize: '0.8rem' }}>Account Name</div>
-                              <div className="settings-value" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{kpayDetails?.kpay_name}</div>
-                            </div>
-
-                            <div className="settings-row" style={{ margin: '8px 0' }}>
-                              <div className="settings-label" style={{ fontSize: '0.8rem' }}>Amount Due</div>
-                              <div className="settings-value" style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--tg-green)' }}>
-                                {selectedPlan === 'lite' ? '3,000' : selectedPlan === 'basic' ? '15,000' : '30,000'} MMK
-                              </div>
-                            </div>
-
-                            <p style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)', lineHeight: 1.4, margin: '12px 0' }}>
-                              💡 Transfer exact amount via KBZ Pay to the details above. Then, upload your transaction screenshot receipt below. 
-                              For direct support, contact us on Telegram: <a href="https://t.me/platform_billing_support" target="_blank" rel="noreferrer" style={{ color: 'var(--tg-blue)', textDecoration: 'underline' }}>@platform_support</a>.
-                            </p>
-
-                            <div className="form-group">
-                              <label style={{ fontSize: '0.78rem', marginBottom: '6px' }}>Upload KPay Screenshot</label>
-                              <div className="file-input-wrapper" style={{
-                                position: 'relative', overflow: 'hidden', display: 'inline-block', width: '100%'
-                              }}>
-                                <input type="file" accept="image/*" required onChange={handleFileChange} style={{
-                                  position: 'absolute', top: 0, left: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%'
-                                }} />
-                                <button className="btn btn-ghost" type="button" style={{ width: '100%', fontSize: '0.85rem', border: '1px dashed rgba(255,255,255,0.15)' }}>
-                                  {receiptFilename ? `📎 ${receiptFilename}` : '📁 Choose Screenshot File'}
-                                </button>
-                              </div>
-                            </div>
-
-                            {upgradeMsg && (
-                              <div style={{
-                                padding: '8px 12px', borderRadius: '6px', fontSize: '0.8rem', margin: '12px 0 0 0',
-                                background: upgradeMsg.startsWith('✅') ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
-                                color: upgradeMsg.startsWith('✅') ? '#34d399' : '#f87171',
-                                border: `1px solid ${upgradeMsg.startsWith('✅') ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}`
-                              }}>
-                                {upgradeMsg}
-                              </div>
-                            )}
-
-                            <button className="btn btn-primary" style={{ marginTop: '14px' }} type="submit" disabled={submittingUpgrade || !receiptBase64}>
-                              {submittingUpgrade ? 'Submitting Receipt...' : '🚀 Submit Upgrade Request'}
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
 
                 <div className="settings-card">
-                  <div className="settings-card-title">🔒 Assigned Permissions</div>
+                  <div className="settings-card-title">Permissions</div>
                   <div className="settings-row">
-                    <div className="settings-label">Knowledge Base CRUD</div>
+                    <div className="settings-label">Knowledge Base</div>
                     <div className="settings-value">
-                      {profile?.canManageKnowledge ? (
-                        <span style={{ color: 'var(--tg-green)' }}>Allowed ✅</span>
-                      ) : (
-                        <span style={{ color: 'var(--tg-red)' }}>Restricted ❌</span>
-                      )}
+                      {profile?.canManageKnowledge
+                        ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>Allowed</span>
+                        : <span style={{ color: 'var(--red)', fontWeight: 600 }}>Restricted</span>}
                     </div>
                   </div>
                   <div className="settings-row">
-                    <div className="settings-label">System Prompt Modification</div>
+                    <div className="settings-label">System Prompt</div>
                     <div className="settings-value">
-                      {profile?.canManageSystemPrompt ? (
-                        <span style={{ color: 'var(--tg-green)' }}>Allowed ✅</span>
-                      ) : (
-                        <span style={{ color: 'var(--tg-red)' }}>Restricted ❌</span>
-                      )}
+                      {profile?.canManageSystemPrompt
+                        ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>Allowed</span>
+                        : <span style={{ color: 'var(--red)', fontWeight: 600 }}>Restricted</span>}
                     </div>
                   </div>
                 </div>
@@ -1040,49 +953,52 @@ export default function App() {
 
       {/* BOTTOM NAVIGATION */}
       <nav className="bottom-nav">
-        <button className={`nav-item ${activeTab === 'chats' ? 'active' : ''}`} onClick={() => { setActiveTab('chats'); setActiveChatSender(null); }}>
-          <span className="nav-icon">💬</span>
-          <span>Chats</span>
-        </button>
-        <button className={`nav-item ${activeTab === 'knowledge' ? 'active' : ''}`} onClick={() => { setActiveTab('knowledge'); setActiveChatSender(null); }}>
-          <span className="nav-icon">📚</span>
-          <span>Knowledge</span>
-        </button>
-        <button className={`nav-item ${activeTab === 'prompt' ? 'active' : ''}`} onClick={() => { setActiveTab('prompt'); setActiveChatSender(null); }}>
-          <span className="nav-icon">⚙️</span>
-          <span>Prompt</span>
-        </button>
-        <button className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => { setActiveTab('profile'); setActiveChatSender(null); }}>
-          <span className="nav-icon">👤</span>
-          <span>Profile</span>
-        </button>
+        {([
+          { key: 'chats', icon: '💬', label: 'Chats' },
+          { key: 'knowledge', icon: '📚', label: 'Knowledge' },
+          { key: 'prompt', icon: '⚙️', label: 'Prompt' },
+          { key: 'profile', icon: '👤', label: 'Profile' },
+        ] as const).map(({ key, icon, label }) => (
+          <button
+            key={key}
+            className={`nav-item ${activeTab === key ? 'active' : ''}`}
+            onClick={() => { setActiveTab(key); setActiveChatSender(null); }}
+          >
+            <span className="nav-icon">{icon}</span>
+            <span>{label}</span>
+          </button>
+        ))}
       </nav>
 
-      {/* ACTIVE CHAT SCREEN OVERLAY (Slide-in thread viewer) */}
+      {/* ACTIVE CHAT SCREEN OVERLAY */}
       {activeChatSender && (
-        <div className="chat-window" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150, backgroundColor: 'var(--tg-bg-page)' }}>
-          {/* Header */}
+        <div className="chat-window" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150, maxWidth: '640px', margin: '0 auto' }}>
           <header className="app-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button className="btn btn-ghost" style={{ width: 'auto', padding: '6px', fontSize: '1.1rem' }} onClick={() => setActiveChatSender(null)}>
+              <button
+                className="btn btn-ghost"
+                style={{ width: '36px', height: '36px', padding: '0', fontSize: '1rem', borderRadius: '50%', minHeight: '36px' }}
+                onClick={() => setActiveChatSender(null)}
+              >
                 ←
               </button>
               <div>
-                <h2>User: {activeChatSender}</h2>
-                <div className="app-header-subtitle">Live chat history</div>
+                <h2 style={{ fontSize: '0.95rem' }}>User: {activeChatSender}</h2>
+                <div className="app-header-subtitle">Live conversation</div>
               </div>
             </div>
           </header>
 
-          {/* Messages list */}
           <div className="chat-messages-container" id="chat-messages-panel">
             {loadingMsgs ? (
               <div className="loading-container">
                 <div className="spinner" />
-                <p>Retrieving chat history...</p>
+                <p>Loading messages...</p>
               </div>
             ) : messages.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--tg-text-muted)' }}>No messages exchanged yet.</div>
+              <div className="empty-state">
+                <p style={{ fontSize: '0.85rem' }}>No messages yet.</p>
+              </div>
             ) : (
               messages.map((msg) => (
                 <div key={msg.id} className={`msg-wrapper ${msg.sender_type}`}>
@@ -1096,7 +1012,6 @@ export default function App() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input reply bar */}
           <div className="chat-input-bar">
             <textarea
               className="chat-input-field"
@@ -1112,8 +1027,12 @@ export default function App() {
                 }
               }}
             />
-            <button className="chat-send-btn" onClick={handleSendReply} disabled={sendingReply || !replyText.trim() || credits <= 0}>
-              {sendingReply ? '...' : '✈️'}
+            <button
+              className="chat-send-btn"
+              onClick={handleSendReply}
+              disabled={sendingReply || !replyText.trim() || credits <= 0}
+            >
+              {sendingReply ? '…' : '↑'}
             </button>
           </div>
         </div>
