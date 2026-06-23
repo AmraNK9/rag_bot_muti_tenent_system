@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { DeepSeekService } from '../../infrastructure/llm/deepseek.service';
 import { VoyageEmbeddingService } from '../../infrastructure/embeddings/voyage.service';
-import { ChromaVectorStoreService } from '../../infrastructure/vectorstore/chroma.service';
+import { PgVectorStoreService } from '../../infrastructure/vectorstore/pgvector.service';
 import { ToolCallingRegistry } from '../../infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from '../../infrastructure/prompt/prompt.factory';
 import { QueryExtractionTool } from '../../modules/chat/query-extraction.tool';
@@ -20,7 +20,7 @@ import { tunnelService } from '../../infrastructure/tunnel/tunnel.service';
 // Initialize services
 const llmService = new DeepSeekService();
 const embeddingService = new VoyageEmbeddingService();
-const vectorStore = new ChromaVectorStoreService();
+const vectorStore = new PgVectorStoreService();
 const promptFactory = new SystemPromptFactory();
 
 const toolRegistry = new ToolCallingRegistry();

@@ -1,53 +1,40 @@
 import 'dotenv/config';
 import { Sequelize } from 'sequelize';
 import { initModels } from './models';
+
 declare const process: {
   env: {
     DATABASE_URL?: string;
     NODE_ENV?: string;
   };
 };
+
 export class SequelizeService {
   private static instance: Sequelize;
 
   /**
-   * Retrieves the singleton Sequelize instance.
+   * Retrieves the singleton Sequelize instance (PostgreSQL).
    */
   public static getClient(): Sequelize {
     if (!SequelizeService.instance) {
       const dbUrl = process.env.DATABASE_URL;
 
-      console.log("dbUrl: ->", dbUrl);
-      if (!dbUrl || process.env.NODE_ENV === 'test') {
-        console.warn('DATABASE_URL is not set or in test mode. Falling back to an in-memory SQLite instance for verification.');
-        SequelizeService.instance = new Sequelize({
-          dialect: 'sqlite',
-          storage: ':memory:',
-          logging: false,
-          define: {
-            timestamps: false,
-          },
-        });
-      } else if (dbUrl.startsWith('sqlite:')) {
-        const storagePath = dbUrl.replace(/^sqlite:\/\/|^sqlite:/, '');
-        console.log(`Using file-based SQLite database at: ${storagePath || 'database.sqlite'}`);
-        SequelizeService.instance = new Sequelize({
-          dialect: 'sqlite',
-          storage: storagePath || 'database.sqlite',
-          logging: false,
-          define: {
-            timestamps: false,
-          },
-        });
-      } else {
-        SequelizeService.instance = new Sequelize(dbUrl, {
-          dialect: 'mysql',
-          logging: false,
-          define: {
-            timestamps: false,
-          },
-        });
+      console.log('dbUrl: ->', dbUrl);
+      if (!dbUrl) {
+        throw new Error('DATABASE_URL is not set. Please configure a PostgreSQL connection string.');
       }
+
+      SequelizeService.instance = new Sequelize(dbUrl, {
+        dialect: 'postgres',
+        logging: false,
+        define: {
+          timestamps: false,
+        },
+        dialectOptions: {
+          // SSL support for cloud PostgreSQL (e.g., Supabase, Neon, Railway)
+          // ssl: { require: true, rejectUnauthorized: false },
+        },
+      });
 
       // Initialize models and associations
       initModels(SequelizeService.instance);
@@ -56,12 +43,17 @@ export class SequelizeService {
   }
 
   /**
-   * Establishes database connection and syncs model schema.
+   * Establishes database connection, enables pgvector extension, and syncs model schema.
    */
   public static async connect(): Promise<void> {
     try {
       const sequelize = SequelizeService.getClient();
       await sequelize.authenticate();
+
+      // Enable pgvector extension (must exist before syncing models)
+      await sequelize.query('CREATE EXTENSION IF NOT EXISTS vector;');
+      console.log('pgvector extension enabled.');
+
       // Sync models with the database (development/demo migration helper)
       await sequelize.sync({ alter: true });
     } catch (error) {

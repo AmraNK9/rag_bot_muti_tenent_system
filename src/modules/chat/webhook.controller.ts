@@ -57,7 +57,7 @@ export class WebhookController {
       return { success: false };
     }
 
-    const senderId = update.message.from.id;
+    const senderId = String(update.message.from.id);
     const chatId = update.message.chat.id;
     const userText = update.message.text;
 

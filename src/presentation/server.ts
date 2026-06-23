@@ -7,7 +7,7 @@ import { RetrievalGenerationService } from '../modules/chat/retrieval-generation
 import { ChatMemoryService } from '../modules/chat/chat-memory.service';
 import { DeepSeekService } from '../infrastructure/llm/deepseek.service';
 import { VoyageEmbeddingService } from '../infrastructure/embeddings/voyage.service';
-import { ChromaVectorStoreService } from '../infrastructure/vectorstore/chroma.service';
+import { PgVectorStoreService } from '../infrastructure/vectorstore/pgvector.service';
 import { ToolCallingRegistry } from '../infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from '../infrastructure/prompt/prompt.factory';
 import { QueryExtractionTool } from '../modules/chat/query-extraction.tool';
@@ -68,7 +68,7 @@ app.use('/api/v1', apiRouter);
 // Services are instantiated once here and reused for all incoming webhook calls.
 const _llmService = new DeepSeekService();
 const _embeddingService = new VoyageEmbeddingService();
-const _vectorStore = new ChromaVectorStoreService();
+const _vectorStore = new PgVectorStoreService();
 const _promptFactory = new SystemPromptFactory();
 const _toolRegistry = new ToolCallingRegistry();
 _toolRegistry.registerTool(new QueryExtractionTool());

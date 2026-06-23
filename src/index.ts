@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { SequelizeService } from './infrastructure/db/sequelize.service';
 import { DeepSeekService } from './infrastructure/llm/deepseek.service';
 import { VoyageEmbeddingService } from './infrastructure/embeddings/voyage.service';
-import { ChromaVectorStoreService } from './infrastructure/vectorstore/chroma.service';
+import { PgVectorStoreService } from './infrastructure/vectorstore/pgvector.service';
 import { ToolCallingRegistry } from './infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from './infrastructure/prompt/prompt.factory';
 import { QueryExtractionTool } from './modules/chat/query-extraction.tool';
@@ -21,14 +21,13 @@ declare const process: {
     DEEPSEEK_API_KEY?: string;
     DEEPSEEK_BASE_URL?: string;
     VOYAGE_API_KEY?: string;
-    CHROMA_URL?: string;
     PORT?: string;
     TELEGRAM_BOT_TOKEN?: string;
   };
 };
 
 async function bootstrap() {
-  console.log('=== SaaS Chatbot Platform MVP Backend (Sequelize & Express Web Server) ===\n');
+  console.log('=== SaaS Chatbot Platform MVP Backend (PostgreSQL + pgvector) ===\n');
 
   // 1. Verify Myanmar Chunker
   const sampleMyanmarText = `ပထမစာပိုဒ်။ ဤသည်မှာ မြန်မာဘာသာစကားအတွက် စမ်းသပ်ထားသော စာသားဖြစ်သည်။\n\nဒုတိယစာပိုဒ်။ ဤနေရာတွင် RAG စနစ်၏ လုပ်ဆောင်ပုံကို ရှင်းပြထားပါသည်။ Vector Database တွင် သိမ်းဆည်းရန်အတွက် ဖြစ်သည်။`;
@@ -38,7 +37,7 @@ async function bootstrap() {
 
   // 2. Instantiate Services for Seeding check
   const embeddingService = new VoyageEmbeddingService();
-  const vectorStore = new ChromaVectorStoreService();
+  const vectorStore = new PgVectorStoreService();
   const businessService = new BusinessService(vectorStore);
   const knowledgeService = new KnowledgeService(embeddingService, vectorStore);
   
