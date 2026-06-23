@@ -59,3 +59,19 @@ export const getConversations = (chatbotId: number) =>
 
 export const getMessages = (chatbotId: number, senderId: string, limit = 50, offset = 0) =>
   api.get(`/chatbots/${chatbotId}/conversations/${senderId}`, { params: { limit, offset } }).then((r) => r.data);
+
+export const replyToConversation = (chatbotId: number, senderId: string, message: string) =>
+  api.post(`/chatbots/${chatbotId}/conversations/${senderId}/reply`, { message }).then((r) => r.data);
+
+export const getChatbotAdmins = (chatbotId: number) =>
+  api.get(`/chatbots/${chatbotId}/admins`).then((r) => r.data);
+
+export const createChatbotAdmin = (chatbotId: number, data: any) =>
+  api.post(`/chatbots/${chatbotId}/admins`, data).then((r) => r.data);
+
+export const updateChatbotAdmin = (chatbotId: number, adminId: number, data: any) =>
+  api.put(`/chatbots/${chatbotId}/admins/${adminId}`, data).then((r) => r.data);
+
+export const deleteChatbotAdmin = (chatbotId: number, adminId: number) =>
+  api.delete(`/chatbots/${chatbotId}/admins/${adminId}`).then((r) => r.data);
+
