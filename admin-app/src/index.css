@@ -529,6 +529,32 @@ p  { color: var(--text-secondary); }
 
 .msg-time { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem; }
 
+.chat-input-container {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 0.75rem;
+  background: rgba(30, 41, 59, 0.4);
+  align-items: flex-end;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg-body);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-normal);
+  padding: 0.6rem 0.8rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.chat-input:focus {
+  border-color: var(--accent-purple);
+}
+
 /* ─── Utilities ───────────────────────────────────────────────── */
 .flex { display: flex; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
@@ -604,3 +630,50 @@ p  { color: var(--text-secondary); }
 .confirm-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
 .confirm-desc  { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
 .confirm-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+/* ─── Chatbot Admin Modals ─────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%; max-width: 550px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow);
+  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.modal-header {
+  padding: 1.25rem; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal-body {
+  padding: 1.25rem;
+}
+
+.admin-list-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem; border: 1px solid var(--border);
+  border-radius: 6px; margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
