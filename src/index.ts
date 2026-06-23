@@ -13,6 +13,7 @@ import { Business, ChatBot } from './infrastructure/db/models';
 import { chunkMyanmarText } from './modules/knowledge/myanmar-chunker';
 import { startServer } from './presentation/server';
 import { tunnelService } from './infrastructure/tunnel/tunnel.service';
+import { ChatbotAnalyticsService } from './modules/chat/chatbot-analytics.service';
 
 declare const process: {
   env: {
@@ -28,6 +29,8 @@ declare const process: {
 
 async function bootstrap() {
   console.log('=== SaaS Chatbot Platform MVP Backend (PostgreSQL + pgvector) ===\n');
+  ChatbotAnalyticsService.startScheduler();
+
 
   // 1. Verify Myanmar Chunker
   const sampleMyanmarText = `ပထမစာပိုဒ်။ ဤသည်မှာ မြန်မာဘာသာစကားအတွက် စမ်းသပ်ထားသော စာသားဖြစ်သည်။\n\nဒုတိယစာပိုဒ်။ ဤနေရာတွင် RAG စနစ်၏ လုပ်ဆောင်ပုံကို ရှင်းပြထားပါသည်။ Vector Database တွင် သိမ်းဆည်းရန်အတွက် ဖြစ်သည်။`;

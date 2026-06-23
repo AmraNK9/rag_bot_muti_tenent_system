@@ -3,6 +3,7 @@ import { ChatMemoryService } from './chat-memory.service';
 import { ChatBot } from '../../infrastructure/db/models';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { debugLogger } from '../../core/logger';
+import { ChatbotAnalyticsService } from './chatbot-analytics.service';
 declare const process: {
   env: {
     NODE_ENV?: string;
@@ -82,6 +83,9 @@ export class WebhookController {
         // Deduct one credit atomically
         await this.subscriptionService.deductCredit(chatbot.business_id);
         debugLogger.log('CREDITS', `Deducted 1 credit for Business ${chatbot.business_id}`);
+
+        // Record activity log to analytics buffer (estimated API cost: $0.00015)
+        ChatbotAnalyticsService.recordActivity(chatbotId, 1, 0.00015);
       }
 
       // Save user's incoming message to DB first (so it appears in history)

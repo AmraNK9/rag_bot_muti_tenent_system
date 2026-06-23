@@ -10,7 +10,7 @@ const SALT_ROUNDS = 10;
 
 export interface ChatbotAdminTokenPayload {
   adminId: number;
-  chatbotId: number;
+  chatbotId: number | null;
   name: string;
   isStandalone: boolean;
   canManageKnowledge: boolean;
@@ -19,17 +19,14 @@ export interface ChatbotAdminTokenPayload {
 
 export class ChatbotAdminAuthService {
   /**
-   * Register a standalone ChatbotAdmin along with a new Business and Chatbot.
-   * Gets 100 free credits and full permissions.
+   * Register a standalone ChatbotAdmin along with a new Business.
+   * Bot creation is deferred until they enter the app dashboard.
    */
   async registerStandalone(params: {
     name: string;
     email: string;
     password: string;
-    botName: string;
-    botToken: string;
-    botType: 'telegram' | 'facebook';
-    botRole: 'sales' | 'faq' | 'support' | 'custom';
+    referredByResellerId?: number | null;
   }): Promise<{ admin: ChatbotAdmin; token: string }> {
     // Check if email already taken
     const existing = await ChatbotAdmin.findOne({ where: { email: params.email } });
@@ -47,20 +44,12 @@ export class ChatbotAdminAuthService {
       plan: 'free',
       active_messages_count: 100, // 100 free credits
       total_chatbots: 1,
+      referred_by_reseller_id: params.referredByResellerId || null,
     });
 
-    // 2. Create the chatbot owned by the business
-    const chatbot = await ChatBot.create({
-      business_id: business.id,
-      name: params.botName,
-      token: params.botToken,
-      type: params.botType,
-      bot_role: params.botRole,
-    });
-
-    // 3. Create the chatbot admin pointing to the chatbot
+    // 2. Create the chatbot admin pointing to NO chatbot initially (null)
     const admin = await ChatbotAdmin.create({
-      chatbot_id: chatbot.id,
+      chatbot_id: null,
       name: params.name,
       email: params.email,
       password: hashedPassword,

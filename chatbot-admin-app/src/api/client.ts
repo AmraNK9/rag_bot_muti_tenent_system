@@ -37,10 +37,7 @@ export const registerStandalone = (params: {
   name: string;
   email: string;
   password: string;
-  botName: string;
-  botToken: string;
-  botType: 'telegram' | 'facebook';
-  botRole: 'sales' | 'faq' | 'support' | 'custom';
+  referralCode?: string;
 }) =>
   api.post('/chatbot-admin/register', params).then((r) => r.data);
 
@@ -69,8 +66,22 @@ export const ingestDocument = (documentText: string) =>
 export const deleteChunk = (docId: string) =>
   api.delete(`/chatbot-admin/knowledge/chunks/${encodeURIComponent(docId)}`).then((r) => r.data);
 
+export const updateChunk = (docId: string, text: string) =>
+  api.put(`/chatbot-admin/knowledge/chunks/${encodeURIComponent(docId)}`, { text }).then((r) => r.data);
+
+// ─── Chatbot Creation ──────────────────────────────────────────────────────
+export const createChatbot = (name: string, token: string, type: 'telegram' | 'facebook', botRole: 'sales' | 'faq' | 'support' | 'custom') =>
+  api.post('/chatbot-admin/chatbot', { name, token, type, botRole }).then((r) => r.data);
+
 // ─── System Prompt ─────────────────────────────────────────────────────────
 export const getSystemPrompt = () => api.get('/chatbot-admin/system-prompt').then((r) => r.data);
 
 export const updateSystemPrompt = (customSystemPrompt: string) =>
   api.put('/chatbot-admin/system-prompt', { customSystemPrompt }).then((r) => r.data);
+
+// ─── Subscription Upgrades ─────────────────────────────────────────────────
+export const getPaymentMethods = (planName: string, clientLevel = 'regular') =>
+  api.get('/subscription/payment-methods', { params: { planName, clientLevel } }).then((r) => r.data);
+
+export const submitUpgrade = (planName: 'lite' | 'basic' | 'pro', screenshotBase64: string, resellerId: number | null) =>
+  api.post('/subscription/upgrade', { planName, screenshotBase64, resellerId }).then((r) => r.data);

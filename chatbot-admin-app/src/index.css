@@ -640,3 +640,26 @@ select.form-control {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--tg-text-muted);
 }
+
+/* Plan card selection styles */
+.plan-card-option {
+  transition: all 0.2s ease-in-out;
+}
+.plan-card-option:hover {
+  transform: translateY(-2px);
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.plan-card-option.selected {
+  background-color: rgba(58, 142, 230, 0.08) !important;
+  box-shadow: 0 0 10px rgba(58, 142, 230, 0.15);
+}
+
+.payment-checkout-box {
+  animation: fadeInDown 0.25s ease-out;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

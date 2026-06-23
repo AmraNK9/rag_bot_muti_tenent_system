@@ -47,6 +47,9 @@ export const getKnowledgeChunks = (chatbotId: number, limit = 20, offset = 0) =>
 export const deleteChunk = (chatbotId: number, docId: string) =>
   api.delete(`/knowledge/${chatbotId}/chunks/${encodeURIComponent(docId)}`).then((r) => r.data);
 
+export const updateChunk = (chatbotId: number, docId: string, text: string) =>
+  api.put(`/knowledge/${chatbotId}/chunks/${encodeURIComponent(docId)}`, { text }).then((r) => r.data);
+
 export const clearKnowledge = (chatbotId: number) =>
   api.delete(`/knowledge/${chatbotId}`).then((r) => r.data);
 

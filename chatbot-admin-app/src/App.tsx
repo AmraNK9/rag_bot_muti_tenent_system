@@ -10,8 +10,12 @@ import {
   getKnowledgeChunks,
   ingestDocument,
   deleteChunk,
+  updateChunk,
   getSystemPrompt,
   updateSystemPrompt,
+  createChatbot,
+  getPaymentMethods,
+  submitUpgrade,
 } from './api/client';
 
 interface AdminProfile {
@@ -68,10 +72,6 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [botName, setBotName] = useState('');
-  const [botToken, setBotToken] = useState('');
-  const [botType, setBotType] = useState<'telegram' | 'facebook'>('telegram');
-  const [botRole, setBotRole] = useState<'sales' | 'faq' | 'support' | 'custom'>('sales');
   const [authError, setAuthError] = useState('');
   const [submittingAuth, setSubmittingAuth] = useState(false);
 
@@ -98,6 +98,7 @@ export default function App() {
 
   // Prompt tab state
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [activePrompt, setActivePrompt] = useState('');
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [updatingPrompt, setUpdatingPrompt] = useState(false);
 
@@ -105,6 +106,31 @@ export default function App() {
   const [editBotName, setEditBotName] = useState('');
   const [editBotDesc, setEditBotDesc] = useState('');
   const [updatingBot, setUpdatingBot] = useState(false);
+
+  // Standalone bot creation state
+  const [newBotName, setNewBotName] = useState('');
+  const [newBotToken, setNewBotToken] = useState('');
+  const [newBotType, setNewBotType] = useState<'telegram' | 'facebook'>('telegram');
+  const [newBotRole, setNewBotRole] = useState<'sales' | 'faq' | 'support' | 'custom'>('sales');
+  const [creatingBot, setCreatingBot] = useState(false);
+  const [createBotError, setCreateBotError] = useState('');
+
+  // Knowledge edit state
+  const [editingChunk, setEditingChunk] = useState<KnowledgeChunk | null>(null);
+  const [editText, setEditText] = useState('');
+  const [updatingChunk, setUpdatingChunk] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  // Referral / Upgrade states
+  const [referralCode, setReferralCode] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<'lite' | 'basic' | 'pro' | null>(null);
+  const [kpayDetails, setKpayDetails] = useState<{ resellerId: number | null; kpay_no: string; kpay_name: string; note?: string } | null>(null);
+  const [loadingKpay, setLoadingKpay] = useState(false);
+  const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
+  const [receiptFilename, setReceiptFilename] = useState('');
+  const [submittingUpgrade, setSubmittingUpgrade] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState('');
+  const [businessPlanInfo, setBusinessPlanInfo] = useState<any>(null);
 
   // Fetch admin profile and bot details
   const fetchProfile = useCallback(async () => {
@@ -115,8 +141,11 @@ export default function App() {
         setProfile(data.admin);
         setChatbot(data.chatbot);
         setCredits(data.credits);
-        setEditBotName(data.chatbot.name);
-        setEditBotDesc(data.chatbot.description || '');
+        setBusinessPlanInfo(data.business);
+        if (data.chatbot) {
+          setEditBotName(data.chatbot.name);
+          setEditBotDesc(data.chatbot.description || '');
+        }
       }
     } catch (e) {
       console.error(e);
@@ -211,6 +240,7 @@ export default function App() {
     try {
       const data = await getSystemPrompt();
       setSystemPrompt(data.customSystemPrompt || '');
+      setActivePrompt(data.activePrompt || '');
     } catch (e) {
       console.error(e);
     } finally {
@@ -248,10 +278,7 @@ export default function App() {
         name,
         email,
         password,
-        botName,
-        botToken,
-        botType,
-        botRole,
+        referralCode: referralCode || undefined,
       });
       if (data.success && data.token) {
         localStorage.setItem('chatbot_admin_token', data.token);
@@ -260,13 +287,106 @@ export default function App() {
         setName('');
         setEmail('');
         setPassword('');
-        setBotName('');
-        setBotToken('');
+        setReferralCode('');
       }
     } catch (err: any) {
       setAuthError(err.response?.data?.error || 'Registration failed');
     } finally {
       setSubmittingAuth(false);
+    }
+  };
+
+  const handleCreateChatbot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBotName || !newBotToken) return;
+    setCreatingBot(true);
+    setCreateBotError('');
+    try {
+      const data = await createChatbot(newBotName, newBotToken, newBotType, newBotRole);
+      if (data.success) {
+        localStorage.setItem('chatbot_admin_token', data.token);
+        setToken(data.token);
+        setChatbot(data.chatbot);
+        setNewBotName('');
+        setNewBotToken('');
+        fetchProfile();
+      }
+    } catch (err: any) {
+      setCreateBotError(err.response?.data?.error || 'Failed to create chatbot');
+    } finally {
+      setCreatingBot(false);
+    }
+  };
+
+  const handleSelectPlan = async (plan: 'lite' | 'basic' | 'pro') => {
+    setSelectedPlan(plan);
+    setLoadingKpay(true);
+    setUpgradeMsg('');
+    setReceiptBase64(null);
+    setReceiptFilename('');
+    try {
+      const data = await getPaymentMethods(plan);
+      if (data.success) {
+        setKpayDetails(data);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to load payment details.');
+    } finally {
+      setLoadingKpay(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReceiptFilename(file.name);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setReceiptBase64(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitUpgrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlan || !receiptBase64 || !kpayDetails) return;
+    setSubmittingUpgrade(true);
+    setUpgradeMsg('');
+    try {
+      const data = await submitUpgrade(selectedPlan, receiptBase64, kpayDetails.resellerId);
+      if (data.success) {
+        setUpgradeMsg('✅ Upgrade request submitted successfully! Waiting for Reseller verification.');
+        setTimeout(() => {
+          setSelectedPlan(null);
+          setKpayDetails(null);
+          setReceiptBase64(null);
+          setReceiptFilename('');
+          fetchProfile();
+        }, 2500);
+      }
+    } catch (err: any) {
+      setUpgradeMsg(`❌ ${err.response?.data?.error || 'Upgrade failed'}`);
+    } finally {
+      setSubmittingUpgrade(false);
+    }
+  };
+
+  const handleUpdateChunk = async () => {
+    if (!editingChunk || !editText.trim()) return;
+    setUpdatingChunk(true);
+    setEditError('');
+    try {
+      const data = await updateChunk(editingChunk.id, editText.trim());
+      if (data.success) {
+        alert('Chunk updated successfully');
+        setEditingChunk(null);
+        loadKnowledge();
+      }
+    } catch (err: any) {
+      setEditError(err.response?.data?.error || 'Failed to update chunk');
+    } finally {
+      setUpdatingChunk(false);
     }
   };
 
@@ -413,7 +533,7 @@ export default function App() {
             </form>
           ) : (
             <form onSubmit={handleRegister}>
-              <h3 style={{ fontSize: '0.85rem', color: 'var(--tg-blue)', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Personal Info</h3>
+              <h3 style={{ fontSize: '0.85rem', color: 'var(--tg-blue)', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '0.5px' }}>Register Standalone Account</h3>
               <div className="form-group">
                 <label>Your Name</label>
                 <input className="form-control" type="text" required placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} />
@@ -426,42 +546,76 @@ export default function App() {
                 <label>Password</label>
                 <input className="form-control" type="password" required placeholder="Minimum 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
-
-              <h3 style={{ fontSize: '0.85rem', color: 'var(--tg-blue)', textTransform: 'uppercase', margin: '20px 0 10px', letterSpacing: '0.5px' }}>Bot Credentials</h3>
               <div className="form-group">
-                <label>Bot Name</label>
-                <input className="form-control" type="text" required placeholder="Sales FAQ Assistant" value={botName} onChange={(e) => setBotName(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label>Telegram Bot Token</label>
-                <input className="form-control" type="text" required placeholder="123456789:ABCDefgh..." value={botToken} onChange={(e) => setBotToken(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label>Bot Platform</label>
-                <select className="form-control" value={botType} onChange={(e) => setBotType(e.target.value as any)}>
-                  <option value="telegram">Telegram Bot</option>
-                  <option value="facebook">Facebook Messenger</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Initial Bot Role</label>
-                <select className="form-control" value={botRole} onChange={(e) => setBotRole(e.target.value as any)}>
-                  <option value="sales">Sales Representative</option>
-                  <option value="faq">FAQ Answering</option>
-                  <option value="support">Customer Support</option>
-                  <option value="custom">Custom Agent</option>
-                </select>
+                <label>Referral Reseller Code (Optional)</label>
+                <input className="form-control" type="text" placeholder="e.g. 1002" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
               </div>
 
               <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--tg-text-muted)', marginBottom: '14px', lineHeight: 1.4 }}>
-                ℹ️ registering a standalone bot grants <strong>100 free credits</strong>, full prompt modifications, and complete Knowledge Base operations.
+                ℹ️ Registering an account lets you create chatbots, customize system prompts, upload knowledge bases, and upgrade to premium plans.
               </div>
 
               <button className="btn btn-primary" type="submit" disabled={submittingAuth}>
-                {submittingAuth ? 'Creating Platform...' : 'Register & Setup Bot'}
+                {submittingAuth ? 'Creating Account...' : 'Register'}
               </button>
             </form>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── DEFERRED CHATBOT CREATION WIZARD ────────────────────────────────────
+  if (token && !loadingProfile && !chatbot) {
+    return (
+      <div className="auth-wrapper">
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{ fontSize: '3.5rem' }}>✨</div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.3px', margin: '8px 0 2px' }}>Create Your Chatbot</h1>
+          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '0 20px' }}>Let's set up your first chatbot assistant to start managing conversations.</p>
+        </div>
+
+        <div className="auth-card">
+          {createBotError && (
+            <div style={{ padding: '8px 12px', background: 'rgba(236,59,59,0.1)', color: 'var(--tg-red)', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '16px' }}>
+              ⚠️ {createBotError}
+            </div>
+          )}
+
+          <form onSubmit={handleCreateChatbot}>
+            <div className="form-group">
+              <label>Bot Display Name</label>
+              <input className="form-control" type="text" required placeholder="e.g., My Business Assistant" value={newBotName} onChange={(e) => setNewBotName(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Telegram Bot Token</label>
+              <input className="form-control" type="text" required placeholder="123456789:ABCDefgh..." value={newBotToken} onChange={(e) => setNewBotToken(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Platform</label>
+              <select className="form-control" value={newBotType} onChange={(e) => setNewBotType(e.target.value as any)}>
+                <option value="telegram">Telegram Bot</option>
+                <option value="facebook">Facebook Messenger</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Bot Persona/Role Strategy</label>
+              <select className="form-control" value={newBotRole} onChange={(e) => setNewBotRole(e.target.value as any)}>
+                <option value="sales">Sales Representative (Lead gen & products)</option>
+                <option value="faq">FAQ Answering (Business policies & Q&A)</option>
+                <option value="support">Customer Support (Help desk assistant)</option>
+                <option value="custom">Custom Agent (Blank slate instructions)</option>
+              </select>
+            </div>
+
+            <button className="btn btn-primary" style={{ marginTop: '16px' }} type="submit" disabled={creatingBot}>
+              {creatingBot ? 'Creating Chatbot...' : '🚀 Create Chatbot'}
+            </button>
+
+            <button className="btn btn-ghost" style={{ marginTop: '8px', width: '100%' }} type="button" onClick={handleLogout}>
+              Logout
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -575,13 +729,22 @@ export default function App() {
                             <div key={chunk.id} className="chunk-card">
                               <div className="chunk-card-meta">
                                 <span>ID: {chunk.id.slice(0, 16)}...</span>
-                                <button
-                                  className="btn btn-ghost"
-                                  style={{ color: 'var(--tg-red)', width: 'auto', padding: '2px 6px', fontSize: '0.7rem', height: 'auto' }}
-                                  onClick={() => handleDeleteChunk(chunk.id)}
-                                >
-                                  Delete
-                                </button>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <button
+                                    className="btn btn-ghost"
+                                    style={{ color: 'var(--tg-blue)', width: 'auto', padding: '2px 6px', fontSize: '0.7rem', height: 'auto' }}
+                                    onClick={() => { setEditingChunk(chunk); setEditText(chunk.text); setEditError(''); }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="btn btn-ghost"
+                                    style={{ color: 'var(--tg-red)', width: 'auto', padding: '2px 6px', fontSize: '0.7rem', height: 'auto' }}
+                                    onClick={() => handleDeleteChunk(chunk.id)}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
                               </div>
                               <div className="chunk-text">{chunk.text}</div>
                             </div>
@@ -589,6 +752,38 @@ export default function App() {
                         </div>
                       )}
                     </div>
+
+                    {/* Edit Chunk Dialog */}
+                    {editingChunk && (
+                      <div className="confirm-overlay" style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100
+                      }} onClick={() => setEditingChunk(null)}>
+                        <div className="confirm-box" style={{
+                          background: 'rgba(25, 25, 35, 0.95)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '12px', padding: '20px', width: '90%', maxWidth: '500px'
+                        }} onClick={(e) => e.stopPropagation()}>
+                          <h3 style={{ margin: '0 0 12px 0' }}>✏️ Edit Chunk</h3>
+                          {editError && (
+                            <div style={{ color: 'var(--tg-red)', fontSize: '0.8rem', marginBottom: '10px' }}>⚠️ {editError}</div>
+                          )}
+                          <textarea
+                            className="form-control"
+                            style={{ height: '140px', resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                            <button className="btn btn-ghost" style={{ width: 'auto' }} onClick={() => setEditingChunk(null)}>Cancel</button>
+                            <button className="btn btn-primary" style={{ width: 'auto' }} disabled={updatingChunk || !editText.trim()} onClick={handleUpdateChunk}>
+                              {updatingChunk ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -616,12 +811,27 @@ export default function App() {
                           <label>Define Bot Persona and Instructions</label>
                           <textarea
                             className="form-control"
-                            style={{ height: '220px', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical' }}
-                            placeholder="You are a helpful customer support representative..."
+                            style={{ height: '180px', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical' }}
+                            placeholder="Write custom instructions or leave empty to use system fallback template..."
                             value={systemPrompt}
                             onChange={(e) => setSystemPrompt(e.target.value)}
                           />
                         </div>
+
+                        {!systemPrompt && activePrompt && (
+                          <div style={{
+                            padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)',
+                            borderRadius: '8px', margin: '14px 0', fontSize: '0.8rem'
+                          }}>
+                            <div style={{ fontWeight: 'bold', color: 'var(--tg-blue)', marginBottom: '6px' }}>
+                              💡 Fallback Strategy Active: {chatbot?.bot_role?.toUpperCase() || 'SALES'}
+                            </div>
+                            <div style={{ whiteSpace: 'pre-wrap', color: 'var(--tg-text-muted)', maxHeight: '150px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.4 }}>
+                              {activePrompt}
+                            </div>
+                          </div>
+                        )}
+
                         <button className="btn btn-primary" type="submit" disabled={updatingPrompt}>
                           {updatingPrompt ? 'Saving Prompt...' : 'Update System Prompt'}
                         </button>
@@ -679,6 +889,125 @@ export default function App() {
                     <div className="settings-value" style={{ fontWeight: 'bold', color: 'var(--tg-blue)' }}>{credits}</div>
                   </div>
                 </div>
+
+                {profile?.isStandalone && (
+                  <div className="settings-card">
+                    <div className="settings-card-title">💳 Subscription Plan & Upgrade</div>
+                    
+                    <div className="settings-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '16px' }}>
+                      <div className="settings-label">Active Plan</div>
+                      <div className="settings-value" style={{ textTransform: 'capitalize', fontWeight: 'bold', color: 'var(--tg-blue)' }}>
+                        {businessPlanInfo?.plan === 'subscription' ? `${businessPlanInfo?.subscriptionPlan} Plan 🚀` : 'Free Tier (Prepaid)'}
+                      </div>
+                    </div>
+                    {businessPlanInfo?.subscriptionEndDate && (
+                      <div className="settings-row" style={{ marginBottom: '20px' }}>
+                        <div className="settings-label">Expiry Date</div>
+                        <div className="settings-value" style={{ color: 'var(--tg-text-muted)', fontSize: '0.82rem' }}>
+                          {new Date(businessPlanInfo.subscriptionEndDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                    )}
+
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem' }}>Choose Plan to Upgrade:</h4>
+                    <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+                      <div className={`plan-card-option ${selectedPlan === 'lite' ? 'selected' : ''}`} onClick={() => handleSelectPlan('lite')} style={{
+                        padding: '14px 10px', border: selectedPlan === 'lite' ? '2px solid var(--tg-blue)' : '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '8px', cursor: 'pointer', textAlign: 'center', background: 'rgba(255,255,255,0.02)'
+                      }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Lite</div>
+                        <div style={{ color: 'var(--tg-blue)', fontSize: '0.95rem', margin: '4px 0', fontWeight: 'bold' }}>3,000 MMK</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)' }}>500 Msg Credits</div>
+                      </div>
+
+                      <div className={`plan-card-option ${selectedPlan === 'basic' ? 'selected' : ''}`} onClick={() => handleSelectPlan('basic')} style={{
+                        padding: '14px 10px', border: selectedPlan === 'basic' ? '2px solid var(--tg-blue)' : '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '8px', cursor: 'pointer', textAlign: 'center', background: 'rgba(255,255,255,0.02)'
+                      }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Basic</div>
+                        <div style={{ color: 'var(--tg-blue)', fontSize: '0.95rem', margin: '4px 0', fontWeight: 'bold' }}>15,000 MMK</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)' }}>3,000 Msg Credits</div>
+                      </div>
+
+                      <div className={`plan-card-option ${selectedPlan === 'pro' ? 'selected' : ''}`} onClick={() => handleSelectPlan('pro')} style={{
+                        padding: '14px 10px', border: selectedPlan === 'pro' ? '2px solid var(--tg-blue)' : '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '8px', cursor: 'pointer', textAlign: 'center', background: 'rgba(255,255,255,0.02)'
+                      }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Pro</div>
+                        <div style={{ color: 'var(--tg-blue)', fontSize: '0.95rem', margin: '4px 0', fontWeight: 'bold' }}>30,000 MMK</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)' }}>10,000 Msg Credits</div>
+                      </div>
+                    </div>
+
+                    {selectedPlan && (
+                      <div className="payment-checkout-box" style={{
+                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                        borderRadius: '8px', padding: '16px'
+                      }}>
+                        {loadingKpay ? (
+                          <div style={{ display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div>
+                        ) : (
+                          <form onSubmit={handleSubmitUpgrade}>
+                            <h4 style={{ margin: '0 0 12px 0', color: 'var(--tg-blue)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              💳 KBZ Pay Transfer Details
+                            </h4>
+                            
+                            <div className="settings-row" style={{ margin: '8px 0' }}>
+                              <div className="settings-label" style={{ fontSize: '0.8rem' }}>KPay Phone</div>
+                              <div className="settings-value" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{kpayDetails?.kpay_no}</div>
+                            </div>
+                            
+                            <div className="settings-row" style={{ margin: '8px 0' }}>
+                              <div className="settings-label" style={{ fontSize: '0.8rem' }}>Account Name</div>
+                              <div className="settings-value" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{kpayDetails?.kpay_name}</div>
+                            </div>
+
+                            <div className="settings-row" style={{ margin: '8px 0' }}>
+                              <div className="settings-label" style={{ fontSize: '0.8rem' }}>Amount Due</div>
+                              <div className="settings-value" style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--tg-green)' }}>
+                                {selectedPlan === 'lite' ? '3,000' : selectedPlan === 'basic' ? '15,000' : '30,000'} MMK
+                              </div>
+                            </div>
+
+                            <p style={{ fontSize: '0.72rem', color: 'var(--tg-text-muted)', lineHeight: 1.4, margin: '12px 0' }}>
+                              💡 Transfer exact amount via KBZ Pay to the details above. Then, upload your transaction screenshot receipt below. 
+                              For direct support, contact us on Telegram: <a href="https://t.me/platform_billing_support" target="_blank" rel="noreferrer" style={{ color: 'var(--tg-blue)', textDecoration: 'underline' }}>@platform_support</a>.
+                            </p>
+
+                            <div className="form-group">
+                              <label style={{ fontSize: '0.78rem', marginBottom: '6px' }}>Upload KPay Screenshot</label>
+                              <div className="file-input-wrapper" style={{
+                                position: 'relative', overflow: 'hidden', display: 'inline-block', width: '100%'
+                              }}>
+                                <input type="file" accept="image/*" required onChange={handleFileChange} style={{
+                                  position: 'absolute', top: 0, left: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%'
+                                }} />
+                                <button className="btn btn-ghost" type="button" style={{ width: '100%', fontSize: '0.85rem', border: '1px dashed rgba(255,255,255,0.15)' }}>
+                                  {receiptFilename ? `📎 ${receiptFilename}` : '📁 Choose Screenshot File'}
+                                </button>
+                              </div>
+                            </div>
+
+                            {upgradeMsg && (
+                              <div style={{
+                                padding: '8px 12px', borderRadius: '6px', fontSize: '0.8rem', margin: '12px 0 0 0',
+                                background: upgradeMsg.startsWith('✅') ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
+                                color: upgradeMsg.startsWith('✅') ? '#34d399' : '#f87171',
+                                border: `1px solid ${upgradeMsg.startsWith('✅') ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}`
+                              }}>
+                                {upgradeMsg}
+                              </div>
+                            )}
+
+                            <button className="btn btn-primary" style={{ marginTop: '14px' }} type="submit" disabled={submittingUpgrade || !receiptBase64}>
+                              {submittingUpgrade ? 'Submitting Receipt...' : '🚀 Submit Upgrade Request'}
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="settings-card">
                   <div className="settings-card-title">🔒 Assigned Permissions</div>

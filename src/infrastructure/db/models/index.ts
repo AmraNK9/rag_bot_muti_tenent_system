@@ -9,8 +9,9 @@ export class Business extends Model<InferAttributes<Business>, InferCreationAttr
   declare plan: CreationOptional<'free' | 'prepaid_credits' | 'subscription'>;
   declare active_messages_count: CreationOptional<number>; // remaining message credits
   declare subscription_end_date: CreationOptional<Date | null>;
-  declare subscription_plan: CreationOptional<'basic' | 'pro' | 'enterprise' | null>;
+  declare subscription_plan: CreationOptional<'lite' | 'basic' | 'pro' | 'enterprise' | null>;
   declare total_chatbots: CreationOptional<number>; // max allowed chatbots for current plan
+  declare referred_by_reseller_id: CreationOptional<number | null>; // referrer tracking
   declare created_at: CreationOptional<Date>;
 }
 
@@ -36,7 +37,7 @@ export class ChatBot extends Model<InferAttributes<ChatBot>, InferCreationAttrib
 // ─── ChatbotAdmin Model ─────────────────────────────────────────────────────
 export class ChatbotAdmin extends Model<InferAttributes<ChatbotAdmin>, InferCreationAttributes<ChatbotAdmin>> {
   declare id: CreationOptional<number>;
-  declare chatbot_id: ForeignKey<ChatBot['id']>;
+  declare chatbot_id: ForeignKey<ChatBot['id']> | null;
   declare name: string;
   declare email: string;
   declare password: string; // bcrypt hashed
@@ -46,6 +47,62 @@ export class ChatbotAdmin extends Model<InferAttributes<ChatbotAdmin>, InferCrea
   declare created_at: CreationOptional<Date>;
 
   // Relationship definitions
+  declare chatbot?: ChatBot;
+}
+
+// ─── Reseller Model ──────────────────────────────────────────────────────────
+export class Reseller extends Model<InferAttributes<Reseller>, InferCreationAttributes<Reseller>> {
+  declare id: CreationOptional<number>;
+  declare name: string;
+  declare email: string;
+  declare password: string; // bcrypt hashed
+  declare commission_percentage: CreationOptional<number>; // e.g. 10.00%
+  declare balance: CreationOptional<number>; // commission wallet balance
+  declare can_collect_payments: CreationOptional<boolean>; // flag to accept cash collection
+  declare reliability_score: CreationOptional<number>; // trust rating (0 - 100)
+  declare total_collected: CreationOptional<number>; // collected payments cash today
+  declare kpay_no: string;
+  declare kpay_name: string;
+  declare custom_referrer_first_rate: CreationOptional<number | null>;
+  declare custom_referrer_recurring_rate: CreationOptional<number | null>;
+  declare custom_approver_rate: CreationOptional<number | null>;
+  declare trust_score_factor: CreationOptional<number>;
+  declare created_at: CreationOptional<Date>;
+}
+
+// ─── PlanRequest Model ────────────────────────────────────────────────────────
+export class PlanRequest extends Model<InferAttributes<PlanRequest>, InferCreationAttributes<PlanRequest>> {
+  declare id: CreationOptional<number>;
+  declare business_id: ForeignKey<Business['id']>;
+  declare reseller_id: ForeignKey<Reseller['id']> | null;
+  declare plan_name: 'lite' | 'basic' | 'pro';
+  declare screenshot_url: string; // URL file path, NO base64
+  declare status: CreationOptional<'pending' | 'approved' | 'rejected'>;
+  declare price: number;
+  declare referrer_id: ForeignKey<Reseller['id']> | null;
+  declare referrer_commission_rate: CreationOptional<number | null>;
+  declare referrer_commission_amount: CreationOptional<number>;
+  declare approver_commission_rate: CreationOptional<number | null>;
+  declare approver_commission_amount: CreationOptional<number>;
+  declare is_first_payment: CreationOptional<boolean>;
+  declare created_at: CreationOptional<Date>;
+
+  // Relationships
+  declare business?: Business;
+  declare reseller?: Reseller;
+  declare referrer?: Reseller;
+}
+
+// ─── ChatbotActivity Model ───────────────────────────────────────────────────
+export class ChatbotActivity extends Model<InferAttributes<ChatbotActivity>, InferCreationAttributes<ChatbotActivity>> {
+  declare id: CreationOptional<number>;
+  declare chatbot_id: ForeignKey<ChatBot['id']>;
+  declare activity_date: string; // YYYY-MM-DD
+  declare query_count: CreationOptional<number>;
+  declare api_cost: CreationOptional<number>;
+  declare active_duration_seconds: CreationOptional<number>;
+
+  // Relationship
   declare chatbot?: ChatBot;
 }
 
@@ -83,6 +140,38 @@ export class TopUpHistory extends Model<InferAttributes<TopUpHistory>, InferCrea
 
   // Relationship
   declare business?: Business;
+}
+
+// ─── ResellerTopUp Model ─────────────────────────────────────────────────────
+export class ResellerTopUp extends Model<InferAttributes<ResellerTopUp>, InferCreationAttributes<ResellerTopUp>> {
+  declare id: CreationOptional<number>;
+  declare reseller_id: ForeignKey<Reseller['id']>;
+  declare amount_paid: number;
+  declare credit_amount: number;
+  declare screenshot_url: string;
+  declare status: CreationOptional<'pending' | 'approved' | 'rejected'>;
+  declare created_at: CreationOptional<Date>;
+
+  // Relationships
+  declare reseller?: Reseller;
+}
+
+// ─── Plan Model ──────────────────────────────────────────────────────────────
+export class Plan extends Model<InferAttributes<Plan>, InferCreationAttributes<Plan>> {
+  declare id: CreationOptional<number>;
+  declare name: string;
+  declare price: number;
+  declare query_limit: number;
+  declare duration_days: number;
+  declare is_active: CreationOptional<boolean>;
+}
+
+// ─── SystemSetting Model ─────────────────────────────────────────────────────
+export class SystemSetting extends Model<InferAttributes<SystemSetting>, InferCreationAttributes<SystemSetting>> {
+  declare id: CreationOptional<number>;
+  declare referrer_first_month_rate: number;
+  declare referrer_recurring_rate: number;
+  declare approver_fee_rate: number;
 }
 
 // ─── Model Initialization ────────────────────────────────────────────────────
@@ -123,7 +212,7 @@ export function initModels(sequelize: Sequelize) {
         defaultValue: null,
       },
       subscription_plan: {
-        type: DataTypes.ENUM('basic', 'pro', 'enterprise'),
+        type: DataTypes.ENUM('lite', 'basic', 'pro', 'enterprise'),
         allowNull: true,
         defaultValue: null,
       },
@@ -131,6 +220,11 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 1, // Free plan: 1 chatbot
+      },
+      referred_by_reseller_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
       },
       created_at: {
         type: DataTypes.DATE,
@@ -212,7 +306,7 @@ export function initModels(sequelize: Sequelize) {
       },
       chatbot_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       name: {
         type: DataTypes.STRING(255),
@@ -392,4 +486,333 @@ export function initModels(sequelize: Sequelize) {
 
   ChatBot.hasMany(ChatbotAdmin, { foreignKey: 'chatbot_id', as: 'admins' });
   ChatbotAdmin.belongsTo(ChatBot, { foreignKey: 'chatbot_id', as: 'chatbot' });
+
+  // ─── New Model Initializations ─────────────────────────────────────────────
+  Reseller.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      email: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true,
+      },
+      password: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      commission_percentage: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 10.00,
+      },
+      balance: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 5000.00,
+      },
+      can_collect_payments: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      reliability_score: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 100,
+      },
+      total_collected: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+      },
+      kpay_no: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      kpay_name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      custom_referrer_first_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: null,
+      },
+      custom_referrer_recurring_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: null,
+      },
+      custom_approver_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: null,
+      },
+      trust_score_factor: {
+        type: DataTypes.DECIMAL(3, 2),
+        allowNull: false,
+        defaultValue: 1.00,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'reseller',
+      timestamps: false,
+    }
+  );
+
+  PlanRequest.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      business_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      reseller_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
+      plan_name: {
+        type: DataTypes.ENUM('lite', 'basic', 'pro'),
+        allowNull: false,
+      },
+      screenshot_url: {
+        type: DataTypes.STRING(500),
+        allowNull: false,
+      },
+      status: {
+        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        allowNull: false,
+        defaultValue: 'pending',
+      },
+      price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      referrer_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
+      referrer_commission_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: null,
+      },
+      referrer_commission_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+      },
+      approver_commission_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        defaultValue: null,
+      },
+      approver_commission_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+      },
+      is_first_payment: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'plan_request',
+      timestamps: false,
+    }
+  );
+
+  Plan.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true,
+      },
+      price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      query_limit: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      duration_days: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 30,
+      },
+      is_active: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'plans',
+      timestamps: false,
+    }
+  );
+
+  SystemSetting.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      referrer_first_month_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 30.00,
+      },
+      referrer_recurring_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 10.00,
+      },
+      approver_fee_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 10.00,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'system_settings',
+      timestamps: false,
+    }
+  );
+
+  ChatbotActivity.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      chatbot_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      activity_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+      },
+      query_count: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      api_cost: {
+        type: DataTypes.DECIMAL(10, 5),
+        allowNull: false,
+        defaultValue: 0.00000,
+      },
+      active_duration_seconds: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'chatbot_activity',
+      timestamps: false,
+    }
+  );
+
+  // ─── New Model Associations ────────────────────────────────────────────────
+  Business.belongsTo(Reseller, { foreignKey: 'referred_by_reseller_id', as: 'referrer', constraints: false });
+  Reseller.hasMany(Business, { foreignKey: 'referred_by_reseller_id', as: 'referredClients', constraints: false });
+
+  PlanRequest.belongsTo(Business, { foreignKey: 'business_id', as: 'business', constraints: false });
+  Business.hasMany(PlanRequest, { foreignKey: 'business_id', as: 'planRequests', constraints: false });
+
+  PlanRequest.belongsTo(Reseller, { foreignKey: 'reseller_id', as: 'reseller', constraints: false });
+  Reseller.hasMany(PlanRequest, { foreignKey: 'reseller_id', as: 'receivedRequests', constraints: false });
+
+  PlanRequest.belongsTo(Reseller, { foreignKey: 'referrer_id', as: 'referrer', constraints: false });
+  Reseller.hasMany(PlanRequest, { foreignKey: 'referrer_id', as: 'referredRequests', constraints: false });
+
+  ChatbotActivity.belongsTo(ChatBot, { foreignKey: 'chatbot_id', as: 'chatbot', constraints: false });
+  ChatBot.hasMany(ChatbotActivity, { foreignKey: 'chatbot_id', as: 'activities', constraints: false });
+
+  ResellerTopUp.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      reseller_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      amount_paid: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      credit_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      screenshot_url: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      status: {
+        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        allowNull: false,
+        defaultValue: 'pending',
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'reseller_topup',
+      timestamps: false,
+    }
+  );
+
+  ResellerTopUp.belongsTo(Reseller, { foreignKey: 'reseller_id', as: 'reseller', constraints: false });
+  Reseller.hasMany(ResellerTopUp, { foreignKey: 'reseller_id', as: 'topups', constraints: false });
 }

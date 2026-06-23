@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getKnowledgeChunks, deleteChunk, clearKnowledge, ingestDocument } from '../api/client';
+import { getKnowledgeChunks, deleteChunk, clearKnowledge, ingestDocument, updateChunk } from '../api/client';
 
 interface Chunk {
   id: string;
@@ -31,6 +31,12 @@ export default function KnowledgePage() {
   const [confirmDocId, setConfirmDocId] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Edit chunk dialog
+  const [editingChunk, setEditingChunk] = useState<Chunk | null>(null);
+  const [editText, setEditText] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState('');
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -51,6 +57,24 @@ export default function KnowledgePage() {
       load();
     } catch (e) { console.error(e); }
     finally { setDeleting(false); }
+  };
+
+  const handleUpdateChunk = async () => {
+    if (!editingChunk || !editText.trim()) return;
+    setUpdating(true);
+    setUpdateMsg('');
+    try {
+      await updateChunk(id, editingChunk.id, editText);
+      setUpdateMsg('✅ Chunk updated successfully!');
+      setTimeout(() => {
+        setEditingChunk(null);
+        load();
+      }, 800);
+    } catch (err: any) {
+      setUpdateMsg(`❌ ${err.response?.data?.error || 'Update failed'}`);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleClearAll = async () => {
@@ -107,6 +131,44 @@ export default function KnowledgePage() {
                 disabled={deleting}
               >
                 {deleting ? <div className="spinner" /> : '🗑️ Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Chunk Dialog */}
+      {editingChunk && (
+        <div className="confirm-overlay" onClick={() => setEditingChunk(null)}>
+          <div className="confirm-box" style={{ maxWidth: '550px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-title">✏️ Edit Knowledge Chunk</div>
+            <div className="form-group" style={{ margin: '1rem 0' }}>
+              <label className="form-label">Chunk Text</label>
+              <textarea
+                className="form-textarea"
+                style={{ minHeight: '160px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+              />
+            </div>
+            {updateMsg && (
+              <div style={{
+                padding: '0.65rem 1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.875rem',
+                background: updateMsg.startsWith('✅') ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
+                border: `1px solid ${updateMsg.startsWith('✅') ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'}`,
+                color: updateMsg.startsWith('✅') ? '#34d399' : '#f87171',
+              }}>
+                {updateMsg}
+              </div>
+            )}
+            <div className="confirm-actions">
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditingChunk(null)}>Cancel</button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleUpdateChunk}
+                disabled={updating || !editText.trim()}
+              >
+                {updating ? <div className="spinner" /> : '💾 Save Changes'}
               </button>
             </div>
           </div>
@@ -186,14 +248,22 @@ export default function KnowledgePage() {
                   <div className="chunk-text">{chunk.text}</div>
                   <div className="chunk-meta">ID: {chunk.id}</div>
                 </div>
-                <button
-                  id={`delete-chunk-${idx}`}
-                  className="btn btn-danger btn-sm"
-                  style={{ flexShrink: 0 }}
-                  onClick={() => { setConfirmTarget('chunk'); setConfirmDocId(chunk.id); }}
-                >
-                  🗑️
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <button
+                    id={`edit-chunk-${idx}`}
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setEditingChunk(chunk); setEditText(chunk.text); setUpdateMsg(''); }}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    id={`delete-chunk-${idx}`}
+                    className="btn btn-danger btn-sm"
+                    onClick={() => { setConfirmTarget('chunk'); setConfirmDocId(chunk.id); }}
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
             ))}
           </div>
