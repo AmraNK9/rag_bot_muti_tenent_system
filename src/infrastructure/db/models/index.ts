@@ -19,6 +19,7 @@ export class ChatBot extends Model<InferAttributes<ChatBot>, InferCreationAttrib
   declare id: CreationOptional<number>;
   declare business_id: ForeignKey<Business['id']>;
   declare name: string;
+  declare description: CreationOptional<string | null>;
   declare knoweledge_key: CreationOptional<number | null>;
   declare token: string;
   declare api_id: CreationOptional<string | null>;
@@ -29,6 +30,23 @@ export class ChatBot extends Model<InferAttributes<ChatBot>, InferCreationAttrib
 
   // Relationship definitions
   declare business?: Business;
+  declare admins?: ChatbotAdmin[];
+}
+
+// ─── ChatbotAdmin Model ─────────────────────────────────────────────────────
+export class ChatbotAdmin extends Model<InferAttributes<ChatbotAdmin>, InferCreationAttributes<ChatbotAdmin>> {
+  declare id: CreationOptional<number>;
+  declare chatbot_id: ForeignKey<ChatBot['id']>;
+  declare name: string;
+  declare email: string;
+  declare password: string; // bcrypt hashed
+  declare is_standalone: CreationOptional<boolean>;
+  declare can_manage_knowledge: CreationOptional<boolean>;
+  declare can_manage_system_prompt: CreationOptional<boolean>;
+  declare created_at: CreationOptional<Date>;
+
+  // Relationship definitions
+  declare chatbot?: ChatBot;
 }
 
 // ─── Messages Model ─────────────────────────────────────────────────────────
@@ -172,10 +190,67 @@ export function initModels(sequelize: Sequelize) {
         allowNull: true,
         defaultValue: null,
       },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+      },
     },
     {
       sequelize,
       tableName: 'chatbot',
+      timestamps: false,
+    }
+  );
+
+  ChatbotAdmin.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      chatbot_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      email: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true,
+      },
+      password: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      is_standalone: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      can_manage_knowledge: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      can_manage_system_prompt: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'chatbot_admin',
       timestamps: false,
     }
   );
@@ -314,4 +389,7 @@ export function initModels(sequelize: Sequelize) {
 
   Business.hasMany(TopUpHistory, { foreignKey: 'business_id', as: 'topUpHistory' });
   TopUpHistory.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
+
+  ChatBot.hasMany(ChatbotAdmin, { foreignKey: 'chatbot_id', as: 'admins' });
+  ChatbotAdmin.belongsTo(ChatBot, { foreignKey: 'chatbot_id', as: 'chatbot' });
 }

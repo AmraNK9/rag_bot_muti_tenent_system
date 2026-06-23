@@ -75,4 +75,30 @@ export class TelegramService {
 
     return data;
   }
+
+  /**
+   * Sends a text message to a specific Telegram chat using the bot token.
+   */
+  async sendMessage(token: string, chatId: string | number, text: string): Promise<number> {
+    const url = `${this.apiBase}/bot${token}/sendMessage`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: String(chatId),
+        text: text,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Telegram sendMessage failed with status ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json() as { ok: boolean; result?: { message_id: number }; description?: string };
+    if (!data.ok || !data.result) {
+      throw new Error(`Telegram sendMessage failed: ${data.description || 'Unknown error'}`);
+    }
+    return data.result.message_id;
+  }
 }
