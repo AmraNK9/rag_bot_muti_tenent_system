@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getConversations, getMessages } from '../api/client';
+import { getConversations, getMessages, replyToConversation } from '../api/client';
 
 interface Conversation {
   sender_id: string;
@@ -41,6 +41,8 @@ export default function MessagesPage() {
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [totalMsgs, setTotalMsgs] = useState(0);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
   useEffect(() => {
     getConversations(id)
@@ -63,6 +65,28 @@ export default function MessagesPage() {
   const handleSelectSender = (senderId: string) => {
     setSelectedSender(senderId);
     loadMessages(senderId);
+  };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !selectedSender || sendingReply) return;
+    setSendingReply(true);
+    try {
+      const data = await replyToConversation(id, selectedSender, replyText.trim());
+      if (data.success && data.message) {
+        setMessages((prev) => [...prev, data.message]);
+        setReplyText('');
+        // Scroll to bottom
+        setTimeout(() => {
+          const panel = document.getElementById('chat-messages-panel');
+          if (panel) panel.scrollTop = panel.scrollHeight;
+        }, 100);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to send message: ' + (e instanceof Error ? e.message : 'Unknown error'));
+    } finally {
+      setSendingReply(false);
+    }
   };
 
   return (
@@ -152,6 +176,32 @@ export default function MessagesPage() {
                     </div>
                   ))
                 )}
+              </div>
+
+              {/* Reply Input Box */}
+              <div className="chat-input-container">
+                <textarea
+                  className="chat-input"
+                  placeholder="Type a message to reply..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendReply();
+                    }
+                  }}
+                  disabled={sendingReply}
+                  rows={2}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSendReply}
+                  disabled={sendingReply || !replyText.trim()}
+                  id="send-reply-btn"
+                >
+                  {sendingReply ? 'Sending...' : 'Send'}
+                </button>
               </div>
             </>
           )}
