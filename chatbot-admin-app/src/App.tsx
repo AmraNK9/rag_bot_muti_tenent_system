@@ -118,6 +118,13 @@ export default function App() {
   const [upgradeMsg, setUpgradeMsg] = useState('');
   const [businessPlanInfo, setBusinessPlanInfo] = useState<any>(null);
 
+  // Onboarding Intro states
+  const [introCompleted, setIntroCompleted] = useState<boolean>(() => localStorage.getItem('chatbot_admin_intro_completed') === 'true');
+  const [introStep, setIntroStep] = useState(1);
+  const [showCreateBotModal, setShowCreateBotModal] = useState(false);
+  const [showTokenHelpModal, setShowTokenHelpModal] = useState(false);
+  const [tokenHelpTab, setTokenHelpTab] = useState(1);
+
   const fetchProfile = useCallback(async () => {
     setLoadingProfile(true);
     try {
@@ -130,6 +137,8 @@ export default function App() {
         if (data.chatbot) {
           setEditBotName(data.chatbot.name);
           setEditBotDesc(data.chatbot.description || '');
+          
+          // Intro check is now handled before auth flow.
         }
       }
     } catch (e) {
@@ -249,6 +258,7 @@ export default function App() {
         setChatbot(data.chatbot);
         setNewBotName(''); setNewBotToken('');
         fetchProfile();
+        setShowCreateBotModal(false);
       }
     } catch (err: any) {
       setCreateBotError(err.response?.data?.error || 'Failed to create chatbot');
@@ -320,6 +330,9 @@ export default function App() {
     localStorage.removeItem('chatbot_admin_profile');
     setToken(null); setProfile(null); setChatbot(null);
     setActiveChatSender(null); setMessages([]);
+    setIntroStep(1);
+    setShowCreateBotModal(false);
+    setShowTokenHelpModal(false);
   };
 
   const handleSendReply = async () => {
@@ -397,6 +410,67 @@ export default function App() {
     return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   };
 
+  // ─── INTRO VIEW ──────────────────────────────────────────────────────────
+  if (!introCompleted) {
+    return (
+      <div className="auth-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
+        <div className="auth-card" style={{ maxWidth: '420px', width: '100%', padding: '30px 24px', position: 'relative' }}>
+          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '24px' }}>
+            {[1, 2, 3].map((step) => (
+              <div
+                key={step}
+                style={{
+                  width: '32px',
+                  height: '4px',
+                  borderRadius: '2px',
+                  backgroundColor: introStep === step ? 'var(--blue)' : 'var(--border)',
+                  transition: 'background-color 0.2s',
+                }}
+              />
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            {introStep === 1 && (
+              <div>
+                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(31, 111, 235, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px', color: 'var(--blue-hover)' }}>📚</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-main)' }}>၁။ Knowledge Base (အသိပညာ ဖြည့်သွင်းခြင်း)</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>သင်၏ လုပ်ငန်းဆိုင်ရာ အချက်အလက်များ၊ ဝန်ဆောင်မှု ဈေးနှုန်းများနှင့် အမေးများသောမေးခွန်း (FAQ) များကို <strong>"Knowledge"</strong> Tab တွင် ဖြည့်သွင်းပါ။ သင့် Chatbot သည် ဤအချက်အလက်များကို ကိုးကား၍ Customer များအား တိကျမှန်ကန်စွာ အလိုအလျောက် ပြန်လည်ဖြေကြားပေးမည် ဖြစ်ပါသည်။</p>
+              </div>
+            )}
+            {introStep === 2 && (
+              <div>
+                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(210, 153, 34, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px', color: 'var(--yellow)' }}>⚙️</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-main)' }}>၂။ System Prompt (စရိုက်လက္ခဏာ သတ်မှတ်ခြင်း)</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}><strong>"Prompt"</strong> Tab တွင် Chatbot ၏ စရိုက်၊ စကားပြောပုံစံ (ဥပမာ- ယဉ်ကျေးပျူငှာသော အရောင်းကိုယ်စားလှယ် သို့မဟုတ် FAQ Bot) နှင့် လိုက်နာရမည့် ညွှန်ကြားချက်များကို သတ်မှတ်ပါ။ ၎င်းသည် AI ၏ စကားပြောလေသံနှင့် လမ်းညွှန်ချက်များကို ထိန်းချုပ်ပေးသည်။</p>
+              </div>
+            )}
+            {introStep === 3 && (
+              <div>
+                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(63, 185, 80, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px', color: 'var(--green)' }}>💬</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-main)' }}>၃။ Live Chats & Profile (စကားပြောခြင်းနှင့် စာရင်းများ)</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}><strong>"Chats"</strong> Tab တွင် Customer များနှင့် ပြောဆိုထားသော စကားဝိုင်းများကို စောင့်ကြည့်ပြီး AI ဖြေကြားချက်များကို လိုအပ်ပါက ဝင်ရောက်ပြင်ဆင်/ကိုယ်တိုင်ပြန်ကြားနိုင်ပါသည်။ <strong>"Profile"</strong> Tab တွင် လက်ကျန် Credit များအား စစ်ဆေးနိုင်ပါသည်။</p>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '36px', gap: '16px' }}>
+            {introStep > 1 ? (
+              <button className="btn btn-ghost" style={{ flex: 1, minHeight: '44px' }} onClick={() => setIntroStep((prev) => prev - 1)}>Back</button>
+            ) : (
+              <button className="btn btn-ghost" style={{ flex: 1, minHeight: '44px', color: 'var(--text-muted)' }} onClick={() => { localStorage.setItem('chatbot_admin_intro_completed', 'true'); setIntroCompleted(true); }}>Skip Intro</button>
+            )}
+            {introStep < 3 ? (
+              <button className="btn btn-primary" style={{ flex: 1, minHeight: '44px' }} onClick={() => setIntroStep((prev) => prev + 1)}>Next</button>
+            ) : (
+              <button className="btn btn-primary" style={{ flex: 1, minHeight: '44px', background: 'var(--green)' }} onClick={() => { localStorage.setItem('chatbot_admin_intro_completed', 'true'); setIntroCompleted(true); }}>Get Started</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ─── AUTHENTICATION VIEW ─────────────────────────────────────────────────
   if (!token) {
     return (
@@ -412,9 +486,45 @@ export default function App() {
           <h1 style={{ fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-0.3px', marginBottom: '6px' }}>
             Chatbot Admin
           </h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Manage your automated agent & conversations
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+            ၅ မိနစ်အတွင်း စာပြန်မြန်ဆန်သော AI Chatbot တစ်ခု တည်ဆောက်လိုက်ပါ
           </p>
+
+          {/* Landing Mini Props Card */}
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '12px 14px',
+            textAlign: 'left',
+            fontSize: '0.78rem',
+            lineHeight: 1.4,
+            marginBottom: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            width: '100%',
+            maxWidth: '380px'
+          }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              <span>⚡</span>
+              <div>
+                <strong style={{ color: 'var(--text-main)' }}>Auto Reply 24/7</strong>: သုံးစွဲသူများ၏ မေးခွန်းများကို AI မှ အလိုအလျောက် အချိန်မရွေး စာပြန်ပေးခြင်း။
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              <span>📚</span>
+              <div>
+                <strong style={{ color: 'var(--text-main)' }}>Knowledge Base</strong>: သင့်လုပ်ငန်းဆိုင်ရာ အချက်အလက်များကို AI အား သင်ကြားပေးခြင်း။
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              <span>💬</span>
+              <div>
+                <strong style={{ color: 'var(--text-main)' }}>Live Chat Monitor</strong>: စကားဝိုင်းများကို အချိန်နှင့်တပြေးညီ စောင့်ကြည့်ပြီး ကိုယ်တိုင်ဝင်ပြန်နိုင်ခြင်း။
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="auth-card">
@@ -482,63 +592,7 @@ export default function App() {
     );
   }
 
-  // ─── CHATBOT CREATION WIZARD ──────────────────────────────────────────────
-  if (token && !loadingProfile && !chatbot) {
-    return (
-      <div className="auth-wrapper">
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>✨</div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-0.3px', marginBottom: '6px' }}>
-            Create Your Chatbot
-          </h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '300px', margin: '0 auto' }}>
-            Set up your first chatbot assistant to start managing conversations.
-          </p>
-        </div>
 
-        <div className="auth-card">
-          {createBotError && (
-            <div className="alert-box alert-error">⚠️ {createBotError}</div>
-          )}
-          <form onSubmit={handleCreateChatbot}>
-            <div className="form-group">
-              <label>Bot Display Name</label>
-              <input className="form-control" type="text" required placeholder="e.g., My Business Bot"
-                value={newBotName} onChange={(e) => setNewBotName(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Bot Token</label>
-              <input className="form-control" type="text" required placeholder="123456789:ABCDefgh..."
-                value={newBotToken} onChange={(e) => setNewBotToken(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Platform</label>
-              <select className="form-control" value={newBotType} onChange={(e) => setNewBotType(e.target.value as any)}>
-                <option value="telegram">Telegram Bot</option>
-                <option value="facebook">Facebook Messenger</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Bot Role / Persona</label>
-              <select className="form-control" value={newBotRole} onChange={(e) => setNewBotRole(e.target.value as any)}>
-                <option value="sales">Sales Representative</option>
-                <option value="faq">FAQ Answering</option>
-                <option value="support">Customer Support</option>
-                <option value="custom">Custom (Blank slate)</option>
-              </select>
-            </div>
-            <button className="btn btn-primary" style={{ marginTop: '16px' }} type="submit" disabled={creatingBot}>
-              {creatingBot ? 'Creating...' : '🚀 Create Chatbot'}
-            </button>
-            <button className="btn btn-ghost" style={{ marginTop: '10px', background: 'none', color: 'var(--text-muted)', border: 'none', fontSize: '0.82rem' }}
-              type="button" onClick={handleLogout}>
-              Sign out
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   // ─── MAIN PLATFORM LAYOUT ────────────────────────────────────────────────
   return (
@@ -572,7 +626,20 @@ export default function App() {
             {/* CHATS TAB */}
             {activeTab === 'chats' && (
               <div>
-                {loadingConvs ? (
+                {!chatbot ? (
+                  <div className="empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                    <div className="empty-icon" style={{ fontSize: '3rem', marginBottom: '16px' }}>🔌</div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '8px' }}>
+                      Connect Your First AI Chatbot
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: '280px', margin: '0 auto 20px' }}>
+                      လွယ်ကူလျင်မြန်စွာ ချိတ်ဆက်ပြီး သုံးစွဲသူများအား AI ဖြင့် အလိုအလျောက် အဖြေပေးနိုင်ရန် စတင်လိုက်ပါ။
+                    </p>
+                    <button className="btn btn-primary" onClick={() => setShowCreateBotModal(true)}>
+                      ➕ Create Your First AI Bot
+                    </button>
+                  </div>
+                ) : loadingConvs ? (
                   <div className="loading-container">
                     <div className="spinner" />
                     <p>Loading conversations...</p>
@@ -618,6 +685,14 @@ export default function App() {
                       <div className="empty-icon">🔒</div>
                       <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>Permission Required</p>
                       <p style={{ fontSize: '0.8rem' }}>Your account does not have access to the Knowledge Base. Contact the Business Admin.</p>
+                    </div>
+                  </div>
+                ) : !chatbot ? (
+                  <div className="settings-card">
+                    <div className="empty-state" style={{ padding: '32px 16px' }}>
+                      <div className="empty-icon">🔌</div>
+                      <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>Chatbot Connection Required</p>
+                      <p style={{ fontSize: '0.8rem' }}>သင့်အကောင့်တွင် Chatbot ချိတ်ဆက်ထားခြင်း မရှိသေးပါ။ Knowledge Base အသုံးမပြုမီ Chatbot တစ်ခု အရင်ဖန်တီးပေးပါ။</p>
                     </div>
                   </div>
                 ) : (
@@ -726,6 +801,14 @@ export default function App() {
                       <div className="empty-icon">🔒</div>
                       <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>Permission Required</p>
                       <p style={{ fontSize: '0.8rem' }}>Your account does not have access to modify the System Prompt.</p>
+                    </div>
+                  </div>
+                ) : !chatbot ? (
+                  <div className="settings-card">
+                    <div className="empty-state" style={{ padding: '32px 16px' }}>
+                      <div className="empty-icon">🔌</div>
+                      <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>Chatbot Connection Required</p>
+                      <p style={{ fontSize: '0.8rem' }}>သင့်အကောင့်တွင် Chatbot ချိတ်ဆက်ထားခြင်း မရှိသေးပါ။ System Prompt ပြင်ဆင်ရန် Chatbot တစ်ခု အရင်ဖန်တီးပေးပါ။</p>
                     </div>
                   </div>
                 ) : (
@@ -1034,6 +1117,169 @@ export default function App() {
             >
               {sendingReply ? '…' : '↑'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE CHATBOT MODAL */}
+      {showCreateBotModal && (
+        <div className="modal-backdrop" style={{ zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="tg-modal" style={{ maxWidth: '380px', borderRadius: '14px', margin: '16px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="tg-modal-header">
+              <h3>Create Your Chatbot</h3>
+              <button
+                className="btn btn-ghost"
+                style={{ width: 'auto', padding: '4px 10px', fontSize: '0.8rem', minHeight: '30px' }}
+                onClick={() => setShowCreateBotModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="tg-modal-body" style={{ padding: '20px' }}>
+              {createBotError && (
+                <div className="alert-box alert-error" style={{ marginBottom: '14px' }}>⚠️ {createBotError}</div>
+              )}
+              <form onSubmit={handleCreateChatbot}>
+                <div className="form-group">
+                  <label>Bot Display Name</label>
+                  <input className="form-control" type="text" required placeholder="e.g., My Business Bot"
+                    value={newBotName} onChange={(e) => setNewBotName(e.target.value)} />
+                </div>
+                
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ margin: 0 }}>Bot Token</label>
+                    <button
+                      type="button"
+                      style={{
+                        border: 'none',
+                        background: 'none',
+                        color: 'var(--text-link)',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                      onClick={() => setShowTokenHelpModal(true)}
+                    >
+                      ℹ️ Token ဘယ်လိုယူရမလဲ?
+                    </button>
+                  </div>
+                  <input className="form-control" type="text" required placeholder="123456789:ABCDefgh..."
+                    value={newBotToken} onChange={(e) => setNewBotToken(e.target.value)} />
+                </div>
+
+                <div className="form-group">
+                  <label>Platform</label>
+                  <select className="form-control" value={newBotType} onChange={(e) => setNewBotType(e.target.value as any)}>
+                    <option value="telegram">Telegram Bot</option>
+                    <option value="facebook">Facebook Messenger</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Bot Role / Persona</label>
+                  <select className="form-control" value={newBotRole} onChange={(e) => setNewBotRole(e.target.value as any)}>
+                    <option value="sales">Sales Representative</option>
+                    <option value="faq">FAQ Answering</option>
+                    <option value="support">Customer Support</option>
+                    <option value="custom">Custom (Blank slate)</option>
+                  </select>
+                </div>
+                <button className="btn btn-primary" style={{ marginTop: '16px', width: '100%' }} type="submit" disabled={creatingBot}>
+                  {creatingBot ? 'Creating...' : '🚀 Create Chatbot'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOKEN HELPER MODAL */}
+      {showTokenHelpModal && (
+        <div className="modal-backdrop" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="tg-modal" style={{ maxWidth: '420px', borderRadius: '14px', margin: '16px', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            <div className="tg-modal-header" style={{ paddingBottom: '12px', borderBottom: 'none' }}>
+              <h3 style={{ fontSize: '1rem' }}>Bot Token ရယူနည်း</h3>
+              <button
+                className="btn btn-ghost"
+                style={{ width: 'auto', padding: '4px 10px', fontSize: '0.8rem', minHeight: '30px', background: 'var(--bg-card)' }}
+                onClick={() => { setShowTokenHelpModal(false); setTokenHelpTab(1); }}
+              >
+                ✕ Close
+              </button>
+            </div>
+            
+            {/* TABS */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 16px' }}>
+              {['၁. ရှာဖွေပါ', '၂. ဖန်တီးပါ', '၃. Token ယူပါ'].map((title, idx) => {
+                const step = idx + 1;
+                const isActive = tokenHelpTab === step;
+                return (
+                  <button
+                    key={step}
+                    onClick={() => setTokenHelpTab(step)}
+                    style={{
+                      flex: 1,
+                      background: 'none',
+                      border: 'none',
+                      padding: '10px 0',
+                      fontSize: '0.82rem',
+                      fontWeight: isActive ? 600 : 400,
+                      color: isActive ? 'var(--blue)' : 'var(--text-muted)',
+                      borderBottom: isActive ? '2px solid var(--blue)' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {title}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="tg-modal-body" style={{ padding: '20px', fontSize: '0.85rem', lineHeight: 1.6, minHeight: '260px' }}>
+              {tokenHelpTab === 1 && (
+                <div style={{ textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+                  <div style={{ width: '100%', height: '140px', background: 'var(--bg-card)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '3rem' }}>🔍</span>
+                  </div>
+                  <p>
+                    Telegram App တွင် <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue)', fontWeight: 600 }}>@BotFather</a> ဟု ရှာဖွေပါ။ ထို့နောက် <strong>Start</strong> ခလုတ်ကို နှိပ်ပါ။
+                  </p>
+                </div>
+              )}
+              {tokenHelpTab === 2 && (
+                <div style={{ textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+                  <div style={{ width: '100%', height: '140px', background: 'var(--bg-card)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '3rem' }}>🤖</span>
+                  </div>
+                  <p>
+                    စာတိုပေးပို့ရန်နေရာတွင် <code>/newbot</code> ဟု ရေးသားပေးပို့ပါ။ ထို့နောက် သင့် Bot အတွက် <strong>နာမည် (Display Name)</strong> နှင့် <strong>Username</strong> (ဥပမာ- <code>my_shop_bot</code>) သတ်မှတ်ပေးပါ။
+                  </p>
+                </div>
+              )}
+              {tokenHelpTab === 3 && (
+                <div style={{ textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+                  <div style={{ width: '100%', height: '140px', background: 'var(--bg-card)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '3rem' }}>🔑</span>
+                  </div>
+                  <p>
+                    BotFather မှ <strong>HTTP API Token</strong> (ဥပမာ- <code>123456789:AA...</code>) တစ်ခု ပေးပို့လာပါမည်။ ၎င်းကို ကူးယူ (Copy) ပြီး ယခင်စာမျက်နှာတွင် ပြန်ထည့်ပေးပါ။
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ padding: '0 20px 20px', display: 'flex', justifyContent: 'space-between' }}>
+              {tokenHelpTab > 1 ? (
+                <button className="btn btn-ghost" style={{ width: '80px', minHeight: '36px', fontSize: '0.8rem' }} onClick={() => setTokenHelpTab(prev => prev - 1)}>Back</button>
+              ) : <div style={{ width: '80px' }} />}
+              
+              {tokenHelpTab < 3 ? (
+                <button className="btn btn-primary" style={{ width: '80px', minHeight: '36px', fontSize: '0.8rem' }} onClick={() => setTokenHelpTab(prev => prev + 1)}>Next</button>
+              ) : (
+                <button className="btn btn-primary" style={{ width: '100px', minHeight: '36px', fontSize: '0.8rem' }} onClick={() => { setShowTokenHelpModal(false); setTokenHelpTab(1); }}>Got it!</button>
+              )}
+            </div>
           </div>
         </div>
       )}
