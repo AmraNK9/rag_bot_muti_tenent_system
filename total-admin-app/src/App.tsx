@@ -43,9 +43,7 @@ interface Analytics {
     query_count: number;
     api_cost: number;
     active_duration_seconds: number;
-    chatbot?: {
-      name: string;
-    };
+    chatbot?: { name: string };
   }>;
 }
 
@@ -58,14 +56,8 @@ interface PlanRequest {
   status: 'pending' | 'approved' | 'rejected';
   price: number;
   created_at: string;
-  business?: {
-    id: number;
-    name: string;
-  };
-  reseller?: {
-    id: number;
-    name: string;
-  };
+  business?: { id: number; name: string };
+  reseller?: { id: number; name: string };
 }
 
 interface SystemSetting {
@@ -84,63 +76,65 @@ interface Plan {
   is_active: boolean;
 }
 
+// Resolve screenshot URL — use Vite proxy path (/uploads/…) when relative
+const getImgSrc = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return url.startsWith('/') ? url : `/${url}`;
+};
+
+// Safe onError: fallback to localhost:3000 direct, then give up
+const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>, url: string) => {
+  const img = e.currentTarget;
+  if (img.dataset.fallbackTried) return;
+  img.dataset.fallbackTried = '1';
+  const base = url.startsWith('/') ? `http://localhost:3000${url}` : `http://localhost:3000/${url}`;
+  img.src = base;
+};
+
 export default function App() {
   const [secret, setSecret] = useState<string | null>(localStorage.getItem('total_admin_secret'));
   const [tempSecret, setTempSecret] = useState('');
   const [authError, setAuthError] = useState('');
 
-  // Dashboard Tabs: 'analytics' | 'resellers' | 'requests' | 'topups' | 'settings'
   const [activeTab, setActiveTab] = useState<'analytics' | 'resellers' | 'requests' | 'topups' | 'settings'>('analytics');
 
-  // Analytics states
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
-  // Resellers states
   const [resellers, setResellers] = useState<Reseller[]>([]);
   const [loadingResellers, setLoadingResellers] = useState(false);
   const [editingReseller, setEditingReseller] = useState<Reseller | null>(null);
-  
-  // Edit Reseller Form states
+
   const [reliabilityScore, setReliabilityScore] = useState(100);
   const [canCollectPayments, setCanCollectPayments] = useState(true);
   const [commissionRate, setCommissionRate] = useState(10);
-  
-  // Custom Overrides Form states
   const [customReferrerFirstRate, setCustomReferrerFirstRate] = useState<string>('');
   const [customReferrerRecurringRate, setCustomReferrerRecurringRate] = useState<string>('');
   const [customApproverRate, setCustomApproverRate] = useState<string>('');
   const [trustScoreFactor, setTrustScoreFactor] = useState<number>(1.00);
   const [updatingReseller, setUpdatingReseller] = useState(false);
 
-  // Requests states
   const [requests, setRequests] = useState<PlanRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [zoomImgUrl, setZoomImgUrl] = useState<string | null>(null);
 
-  // Global settings states
   const [settings, setSettings] = useState<SystemSetting | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
-  
-  // Settings Form values
   const [referrerFirstMonthRate, setReferrerFirstMonthRate] = useState(30.00);
   const [referrerRecurringRate, setReferrerRecurringRate] = useState(10.00);
   const [approverFeeRate, setApproverFeeRate] = useState(10.00);
 
-  // Plans settings states
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-  
-  // Edit Plan Form values
   const [planPrice, setPlanPrice] = useState(0);
   const [planQueryLimit, setPlanQueryLimit] = useState(0);
   const [planDurationDays, setPlanDurationDays] = useState(30);
   const [planIsActive, setPlanIsActive] = useState(true);
   const [updatingPlan, setUpdatingPlan] = useState(false);
 
-  // Reseller Top-ups states
   const [topups, setTopups] = useState<any[]>([]);
   const [loadingTopUps, setLoadingTopUps] = useState(false);
 
@@ -161,21 +155,15 @@ export default function App() {
       } else if (activeTab === 'resellers') {
         setLoadingResellers(true);
         const res = await getResellers();
-        if (res.success) {
-          setResellers(res.resellers || []);
-        }
+        if (res.success) setResellers(res.resellers || []);
       } else if (activeTab === 'requests') {
         setLoadingRequests(true);
         const res = await getRequests();
-        if (res.success) {
-          setRequests(res.requests || []);
-        }
+        if (res.success) setRequests(res.requests || []);
       } else if (activeTab === 'topups') {
         setLoadingTopUps(true);
         const res = await getResellerTopUps();
-        if (res.success) {
-          setTopups(res.topups || []);
-        }
+        if (res.success) setTopups(res.topups || []);
       } else if (activeTab === 'settings') {
         setLoadingSettings(true);
         setLoadingPlans(true);
@@ -187,9 +175,7 @@ export default function App() {
           setApproverFeeRate(Number(settingsRes.settings.approver_fee_rate));
         }
         const plansRes = await getPlans();
-        if (plansRes.success) {
-          setPlans(plansRes.plans || []);
-        }
+        if (plansRes.success) setPlans(plansRes.plans || []);
       }
     } catch (err: any) {
       if (err.response?.status === 403) {
@@ -210,9 +196,7 @@ export default function App() {
   }, [secret, activeTab]);
 
   useEffect(() => {
-    if (secret) {
-      fetchTabDetails();
-    }
+    if (secret) fetchTabDetails();
   }, [secret, activeTab, fetchTabDetails]);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -259,7 +243,6 @@ export default function App() {
       if (res.success) {
         alert('Reseller configurations updated successfully!');
         setEditingReseller(null);
-        // reload resellers
         const reload = await getResellers();
         if (reload.success) setResellers(reload.resellers || []);
       }
@@ -289,7 +272,6 @@ export default function App() {
       const res = await approveResellerTopUp(id);
       if (res.success) {
         alert('Reseller top-up approved and wallet credited successfully!');
-        // reload topups
         const reload = await getResellerTopUps();
         if (reload.success) setTopups(reload.topups || []);
       }
@@ -304,7 +286,6 @@ export default function App() {
       const res = await rejectResellerTopUp(id);
       if (res.success) {
         alert('Reseller top-up request rejected.');
-        // reload topups
         const reload = await getResellerTopUps();
         if (reload.success) setTopups(reload.topups || []);
       }
@@ -355,7 +336,6 @@ export default function App() {
       if (res.success) {
         alert('Plan configuration updated successfully!');
         setEditingPlan(null);
-        // reload plans
         const reload = await getPlans();
         if (reload.success) setPlans(reload.plans || []);
       }
@@ -370,22 +350,29 @@ export default function App() {
   if (!secret) {
     return (
       <div className="auth-wrapper">
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div style={{ fontSize: '3rem' }}>🛡️</div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '8px 0 2px' }}>Super Admin Dashboard</h1>
-          <p style={{ fontSize: '0.82rem' }}>Platform control console & usage monitoring</p>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{
+            width: '72px', height: '72px', borderRadius: '22px',
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(109,40,217,0.15) 100%)',
+            border: '1px solid rgba(139,92,246,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '2rem', margin: '0 auto 16px'
+          }}>🛡️</div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.3px', marginBottom: '6px' }}>
+            Super Admin Console
+          </h1>
+          <p style={{ fontSize: '0.82rem' }}>Platform control & usage monitoring</p>
         </div>
 
-        <div className="card">
+        <div className="card" style={{ maxWidth: '380px', width: '100%', margin: '0 auto' }}>
           {authError && (
-            <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--danger)', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '16px' }}>
+            <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               ⚠️ {authError}
             </div>
           )}
-
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label>Admin Secret Authorization Key</label>
+              <label>Admin Secret Key</label>
               <input
                 className="form-control"
                 type="password"
@@ -410,88 +397,87 @@ export default function App() {
       {/* HEADER */}
       <div className="header-bar">
         <div>
-          <h1>🛡️ Super Admin Control Center</h1>
-          <p>Global Analytics, Resellers and Payments Override Queue</p>
+          <h1>🛡️ Super Admin</h1>
+          <p style={{ marginTop: '2px' }}>Global analytics, resellers & payments</p>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Exit Console</button>
+        <button className="btn btn-ghost btn-sm" onClick={handleLogout}>
+          Exit
+        </button>
       </div>
 
       {/* TABS */}
       <div className="tabs-header">
-        <button className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
-          📊 Usage Analytics
-        </button>
-        <button className={`tab-btn ${activeTab === 'resellers' ? 'active' : ''}`} onClick={() => setActiveTab('resellers')}>
-          🤝 Reseller Networks
-        </button>
-        <button className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => setActiveTab('requests')}>
-          🗂️ Global Requests
-        </button>
-        <button className={`tab-btn ${activeTab === 'topups' ? 'active' : ''}`} onClick={() => setActiveTab('topups')}>
-          💼 Reseller Top-ups
-        </button>
-        <button className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
-          ⚙️ Settings & Plans
-        </button>
+        {([
+          { key: 'analytics', label: '📊 Analytics' },
+          { key: 'resellers', label: '🤝 Resellers' },
+          { key: 'requests', label: '🗂️ Requests' },
+          { key: 'topups', label: '💼 Top-ups' },
+          { key: 'settings', label: '⚙️ Settings' },
+        ] as const).map(({ key, label }) => (
+          <button
+            key={key}
+            className={`tab-btn ${activeTab === key ? 'active' : ''}`}
+            onClick={() => setActiveTab(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* TAB 1: ANALYTICS */}
       {activeTab === 'analytics' && (
         <>
           {loadingAnalytics ? (
-            <div style={{ textAlign: 'center', padding: '45px' }}><div className="spinner" /> Loading platform analytics...</div>
+            <div className="loading-state"><div className="spinner" /> Loading analytics...</div>
           ) : (
             <>
               <div className="metrics-grid">
                 <div className="metric-card">
                   <h3>Active Chatbots</h3>
                   <div className="metric-card-val">{analytics?.activeChatbots || '0'}</div>
-                  <p style={{ fontSize: '0.72rem', marginTop: '4px' }}>Total chatbots registered</p>
+                  <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Total registered</p>
                 </div>
-
                 <div className="metric-card">
-                  <h3>Total Queries Serviced</h3>
+                  <h3>Total Queries</h3>
                   <div className="metric-card-val">{analytics?.totalQueries || '0'}</div>
-                  <p style={{ fontSize: '0.72rem', marginTop: '4px' }}>Global messages processed</p>
+                  <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Messages processed</p>
                 </div>
-
                 <div className="metric-card">
-                  <h3>Cumulative LLM Costs</h3>
-                  <div className="metric-card-val" style={{ color: 'var(--danger)' }}>
-                    ${analytics?.cumulativeApiCost ? Number(analytics.cumulativeApiCost).toFixed(5) : '0.00000'}
+                  <h3>LLM Costs</h3>
+                  <div className="metric-card-val" style={{ color: 'var(--danger)', fontSize: '1.3rem' }}>
+                    ${analytics?.cumulativeApiCost ? Number(analytics.cumulativeApiCost).toFixed(4) : '0.00'}
                   </div>
-                  <p style={{ fontSize: '0.72rem', marginTop: '4px' }}>DeepSeek & Voyager API costs</p>
+                  <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Cumulative API spend</p>
                 </div>
               </div>
 
               <div className="card">
-                <h2>📈 Daily Chatbot Activity Logs</h2>
+                <h2>📈 Daily Activity Logs</h2>
                 {analytics?.activityLogs.length === 0 ? (
-                  <p style={{ textAlign: 'center', padding: '20px' }}>No activity records flushed to DB yet.</p>
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📭</div>
+                    <p>No activity records yet.</p>
+                  </div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                  <div className="table-scroll">
+                    <table className="data-table">
                       <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-muted)' }}>
-                          <th style={{ padding: '10px' }}>Date</th>
-                          <th style={{ padding: '10px' }}>Chatbot ID / Name</th>
-                          <th style={{ padding: '10px' }}>Queries Count</th>
-                          <th style={{ padding: '10px' }}>Estimated Cost</th>
-                          <th style={{ padding: '10px' }}>Active Duration</th>
+                        <tr>
+                          <th>Date</th>
+                          <th>Chatbot</th>
+                          <th>Queries</th>
+                          <th>API Cost</th>
+                          <th>Duration</th>
                         </tr>
                       </thead>
                       <tbody>
                         {analytics?.activityLogs.map((log) => (
-                          <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                            <td style={{ padding: '10px' }}>{log.activity_date}</td>
-                            <td style={{ padding: '10px' }}>
-                              #{log.chatbot_id} {log.chatbot?.name ? `(${log.chatbot.name})` : ''}
-                            </td>
-                            <td style={{ padding: '10px', fontWeight: 'bold' }}>{log.query_count}</td>
-                            <td style={{ padding: '10px', color: 'var(--danger)' }}>
-                              ${Number(log.api_cost).toFixed(5)}
-                            </td>
-                            <td style={{ padding: '10px' }}>{Math.round(log.active_duration_seconds / 60)} mins</td>
+                          <tr key={log.id}>
+                            <td>{log.activity_date}</td>
+                            <td>#{log.chatbot_id} {log.chatbot?.name ? `(${log.chatbot.name})` : ''}</td>
+                            <td><strong>{log.query_count}</strong></td>
+                            <td style={{ color: 'var(--danger)' }}>${Number(log.api_cost).toFixed(5)}</td>
+                            <td>{Math.round(log.active_duration_seconds / 60)} min</td>
                           </tr>
                         ))}
                       </tbody>
@@ -508,41 +494,46 @@ export default function App() {
       {activeTab === 'resellers' && (
         <>
           {loadingResellers ? (
-            <div style={{ textAlign: 'center', padding: '45px' }}><div className="spinner" /> Loading resellers database...</div>
+            <div className="loading-state"><div className="spinner" /> Loading resellers...</div>
           ) : resellers.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '30px' }}>No reseller accounts registered.</div>
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-state-icon">🤝</div>
+                <p>No reseller accounts registered.</p>
+              </div>
+            </div>
           ) : (
             <div className="resellers-list">
               {resellers.map((reseller) => (
                 <div key={reseller.id} className="reseller-item-card">
                   <div className="reseller-item-header">
-                    <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>{reseller.name}</span>
-                    <span className="badge badge-purple">Code: {reseller.id}</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{reseller.name}</span>
+                    <span className="badge badge-purple">ID: {reseller.id}</span>
                   </div>
 
-                  <p style={{ fontSize: '0.8rem' }}>Email: <strong style={{ color: 'var(--text-main)' }}>{reseller.email}</strong></p>
-                  <p style={{ fontSize: '0.8rem' }}>KPay: <strong style={{ color: 'var(--text-main)' }}>{reseller.kpay_no} ({reseller.kpay_name})</strong></p>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginTop: '6px' }}>
-                    <span>Rate: <strong>{reseller.commission_percentage}%</strong></span>
-                    <span>Collected: <strong>{reseller.total_collected.toLocaleString()} MMK</strong></span>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    <div>{reseller.email}</div>
+                    <div style={{ marginTop: '2px' }}>KPay: {reseller.kpay_no} · {reseller.kpay_name}</div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                    <span>Wallet Balance: <strong>{reseller.balance.toLocaleString()} MMK</strong></span>
-                    <span>Trust Score: <strong>{reseller.reliability_score}/100</strong></span>
+                  <div className="reseller-meta-row">
+                    <span>Commission <strong style={{ color: 'var(--text-main)' }}>{reseller.commission_percentage}%</strong></span>
+                    <span>Collected <strong style={{ color: 'var(--success)' }}>{reseller.total_collected.toLocaleString()} MMK</strong></span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                    <span>
-                      {reseller.can_collect_payments ? (
-                        <span className="badge badge-green">Collector Active ✅</span>
-                      ) : (
-                        <span className="badge badge-red">Collector Disabled ❌</span>
-                      )}
-                    </span>
+                  <div className="reseller-meta-row">
+                    <span>Balance <strong style={{ color: 'var(--text-main)' }}>{reseller.balance.toLocaleString()} MMK</strong></span>
+                    <span>Trust <strong>{reseller.reliability_score}/100</strong></span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {reseller.can_collect_payments ? (
+                      <span className="badge badge-green">Collector ✓</span>
+                    ) : (
+                      <span className="badge badge-red">Collector Off</span>
+                    )}
                     <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditReseller(reseller)}>
-                      ✏️ Edit Config
+                      ✏️ Edit
                     </button>
                   </div>
                 </div>
@@ -552,41 +543,42 @@ export default function App() {
         </>
       )}
 
-      {/* TAB 3: Direct REQUESTS OVERRIDE QUEUE */}
+      {/* TAB 3: REQUESTS */}
       {activeTab === 'requests' && (
         <>
           {loadingRequests ? (
-            <div style={{ textAlign: 'center', padding: '45px' }}><div className="spinner" /> Loading platforms upgrade queries...</div>
+            <div className="loading-state"><div className="spinner" /> Loading requests...</div>
           ) : requests.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '30px' }}>No active subscription purchase requests.</div>
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-state-icon">🗂️</div>
+                <p>No active subscription requests.</p>
+              </div>
+            </div>
           ) : (
             <div className="requests-grid">
               {requests.map((req) => (
                 <div key={req.id} className="request-card">
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                      <span style={{ fontWeight: 'bold' }}>{req.business?.name || `Business #${req.business_id}`}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{req.business?.name || `Business #${req.business_id}`}</span>
                       <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-yellow'}`}>
                         {req.status.toUpperCase()}
                       </span>
                     </div>
-
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                      <div>Plan: <strong style={{ color: 'var(--text-main)' }}>{req.plan_name.toUpperCase()}</strong> ({req.price.toLocaleString()} MMK)</div>
-                      <div>Routed To: <strong>{req.reseller?.name || 'Central Office'}</strong> (ID: {req.reseller_id || 'Fallback'})</div>
-                      <div>Date: {new Date(req.created_at).toLocaleDateString()}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <div>Plan: <strong style={{ color: 'var(--text-main)' }}>{req.plan_name.toUpperCase()}</strong> · {req.price.toLocaleString()} MMK</div>
+                      <div>Via: <strong>{req.reseller?.name || 'Central Office'}</strong></div>
+                      <div>{new Date(req.created_at).toLocaleDateString()}</div>
                     </div>
                   </div>
 
                   <img
                     className="request-screenshot"
-                    src={req.screenshot_url}
-                    alt="Receipt preview"
+                    src={getImgSrc(req.screenshot_url)}
+                    alt="Receipt"
                     onClick={() => setZoomImgUrl(req.screenshot_url)}
-                    onError={(e) => {
-                      e.currentTarget.src = `http://localhost:3000${req.screenshot_url}`;
-                    }}
-                    style={{ height: '140px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', margin: '8px 0' }}
+                    onError={(e) => handleImgError(e, req.screenshot_url)}
                   />
 
                   {req.status === 'pending' && (
@@ -601,47 +593,47 @@ export default function App() {
         </>
       )}
 
-      {/* TAB 4: RESELLER TOP-UPS */}
+      {/* TAB 4: TOP-UPS */}
       {activeTab === 'topups' && (
         <>
           {loadingTopUps ? (
-            <div style={{ textAlign: 'center', padding: '45px' }}><div className="spinner" /> Loading reseller top-ups...</div>
+            <div className="loading-state"><div className="spinner" /> Loading top-ups...</div>
           ) : topups.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '30px' }}>No reseller top-up requests found.</div>
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-state-icon">💼</div>
+                <p>No reseller top-up requests found.</p>
+              </div>
+            </div>
           ) : (
             <div className="requests-grid">
               {topups.map((t) => (
                 <div key={t.id} className="request-card">
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                      <span style={{ fontWeight: 'bold' }}>{t.reseller?.name || `Reseller #${t.reseller_id}`}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{t.reseller?.name || `Reseller #${t.reseller_id}`}</span>
                       <span className={`badge ${t.status === 'approved' ? 'badge-green' : t.status === 'rejected' ? 'badge-red' : 'badge-yellow'}`}>
                         {t.status.toUpperCase()}
                       </span>
                     </div>
-
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                      <div>Cash Paid: <strong style={{ color: 'var(--text-main)' }}>{Number(t.amount_paid).toLocaleString()} MMK</strong></div>
-                      <div>Credit Value: <strong style={{ color: 'var(--success)' }}>+{Number(t.credit_amount).toLocaleString()} MMK</strong></div>
-                      <div>Commission Rate: <strong>{t.reseller?.commission_percentage || '30'}%</strong></div>
-                      <div>Type: <strong>{t.reseller?.can_collect_payments ? 'Postpaid' : 'Prepaid'}</strong></div>
-                      <div>Date: {new Date(t.created_at).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <div>Paid: <strong style={{ color: 'var(--text-main)' }}>{Number(t.amount_paid).toLocaleString()} MMK</strong></div>
+                      <div>Credit: <strong style={{ color: 'var(--success)' }}>+{Number(t.credit_amount).toLocaleString()} MMK</strong></div>
+                      <div>Commission: {t.reseller?.commission_percentage || '30'}% · {t.reseller?.can_collect_payments ? 'Postpaid' : 'Prepaid'}</div>
+                      <div>{new Date(t.created_at).toLocaleString()}</div>
                     </div>
                   </div>
 
                   <img
                     className="request-screenshot"
-                    src={t.screenshot_url}
-                    alt="Receipt preview"
+                    src={getImgSrc(t.screenshot_url)}
+                    alt="Receipt"
                     onClick={() => setZoomImgUrl(t.screenshot_url)}
-                    onError={(e) => {
-                      e.currentTarget.src = `http://localhost:3000${t.screenshot_url}`;
-                    }}
-                    style={{ height: '140px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', margin: '8px 0' }}
+                    onError={(e) => handleImgError(e, t.screenshot_url)}
                   />
 
                   {t.status === 'pending' && (
-                    <div className="request-actions" style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => handleRejectTopUp(t.id)}>Reject</button>
                       <button className="btn btn-success btn-sm" style={{ flex: 1 }} onClick={() => handleApproveTopUp(t.id)}>Approve</button>
                     </div>
@@ -653,108 +645,82 @@ export default function App() {
         </>
       )}
 
-      {/* TAB 5: SYSTEM SETTINGS & PLANS */}
+      {/* TAB 5: SETTINGS & PLANS */}
       {activeTab === 'settings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Global Commission Settings Card */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Global Commission Settings */}
           <div className="card">
-            <h2>⚙️ Global Commission Settings</h2>
+            <h2>⚙️ Commission Settings</h2>
             {settings && (
-              <p style={{ fontSize: '0.8rem', color: 'var(--success)', marginBottom: '8px' }}>
-                ✓ System defaults synced (ID: {settings.id})
+              <p style={{ color: 'var(--success)', fontSize: '0.78rem', marginBottom: '12px' }}>
+                ✓ System defaults synced (Config ID: {settings.id})
               </p>
             )}
-            <p style={{ marginBottom: '16px' }}>Set default commission rates used across the platform when no reseller overrides are active.</p>
+            <p style={{ marginBottom: '16px' }}>Default commission rates across the platform when no reseller overrides are active.</p>
             {loadingSettings ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}><div className="spinner" /> Loading settings...</div>
+              <div className="loading-state"><div className="spinner" /> Loading...</div>
             ) : (
-              <form onSubmit={handleUpdateSettingsSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                  <div className="form-group">
-                    <label>Referrer First Month Rate (%)</label>
-                    <input
-                      className="form-control"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      required
-                      value={referrerFirstMonthRate}
-                      onChange={(e) => setReferrerFirstMonthRate(Number(e.target.value))}
-                    />
+              <form onSubmit={handleUpdateSettingsSubmit}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Referrer First Month (%)</label>
+                    <input className="form-control" type="number" min="0" max="100" step="0.01" required
+                      value={referrerFirstMonthRate} onChange={(e) => setReferrerFirstMonthRate(Number(e.target.value))} />
                   </div>
-                  <div className="form-group">
-                    <label>Referrer Renewal Rate (%)</label>
-                    <input
-                      className="form-control"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      required
-                      value={referrerRecurringRate}
-                      onChange={(e) => setReferrerRecurringRate(Number(e.target.value))}
-                    />
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Referrer Renewal (%)</label>
+                    <input className="form-control" type="number" min="0" max="100" step="0.01" required
+                      value={referrerRecurringRate} onChange={(e) => setReferrerRecurringRate(Number(e.target.value))} />
                   </div>
-                  <div className="form-group">
-                    <label>Approver Fee Rate (%)</label>
-                    <input
-                      className="form-control"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      required
-                      value={approverFeeRate}
-                      onChange={(e) => setApproverFeeRate(Number(e.target.value))}
-                    />
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Approver Fee (%)</label>
+                    <input className="form-control" type="number" min="0" max="100" step="0.01" required
+                      value={approverFeeRate} onChange={(e) => setApproverFeeRate(Number(e.target.value))} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button className="btn btn-primary" type="submit" disabled={updatingSettings}>
-                    {updatingSettings ? 'Saving Settings...' : 'Save Commission Settings'}
+                  <button className="btn btn-primary" style={{ width: 'auto' }} type="submit" disabled={updatingSettings}>
+                    {updatingSettings ? 'Saving...' : 'Save Settings'}
                   </button>
                 </div>
               </form>
             )}
           </div>
 
-          {/* Pricing Plans Card */}
+          {/* Pricing Plans */}
           <div className="card">
-            <h2>Subscription Plans Pricing</h2>
-            <p style={{ marginBottom: '16px' }}>Configure standard subscription plan tiers and limits.</p>
+            <h2>Subscription Plans</h2>
+            <p style={{ marginBottom: '16px' }}>Configure subscription plan tiers and limits.</p>
             {loadingPlans ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}><div className="spinner" /> Loading plans...</div>
+              <div className="loading-state"><div className="spinner" /> Loading plans...</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <div className="table-scroll">
+                <table className="data-table">
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '12px' }}>Plan Name</th>
-                      <th style={{ padding: '12px' }}>Price (MMK)</th>
-                      <th style={{ padding: '12px' }}>Query Limit</th>
-                      <th style={{ padding: '12px' }}>Duration</th>
-                      <th style={{ padding: '12px' }}>Status</th>
-                      <th style={{ padding: '12px', textAlign: 'right' }}>Actions</th>
+                    <tr>
+                      <th>Plan</th>
+                      <th>Price (MMK)</th>
+                      <th>Queries</th>
+                      <th>Duration</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {plans.map((plan) => (
-                      <tr key={plan.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                        <td style={{ padding: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>{plan.name}</td>
-                        <td style={{ padding: '12px' }}>{plan.price.toLocaleString()} MMK</td>
-                        <td style={{ padding: '12px' }}>{plan.query_limit.toLocaleString()} msgs</td>
-                        <td style={{ padding: '12px' }}>{plan.duration_days} Days</td>
-                        <td style={{ padding: '12px' }}>
-                          {plan.is_active ? (
-                            <span className="badge badge-green">Active</span>
-                          ) : (
-                            <span className="badge badge-red">Inactive</span>
-                          )}
+                      <tr key={plan.id}>
+                        <td><strong style={{ textTransform: 'uppercase' }}>{plan.name}</strong></td>
+                        <td>{plan.price.toLocaleString()}</td>
+                        <td>{plan.query_limit.toLocaleString()}</td>
+                        <td>{plan.duration_days}d</td>
+                        <td>
+                          {plan.is_active
+                            ? <span className="badge badge-green">Active</span>
+                            : <span className="badge badge-red">Inactive</span>}
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                        <td style={{ textAlign: 'right' }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditPlan(plan)}>
-                            ✏️ Edit Plan
+                            Edit
                           </button>
                         </td>
                       </tr>
@@ -771,64 +737,30 @@ export default function App() {
       {editingPlan && (
         <div className="modal-overlay" onClick={() => setEditingPlan(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setEditingPlan(null)}>&times;</button>
-            <h3>🔧 Edit Subscription Plan: <span style={{ textTransform: 'uppercase' }}>{editingPlan.name}</span></h3>
-            <p style={{ marginBottom: '16px', fontSize: '0.8rem' }}>Modify price, query limits, and status parameters.</p>
-            
+            <button className="modal-close" onClick={() => setEditingPlan(null)}>×</button>
+            <h3 style={{ marginBottom: '4px' }}>Edit Plan: <span style={{ textTransform: 'uppercase', color: 'var(--primary)' }}>{editingPlan.name}</span></h3>
+            <p style={{ marginBottom: '20px', fontSize: '0.8rem' }}>Modify price, query limits, and status.</p>
             <form onSubmit={handleUpdatePlanSubmit}>
               <div className="form-group">
-                <label>Plan Price (MMK)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  required
-                  value={planPrice}
-                  onChange={(e) => setPlanPrice(Number(e.target.value))}
-                />
+                <label>Price (MMK)</label>
+                <input className="form-control" type="number" min="0" required value={planPrice} onChange={(e) => setPlanPrice(Number(e.target.value))} />
               </div>
-
               <div className="form-group">
                 <label>Query Limit (Messages)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  required
-                  value={planQueryLimit}
-                  onChange={(e) => setPlanQueryLimit(Number(e.target.value))}
-                />
+                <input className="form-control" type="number" min="0" required value={planQueryLimit} onChange={(e) => setPlanQueryLimit(Number(e.target.value))} />
               </div>
-
               <div className="form-group">
                 <label>Duration (Days)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="1"
-                  required
-                  value={planDurationDays}
-                  onChange={(e) => setPlanDurationDays(Number(e.target.value))}
-                />
+                <input className="form-control" type="number" min="1" required value={planDurationDays} onChange={(e) => setPlanDurationDays(Number(e.target.value))} />
               </div>
-
-              <div className="form-group" style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '18px 0' }}>
-                <input
-                  type="checkbox"
-                  id="plan-active"
-                  checked={planIsActive}
-                  onChange={(e) => setPlanIsActive(e.target.checked)}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                <label htmlFor="plan-active" style={{ margin: 0, cursor: 'pointer', textTransform: 'none' }}>
-                  Enable Plan Tier (Available for purchase)
-                </label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '16px 0' }}>
+                <input type="checkbox" id="plan-active" checked={planIsActive} onChange={(e) => setPlanIsActive(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                <label htmlFor="plan-active" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Enable Plan (Available for purchase)</label>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                <button className="btn btn-ghost" type="button" onClick={() => setEditingPlan(null)}>Cancel</button>
-                <button className="btn btn-primary" type="submit" disabled={updatingPlan}>
-                  {updatingPlan ? 'Updating...' : 'Save Plan'}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+                <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={() => setEditingPlan(null)}>Cancel</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} type="submit" disabled={updatingPlan}>
+                  {updatingPlan ? 'Saving...' : 'Save Plan'}
                 </button>
               </div>
             </form>
@@ -840,110 +772,44 @@ export default function App() {
       {editingReseller && (
         <div className="modal-overlay" onClick={() => setEditingReseller(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setEditingReseller(null)}>&times;</button>
-            <h3>🔧 Edit Reseller Network Node</h3>
-            <p style={{ marginBottom: '16px', fontSize: '0.8rem' }}>Update properties for reseller <strong>{editingReseller.name}</strong></p>
-            
+            <button className="modal-close" onClick={() => setEditingReseller(null)}>×</button>
+            <h3 style={{ marginBottom: '4px' }}>Edit Reseller</h3>
+            <p style={{ marginBottom: '20px', fontSize: '0.8rem' }}>
+              Updating: <strong>{editingReseller.name}</strong>
+            </p>
             <form onSubmit={handleUpdateResellerSubmit}>
               <div className="form-group">
-                <label>Reliability Trust Rating (0 - 100)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  max="100"
-                  required
-                  value={reliabilityScore}
-                  onChange={(e) => setReliabilityScore(Number(e.target.value))}
-                />
+                <label>Trust Rating (0–100)</label>
+                <input className="form-control" type="number" min="0" max="100" required value={reliabilityScore} onChange={(e) => setReliabilityScore(Number(e.target.value))} />
               </div>
-
               <div className="form-group">
-                <label>Commission Percentage (%)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  max="100"
-                  required
-                  value={commissionRate}
-                  onChange={(e) => setCommissionRate(Number(e.target.value))}
-                />
+                <label>Commission (%)</label>
+                <input className="form-control" type="number" min="0" max="100" required value={commissionRate} onChange={(e) => setCommissionRate(Number(e.target.value))} />
               </div>
-
               <div className="form-group">
-                <label>Custom Referrer First Rate Override (%)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder="Leave empty to use system default"
-                  value={customReferrerFirstRate}
-                  onChange={(e) => setCustomReferrerFirstRate(e.target.value)}
-                />
+                <label>Custom Referrer First Rate (%) — optional</label>
+                <input className="form-control" type="number" min="0" max="100" step="0.01" placeholder="Leave empty to use system default" value={customReferrerFirstRate} onChange={(e) => setCustomReferrerFirstRate(e.target.value)} />
               </div>
-
               <div className="form-group">
-                <label>Custom Referrer Renewal Rate Override (%)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder="Leave empty to use system default"
-                  value={customReferrerRecurringRate}
-                  onChange={(e) => setCustomReferrerRecurringRate(e.target.value)}
-                />
+                <label>Custom Referrer Renewal Rate (%) — optional</label>
+                <input className="form-control" type="number" min="0" max="100" step="0.01" placeholder="Leave empty to use system default" value={customReferrerRecurringRate} onChange={(e) => setCustomReferrerRecurringRate(e.target.value)} />
               </div>
-
               <div className="form-group">
-                <label>Custom Approver Fee Rate Override (%)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder="Leave empty to use system default"
-                  value={customApproverRate}
-                  onChange={(e) => setCustomApproverRate(e.target.value)}
-                />
+                <label>Custom Approver Fee Rate (%) — optional</label>
+                <input className="form-control" type="number" min="0" max="100" step="0.01" placeholder="Leave empty to use system default" value={customApproverRate} onChange={(e) => setCustomApproverRate(e.target.value)} />
               </div>
-
               <div className="form-group">
-                <label>Trust Score Factor (Multiplier, e.g. 1.00)</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0.1"
-                  max="10.0"
-                  step="0.01"
-                  required
-                  value={trustScoreFactor}
-                  onChange={(e) => setTrustScoreFactor(Number(e.target.value))}
-                />
+                <label>Trust Score Factor (multiplier)</label>
+                <input className="form-control" type="number" min="0.1" max="10.0" step="0.01" required value={trustScoreFactor} onChange={(e) => setTrustScoreFactor(Number(e.target.value))} />
               </div>
-
-              <div className="form-group" style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '18px 0' }}>
-                <input
-                  type="checkbox"
-                  id="can-collect"
-                  checked={canCollectPayments}
-                  onChange={(e) => setCanCollectPayments(e.target.checked)}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                <label htmlFor="can-collect" style={{ margin: 0, cursor: 'pointer', textTransform: 'none' }}>
-                  Enable KPay Collector (Payment routing eligibility)
-                </label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '16px 0' }}>
+                <input type="checkbox" id="can-collect" checked={canCollectPayments} onChange={(e) => setCanCollectPayments(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                <label htmlFor="can-collect" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Enable KPay Collector (Payment routing)</label>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                <button className="btn btn-ghost" type="button" onClick={() => setEditingReseller(null)}>Cancel</button>
-                <button className="btn btn-primary" type="submit" disabled={updatingReseller}>
-                  {updatingReseller ? 'Updating...' : 'Save Settings'}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+                <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={() => setEditingReseller(null)}>Cancel</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} type="submit" disabled={updatingReseller}>
+                  {updatingReseller ? 'Saving...' : 'Save Settings'}
                 </button>
               </div>
             </form>
@@ -951,19 +817,17 @@ export default function App() {
         </div>
       )}
 
-      {/* ZOOM RECEIPT PREVIEW */}
+      {/* ZOOM RECEIPT */}
       {zoomImgUrl && (
         <div className="modal-overlay" onClick={() => setZoomImgUrl(null)}>
-          <div className="modal-box" style={{ maxWidth: '420px', padding: '16px' }} onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setZoomImgUrl(null)}>&times;</button>
-            <h3 style={{ marginBottom: '16px' }}>Zoomed KPay Screenshot Receipt</h3>
+          <div className="modal-box" style={{ maxWidth: '440px', padding: '16px' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setZoomImgUrl(null)}>×</button>
+            <h3 style={{ marginBottom: '14px' }}>KPay Receipt</h3>
             <img
-              src={zoomImgUrl}
-              alt="Zoomed Receipt"
-              style={{ width: '100%', height: 'auto', borderRadius: '8px' }}
-              onError={(e) => {
-                e.currentTarget.src = `http://localhost:3000${zoomImgUrl}`;
-              }}
+              src={getImgSrc(zoomImgUrl)}
+              alt="Receipt"
+              style={{ width: '100%', height: 'auto', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', display: 'block' }}
+              onError={(e) => handleImgError(e, zoomImgUrl)}
             />
           </div>
         </div>

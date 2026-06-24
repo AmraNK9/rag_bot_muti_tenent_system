@@ -64,6 +64,14 @@ export class SequelizeService {
         console.log('Database synced safely.');
       }
 
+      // Ensure chatbot_id in chatbot_admin is nullable in DB (resolves not-null constraint error on registration)
+      try {
+        await sequelize.query('ALTER TABLE "chatbot_admin" ALTER COLUMN "chatbot_id" DROP NOT NULL;');
+        console.log('Successfully dropped NOT NULL constraint on chatbot_admin.chatbot_id.');
+      } catch (err) {
+        console.warn('Could not drop NOT NULL constraint on chatbot_admin.chatbot_id (may already be nullable):', err instanceof Error ? err.message : err);
+      }
+
       // Seed defaults
       await SequelizeService.seedDefaults();
     } catch (error) {

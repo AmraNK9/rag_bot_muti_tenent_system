@@ -118,9 +118,11 @@ export default function App() {
   const [upgradeMsg, setUpgradeMsg] = useState('');
   const [businessPlanInfo, setBusinessPlanInfo] = useState<any>(null);
 
-  // Onboarding Intro states
-  const [introCompleted, setIntroCompleted] = useState<boolean>(() => localStorage.getItem('chatbot_admin_intro_completed') === 'true');
-  const [introStep, setIntroStep] = useState(1);
+  // Onboarding Landing & Tour states
+  const [landingCompleted, setLandingCompleted] = useState<boolean>(() => localStorage.getItem('chatbot_admin_landing_completed') === 'true');
+  const [landingStep, setLandingStep] = useState(1);
+  const [showInAppTour, setShowInAppTour] = useState(false);
+  const [inAppTourStep, setInAppTourStep] = useState(1);
   const [showCreateBotModal, setShowCreateBotModal] = useState(false);
   const [showTokenHelpModal, setShowTokenHelpModal] = useState(false);
   const [tokenHelpTab, setTokenHelpTab] = useState(1);
@@ -138,7 +140,11 @@ export default function App() {
           setEditBotName(data.chatbot.name);
           setEditBotDesc(data.chatbot.description || '');
           
-          // Intro check is now handled before auth flow.
+          // In-App Tour check
+          const inAppTourDone = localStorage.getItem('chatbot_admin_intro_completed');
+          if (!inAppTourDone) {
+            setShowInAppTour(true);
+          }
         }
       }
     } catch (e) {
@@ -330,7 +336,9 @@ export default function App() {
     localStorage.removeItem('chatbot_admin_profile');
     setToken(null); setProfile(null); setChatbot(null);
     setActiveChatSender(null); setMessages([]);
-    setIntroStep(1);
+    setLandingStep(1);
+    setInAppTourStep(1);
+    setShowInAppTour(false);
     setShowCreateBotModal(false);
     setShowTokenHelpModal(false);
   };
@@ -410,62 +418,89 @@ export default function App() {
     return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   };
 
-  // ─── INTRO VIEW ──────────────────────────────────────────────────────────
-  if (!introCompleted) {
+  // ─── LANDING PAGE VIEW ───────────────────────────────────────────────────
+  if (!landingCompleted) {
     return (
-      <div className="auth-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
-        <div className="auth-card" style={{ maxWidth: '420px', width: '100%', padding: '30px 24px', position: 'relative' }}>
-          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '24px' }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column', minHeight: '100vh',
+        background: 'linear-gradient(180deg, var(--bg-header) 0%, var(--bg-page) 100%)',
+        color: 'var(--text-main)', padding: '0 24px', alignItems: 'center', justifyContent: 'center'
+      }}>
+        <div style={{ width: '100%', maxWidth: '640px', textAlign: 'center' }}>
+          
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '18px',
+            background: 'linear-gradient(135deg, #1f6feb 0%, #0d5bce 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.8rem', margin: '0 auto 40px',
+            boxShadow: '0 8px 24px rgba(31,111,235,0.3)'
+          }}>🤖</div>
+
+          {landingStep === 1 && (
+            <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '24px' }}>🧠</div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.5px' }}>
+                Knowledge-Aware AI Chatbot
+              </h2>
+              <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>
+                သင့်လုပ်ငန်းဆိုင်ရာ အချက်အလက်များကို AI အား လွယ်ကူစွာ သင်ကြားပေးပြီး Customer များ၏ မေးခွန်းများကို တိကျမှန်ကန်စွာ ၂၄ နာရီ အလိုအလျောက် ဖြေကြားပေးနိုင်ပါသည်။
+              </p>
+            </div>
+          )}
+
+          {landingStep === 2 && (
+            <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '24px' }}>✨</div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.5px' }}>
+                လွယ်ကူရိုးရှင်းသော အသုံးပြုမှု
+              </h2>
+              <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>
+                Coding ရေးရန် လုံးဝမလိုပါ။ ၅ မိနစ်အတွင်း သင့်ကိုယ်ပိုင် AI Chatbot တစ်ခုကို လွယ်ကူလျင်မြန်စွာ ဖန်တီးချိတ်ဆက် အသုံးပြုနိုင်ပါသည်။
+              </p>
+            </div>
+          )}
+
+          {landingStep === 3 && (
+            <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '24px' }}>💎</div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.5px' }}>
+                သက်သာသော ဈေးနှုန်း
+              </h2>
+              <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>
+                အသေးစား၊ အလတ်စား လုပ်ငန်းများအတွက် ရည်ရွယ်ပြီး သက်သာသော ဈေးနှုန်းဖြင့် မိမိနှစ်သက်ရာ Plan ကို ရွေးချယ်အသုံးပြုနိုင်ပါသည်။
+              </p>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '48px', marginBottom: '40px' }}>
             {[1, 2, 3].map((step) => (
               <div
                 key={step}
                 style={{
-                  width: '32px',
-                  height: '4px',
-                  borderRadius: '2px',
-                  backgroundColor: introStep === step ? 'var(--blue)' : 'var(--border)',
-                  transition: 'background-color 0.2s',
+                  width: landingStep === step ? '32px' : '10px',
+                  height: '10px',
+                  borderRadius: '5px',
+                  backgroundColor: landingStep === step ? 'var(--blue)' : 'var(--border)',
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer'
                 }}
+                onClick={() => setLandingStep(step)}
               />
             ))}
           </div>
 
-          <div style={{ textAlign: 'center' }}>
-            {introStep === 1 && (
-              <div>
-                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(31, 111, 235, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px', color: 'var(--blue-hover)' }}>📚</div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-main)' }}>၁။ Knowledge Base (အသိပညာ ဖြည့်သွင်းခြင်း)</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>သင်၏ လုပ်ငန်းဆိုင်ရာ အချက်အလက်များ၊ ဝန်ဆောင်မှု ဈေးနှုန်းများနှင့် အမေးများသောမေးခွန်း (FAQ) များကို <strong>"Knowledge"</strong> Tab တွင် ဖြည့်သွင်းပါ။ သင့် Chatbot သည် ဤအချက်အလက်များကို ကိုးကား၍ Customer များအား တိကျမှန်ကန်စွာ အလိုအလျောက် ပြန်လည်ဖြေကြားပေးမည် ဖြစ်ပါသည်။</p>
-              </div>
-            )}
-            {introStep === 2 && (
-              <div>
-                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(210, 153, 34, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px', color: 'var(--yellow)' }}>⚙️</div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-main)' }}>၂။ System Prompt (စရိုက်လက္ခဏာ သတ်မှတ်ခြင်း)</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}><strong>"Prompt"</strong> Tab တွင် Chatbot ၏ စရိုက်၊ စကားပြောပုံစံ (ဥပမာ- ယဉ်ကျေးပျူငှာသော အရောင်းကိုယ်စားလှယ် သို့မဟုတ် FAQ Bot) နှင့် လိုက်နာရမည့် ညွှန်ကြားချက်များကို သတ်မှတ်ပါ။ ၎င်းသည် AI ၏ စကားပြောလေသံနှင့် လမ်းညွှန်ချက်များကို ထိန်းချုပ်ပေးသည်။</p>
-              </div>
-            )}
-            {introStep === 3 && (
-              <div>
-                <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'rgba(63, 185, 80, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 24px', color: 'var(--green)' }}>💬</div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-main)' }}>၃။ Live Chats & Profile (စကားပြောခြင်းနှင့် စာရင်းများ)</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}><strong>"Chats"</strong> Tab တွင် Customer များနှင့် ပြောဆိုထားသော စကားဝိုင်းများကို စောင့်ကြည့်ပြီး AI ဖြေကြားချက်များကို လိုအပ်ပါက ဝင်ရောက်ပြင်ဆင်/ကိုယ်တိုင်ပြန်ကြားနိုင်ပါသည်။ <strong>"Profile"</strong> Tab တွင် လက်ကျန် Credit များအား စစ်ဆေးနိုင်ပါသည်။</p>
-              </div>
+          <div style={{ display: 'flex', justifyContent: 'center', maxWidth: '320px', margin: '0 auto' }}>
+            {landingStep < 3 ? (
+              <button className="btn btn-primary" style={{ width: '100%', minHeight: '54px', fontSize: '1.1rem', borderRadius: '27px' }} onClick={() => setLandingStep((prev) => prev + 1)}>
+                Next
+              </button>
+            ) : (
+              <button className="btn btn-primary" style={{ width: '100%', minHeight: '54px', fontSize: '1.1rem', borderRadius: '27px', background: 'var(--green)' }} onClick={() => { localStorage.setItem('chatbot_admin_landing_completed', 'true'); setLandingCompleted(true); }}>
+                Get Started 🚀
+              </button>
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '36px', gap: '16px' }}>
-            {introStep > 1 ? (
-              <button className="btn btn-ghost" style={{ flex: 1, minHeight: '44px' }} onClick={() => setIntroStep((prev) => prev - 1)}>Back</button>
-            ) : (
-              <button className="btn btn-ghost" style={{ flex: 1, minHeight: '44px', color: 'var(--text-muted)' }} onClick={() => { localStorage.setItem('chatbot_admin_intro_completed', 'true'); setIntroCompleted(true); }}>Skip Intro</button>
-            )}
-            {introStep < 3 ? (
-              <button className="btn btn-primary" style={{ flex: 1, minHeight: '44px' }} onClick={() => setIntroStep((prev) => prev + 1)}>Next</button>
-            ) : (
-              <button className="btn btn-primary" style={{ flex: 1, minHeight: '44px', background: 'var(--green)' }} onClick={() => { localStorage.setItem('chatbot_admin_intro_completed', 'true'); setIntroCompleted(true); }}>Get Started</button>
-            )}
-          </div>
         </div>
       </div>
     );
@@ -490,41 +525,7 @@ export default function App() {
             ၅ မိနစ်အတွင်း စာပြန်မြန်ဆန်သော AI Chatbot တစ်ခု တည်ဆောက်လိုက်ပါ
           </p>
 
-          {/* Landing Mini Props Card */}
-          <div style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            padding: '12px 14px',
-            textAlign: 'left',
-            fontSize: '0.78rem',
-            lineHeight: 1.4,
-            marginBottom: '4px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            width: '100%',
-            maxWidth: '380px'
-          }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <span>⚡</span>
-              <div>
-                <strong style={{ color: 'var(--text-main)' }}>Auto Reply 24/7</strong>: သုံးစွဲသူများ၏ မေးခွန်းများကို AI မှ အလိုအလျောက် အချိန်မရွေး စာပြန်ပေးခြင်း။
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <span>📚</span>
-              <div>
-                <strong style={{ color: 'var(--text-main)' }}>Knowledge Base</strong>: သင့်လုပ်ငန်းဆိုင်ရာ အချက်အလက်များကို AI အား သင်ကြားပေးခြင်း။
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-              <span>💬</span>
-              <div>
-                <strong style={{ color: 'var(--text-main)' }}>Live Chat Monitor</strong>: စကားဝိုင်းများကို အချိန်နှင့်တပြေးညီ စောင့်ကြည့်ပြီး ကိုယ်တိုင်ဝင်ပြန်နိုင်ခြင်း။
-              </div>
-            </div>
-          </div>
+          {/* Landing Mini Props Card Removed */}
         </div>
 
         <div className="auth-card">
@@ -1117,6 +1118,72 @@ export default function App() {
             >
               {sendingReply ? '…' : '↑'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* IN-APP ONBOARDING TOUR */}
+      {showInAppTour && (
+        <div className="modal-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="tg-modal" style={{ maxWidth: '380px', borderRadius: '14px', margin: '16px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="tg-modal-header" style={{ borderBottom: 'none' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {[1, 2, 3].map((step) => (
+                  <div
+                    key={step}
+                    style={{
+                      width: '24px',
+                      height: '4px',
+                      borderRadius: '2px',
+                      backgroundColor: inAppTourStep === step ? 'var(--blue)' : 'var(--border)',
+                      transition: 'background-color 0.2s',
+                    }}
+                  />
+                ))}
+              </div>
+              <button
+                className="btn btn-ghost"
+                style={{ width: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', minHeight: 'auto', padding: '4px 8px' }}
+                onClick={() => { localStorage.setItem('chatbot_admin_intro_completed', 'true'); setShowInAppTour(false); }}
+              >
+                Skip
+              </button>
+            </div>
+
+            <div className="tg-modal-body" style={{ textAlign: 'center', padding: '10px 24px 24px' }}>
+              {inAppTourStep === 1 && (
+                <div style={{ animation: 'fadeIn 0.3s' }}>
+                  <div style={{ width: '68px', height: '68px', borderRadius: '22px', background: 'rgba(31, 111, 235, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 20px', color: 'var(--blue-hover)' }}>📚</div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-main)' }}>၁။ Knowledge Base (အသိပညာ ဖြည့်သွင်းခြင်း)</h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>သင်၏ လုပ်ငန်းဆိုင်ရာ အချက်အလက်များ၊ ဝန်ဆောင်မှု ဈေးနှုန်းများနှင့် အမေးများသောမေးခွန်း (FAQ) များကို <strong>"Knowledge"</strong> Tab တွင် ဖြည့်သွင်းပါ။ သင့် Chatbot သည် ဤအချက်အလက်များကို ကိုးကား၍ Customer များအား တိကျမှန်ကန်စွာ အလိုအလျောက် ပြန်လည်ဖြေကြားပေးမည် ဖြစ်ပါသည်။</p>
+                </div>
+              )}
+              {inAppTourStep === 2 && (
+                <div style={{ animation: 'fadeIn 0.3s' }}>
+                  <div style={{ width: '68px', height: '68px', borderRadius: '22px', background: 'rgba(210, 153, 34, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 20px', color: 'var(--yellow)' }}>⚙️</div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-main)' }}>၂။ System Prompt (စရိုက်လက္ခဏာ သတ်မှတ်ခြင်း)</h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}><strong>"Prompt"</strong> Tab တွင် Chatbot ၏ စရိုက်၊ စကားပြောပုံစံ (ဥပမာ- ယဉ်ကျေးပျူငှာသော အရောင်းကိုယ်စားလှယ် သို့မဟုတ် FAQ Bot) နှင့် လိုက်နာရမည့် ညွှန်ကြားချက်များကို သတ်မှတ်ပါ။ ၎င်းသည် AI ၏ စကားပြောလေသံနှင့် လမ်းညွှန်ချက်များကို ထိန်းချုပ်ပေးသည်။</p>
+                </div>
+              )}
+              {inAppTourStep === 3 && (
+                <div style={{ animation: 'fadeIn 0.3s' }}>
+                  <div style={{ width: '68px', height: '68px', borderRadius: '22px', background: 'rgba(63, 185, 80, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 20px', color: 'var(--green)' }}>💬</div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-main)' }}>၃။ Live Chats & Profile (စကားပြောခြင်းနှင့် စာရင်းများ)</h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}><strong>"Chats"</strong> Tab တွင် Customer များနှင့် ပြောဆိုထားသော စကားဝိုင်းများကို စောင့်ကြည့်ပြီး AI ဖြေကြားချက်များကို လိုအပ်ပါက ဝင်ရောက်ပြင်ဆင်/ကိုယ်တိုင်ပြန်ကြားနိုင်ပါသည်။ <strong>"Profile"</strong> Tab တွင် လက်ကျန် Credit များအား စစ်ဆေးနိုင်ပါသည်။</p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '28px', gap: '12px' }}>
+                {inAppTourStep > 1 ? (
+                  <button className="btn btn-ghost" style={{ flex: 1, minHeight: '40px' }} onClick={() => setInAppTourStep((prev) => prev - 1)}>Back</button>
+                ) : <div style={{ flex: 1 }} />}
+                {inAppTourStep < 3 ? (
+                  <button className="btn btn-primary" style={{ flex: 1, minHeight: '40px' }} onClick={() => setInAppTourStep((prev) => prev + 1)}>Next</button>
+                ) : (
+                  <button className="btn btn-primary" style={{ flex: 1, minHeight: '40px', background: 'var(--green)' }} onClick={() => { localStorage.setItem('chatbot_admin_intro_completed', 'true'); setShowInAppTour(false); }}>Finish</button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
