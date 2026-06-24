@@ -1,4 +1,4 @@
-import { Messages, SummerizeMessages } from '../../infrastructure/db/models';
+import { Messages, SummerizeMessages, ChatBot, Business, Plan } from '../../infrastructure/db/models';
 import { ILLMService } from '../../core/interfaces/llm.interface';
 import { Op } from 'sequelize';
 
@@ -107,14 +107,35 @@ export class ChatMemoryService {
       order: [['created_at', 'DESC']],
     });
 
-    // 2. Fetch last 10 messages
+    // 2. Determine max history limit from the Business's Plan
+    let historyLimit = 10;
+    try {
+      const chatbot = await ChatBot.findByPk(chatbotId, {
+        include: [{ model: Business, as: 'business' }]
+      });
+      
+      if (chatbot && chatbot.business) {
+        if (chatbot.business.plan_id) {
+          const plan = await Plan.findByPk(chatbot.business.plan_id);
+          if (plan && plan.max_chat_history) historyLimit = plan.max_chat_history;
+        } else if (chatbot.business.subscription_plan) {
+          // Fallback to string name matching
+          const plan = await Plan.findOne({ where: { name: chatbot.business.subscription_plan } });
+          if (plan && plan.max_chat_history) historyLimit = plan.max_chat_history;
+        }
+      }
+    } catch (err) {
+      console.error('[ChatMemory] Error fetching dynamic history limit:', err);
+    }
+
+    // 3. Fetch recent messages based on dynamic limit
     const recentMessages = await Messages.findAll({
       where: {
         chatbot_id: chatbotId,
         sender_id: senderId,
       },
       order: [['sent_date', 'DESC']],
-      limit: 10,
+      limit: historyLimit,
     });
 
     // Reverse to ascending chronological order

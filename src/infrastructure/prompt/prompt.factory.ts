@@ -84,17 +84,31 @@ export class SystemPromptFactory implements ISystemPromptFactory {
     customPrompt: string | null,
     context: SystemPromptContext
   ): string {
+    let basePrompt = '';
+
     if (customPrompt && customPrompt.trim().length > 0) {
       // Inject business context into the custom prompt
-      return `${customPrompt}
+      basePrompt = `${customPrompt}
 
 Business: "${context.businessName}"
 Business Information:
 ${context.businessDetailInfo}`;
+    } else {
+      // Fall back to predefined strategy
+      basePrompt = this.getPrompt(botRole, context);
     }
 
-    // Fall back to predefined strategy
-    return this.getPrompt(botRole, context);
+    // Wrapper to enforce strict conciseness and save tokens
+    const tokenOptimizationWrapper = `
+---
+CRITICAL SYSTEM INSTRUCTIONS (TOKEN OPTIMIZATION):
+You MUST be extremely concise and direct in your answers (လိုတိုရှင်း). 
+1. Do NOT use unnecessary filler words, long greetings, or verbose explanations.
+2. Answer the user's question in the shortest possible way while remaining accurate.
+3. Do NOT repeat the user's question.
+4. Your primary goal is to save output tokens and answer strictly to the point.`;
+
+    return `${basePrompt}\n${tokenOptimizationWrapper}`;
   }
 }
 

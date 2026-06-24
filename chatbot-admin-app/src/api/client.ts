@@ -83,5 +83,7 @@ export const updateSystemPrompt = (customSystemPrompt: string) =>
 export const getPaymentMethods = (planName: string, clientLevel = 'regular') =>
   api.get('/subscription/payment-methods', { params: { planName, clientLevel } }).then((r) => r.data);
 
-export const submitUpgrade = (planName: 'lite' | 'basic' | 'pro', screenshotBase64: string, resellerId: number | null) =>
+export const submitUpgrade = (planName: string, screenshotBase64: string, resellerId: number | null) =>
   api.post('/subscription/upgrade', { planName, screenshotBase64, resellerId }).then((r) => r.data);
+export const getPlans = () =>
+  api.get('/plans').then((res) => res.data);

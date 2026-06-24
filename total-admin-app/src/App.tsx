@@ -12,6 +12,7 @@ import {
   updateSystemSettings,
   getPlans,
   updatePlan,
+  createPlan,
 } from './api/client';
 
 interface Reseller {
@@ -74,6 +75,8 @@ interface Plan {
   query_limit: number;
   duration_days: number;
   is_active: boolean;
+  max_chat_history: number;
+  services: string[];
 }
 
 // Resolve screenshot URL — use Vite proxy path (/uploads/…) when relative
@@ -129,10 +132,14 @@ export default function App() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [creatingPlan, setCreatingPlan] = useState(false);
+  const [planName, setPlanName] = useState('');
   const [planPrice, setPlanPrice] = useState(0);
   const [planQueryLimit, setPlanQueryLimit] = useState(0);
   const [planDurationDays, setPlanDurationDays] = useState(30);
   const [planIsActive, setPlanIsActive] = useState(true);
+  const [planMaxChatHistory, setPlanMaxChatHistory] = useState(10);
+  const [planServicesStr, setPlanServicesStr] = useState('');
   const [updatingPlan, setUpdatingPlan] = useState(false);
 
   const [topups, setTopups] = useState<any[]>([]);
@@ -314,33 +321,59 @@ export default function App() {
     }
   };
 
+  const handleOpenCreatePlan = () => {
+    setEditingPlan(null);
+    setCreatingPlan(true);
+    setPlanName('');
+    setPlanPrice(0);
+    setPlanQueryLimit(0);
+    setPlanDurationDays(30);
+    setPlanIsActive(true);
+    setPlanMaxChatHistory(10);
+    setPlanServicesStr('');
+  };
+
   const handleOpenEditPlan = (plan: Plan) => {
+    setCreatingPlan(false);
     setEditingPlan(plan);
+    setPlanName(plan.name);
     setPlanPrice(plan.price);
     setPlanQueryLimit(plan.query_limit);
     setPlanDurationDays(plan.duration_days);
     setPlanIsActive(plan.is_active);
+    setPlanMaxChatHistory(plan.max_chat_history || 10);
+    setPlanServicesStr((plan.services || []).join(', '));
   };
 
-  const handleUpdatePlanSubmit = async (e: React.FormEvent) => {
+  const handleSavePlanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPlan) return;
     setUpdatingPlan(true);
     try {
-      const res = await updatePlan(editingPlan.id, {
+      const services = planServicesStr.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      const data = {
+        name: planName,
         price: Number(planPrice),
         query_limit: Number(planQueryLimit),
         duration_days: Number(planDurationDays),
         is_active: planIsActive,
-      });
-      if (res.success) {
-        alert('Plan configuration updated successfully!');
-        setEditingPlan(null);
-        const reload = await getPlans();
-        if (reload.success) setPlans(reload.plans || []);
+        max_chat_history: Number(planMaxChatHistory),
+        services,
+      };
+
+      if (creatingPlan) {
+        const res = await createPlan(data);
+        if (res.success) alert('Plan created successfully!');
+      } else if (editingPlan) {
+        const res = await updatePlan(editingPlan.id, data);
+        if (res.success) alert('Plan configuration updated successfully!');
       }
+      
+      setEditingPlan(null);
+      setCreatingPlan(false);
+      const reload = await getPlans();
+      if (reload.success) setPlans(reload.plans || []);
     } catch (err) {
-      alert('Failed to update plan configurations.');
+      alert('Failed to save plan.');
     } finally {
       setUpdatingPlan(false);
     }
@@ -689,8 +722,15 @@ export default function App() {
 
           {/* Pricing Plans */}
           <div className="card">
-            <h2>Subscription Plans</h2>
-            <p style={{ marginBottom: '16px' }}>Configure subscription plan tiers and limits.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Subscription Plans</h2>
+                <p style={{ margin: 0 }}>Configure subscription plan tiers and limits.</p>
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={handleOpenCreatePlan}>
+                + Create New Plan
+              </button>
+            </div>
             {loadingPlans ? (
               <div className="loading-state"><div className="spinner" /> Loading plans...</div>
             ) : (
@@ -734,31 +774,50 @@ export default function App() {
       )}
 
       {/* EDIT PLAN MODAL */}
-      {editingPlan && (
-        <div className="modal-overlay" onClick={() => setEditingPlan(null)}>
+      {/* CREATE/EDIT PLAN MODAL */}
+      {(editingPlan || creatingPlan) && (
+        <div className="modal-overlay" onClick={() => { setEditingPlan(null); setCreatingPlan(false); }}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setEditingPlan(null)}>×</button>
-            <h3 style={{ marginBottom: '4px' }}>Edit Plan: <span style={{ textTransform: 'uppercase', color: 'var(--primary)' }}>{editingPlan.name}</span></h3>
-            <p style={{ marginBottom: '20px', fontSize: '0.8rem' }}>Modify price, query limits, and status.</p>
-            <form onSubmit={handleUpdatePlanSubmit}>
+            <button className="modal-close" onClick={() => { setEditingPlan(null); setCreatingPlan(false); }}>×</button>
+            <h3 style={{ marginBottom: '4px' }}>
+              {creatingPlan ? 'Create New Plan' : <>Edit Plan: <span style={{ textTransform: 'uppercase', color: 'var(--primary)' }}>{editingPlan?.name}</span></>}
+            </h3>
+            <p style={{ marginBottom: '20px', fontSize: '0.8rem' }}>Modify plan properties and AI limits.</p>
+            <form onSubmit={handleSavePlanSubmit}>
               <div className="form-group">
-                <label>Price (MMK)</label>
-                <input className="form-control" type="number" min="0" required value={planPrice} onChange={(e) => setPlanPrice(Number(e.target.value))} />
+                <label>Plan Name</label>
+                <input className="form-control" type="text" required value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="e.g. starter" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div className="form-group">
+                  <label>Price (MMK)</label>
+                  <input className="form-control" type="number" min="0" required value={planPrice} onChange={(e) => setPlanPrice(Number(e.target.value))} />
+                </div>
+                <div className="form-group">
+                  <label>Query Limit</label>
+                  <input className="form-control" type="number" min="0" required value={planQueryLimit} onChange={(e) => setPlanQueryLimit(Number(e.target.value))} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div className="form-group">
+                  <label>Duration (Days)</label>
+                  <input className="form-control" type="number" min="1" required value={planDurationDays} onChange={(e) => setPlanDurationDays(Number(e.target.value))} />
+                </div>
+                <div className="form-group">
+                  <label>Max Chat History</label>
+                  <input className="form-control" type="number" min="1" max="100" required value={planMaxChatHistory} onChange={(e) => setPlanMaxChatHistory(Number(e.target.value))} />
+                </div>
               </div>
               <div className="form-group">
-                <label>Query Limit (Messages)</label>
-                <input className="form-control" type="number" min="0" required value={planQueryLimit} onChange={(e) => setPlanQueryLimit(Number(e.target.value))} />
-              </div>
-              <div className="form-group">
-                <label>Duration (Days)</label>
-                <input className="form-control" type="number" min="1" required value={planDurationDays} onChange={(e) => setPlanDurationDays(Number(e.target.value))} />
+                <label>Services (Comma-separated)</label>
+                <textarea className="form-control" rows={3} value={planServicesStr} onChange={(e) => setPlanServicesStr(e.target.value)} placeholder="Live Chat, Priority Support, Analytics..."></textarea>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '16px 0' }}>
                 <input type="checkbox" id="plan-active" checked={planIsActive} onChange={(e) => setPlanIsActive(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
                 <label htmlFor="plan-active" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Enable Plan (Available for purchase)</label>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={() => setEditingPlan(null)}>Cancel</button>
+                <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={() => { setEditingPlan(null); setCreatingPlan(false); }}>Cancel</button>
                 <button className="btn btn-primary" style={{ flex: 1 }} type="submit" disabled={updatingPlan}>
                   {updatingPlan ? 'Saving...' : 'Save Plan'}
                 </button>

@@ -1137,7 +1137,8 @@ apiRouter.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: 
     const request = await PlanRequest.create({
       business_id: businessId,
       reseller_id: resellerId ? Number(resellerId) : null,
-      plan_name: planName as 'lite' | 'basic' | 'pro',
+      plan_name: planName,
+      plan_id: planProfile.id,
       screenshot_url: fileUrl,
       status: 'pending',
       price: price,
@@ -1567,7 +1568,8 @@ apiRouter.post('/total-admin/requests/:id/approve', adminSecretAuth, async (req:
 
     await business.update({
       plan: 'subscription',
-      subscription_plan: planRequest.plan_name as any,
+      subscription_plan: planRequest.plan_name,
+      plan_id: planRequest.plan_id || (planProfile ? planProfile.id : null),
       subscription_end_date: expiryDate,
       active_messages_count: business.active_messages_count + newCredits,
       total_chatbots: maxBots,
@@ -1723,18 +1725,52 @@ apiRouter.get('/total-admin/plans', adminSecretAuth, async (req: Request, res: R
 apiRouter.put('/total-admin/plans/:id', adminSecretAuth, async (req: Request, res: Response) => {
   try {
     const planId = Number(req.params.id);
-    const { price, query_limit, duration_days, is_active } = req.body;
+    const { name, price, query_limit, duration_days, is_active, max_chat_history, services } = req.body;
     const plan = await Plan.findByPk(planId);
     if (!plan) return res.status(404).json({ success: false, error: 'Plan not found.' });
 
     const updates: any = {};
+    if (name !== undefined) updates.name = name;
     if (price !== undefined) updates.price = Number(price);
     if (query_limit !== undefined) updates.query_limit = Number(query_limit);
     if (duration_days !== undefined) updates.duration_days = Number(duration_days);
     if (is_active !== undefined) updates.is_active = !!is_active;
+    if (max_chat_history !== undefined) updates.max_chat_history = Number(max_chat_history);
+    if (services !== undefined) updates.services = Array.isArray(services) ? services : JSON.parse(services);
 
     await plan.update(updates);
     return res.json({ success: true, plan });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+// ─── 59. POST /total-admin/plans — Create a new plan configuration ────────────────
+apiRouter.post('/total-admin/plans', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const { name, price, query_limit, duration_days, is_active, max_chat_history, services } = req.body;
+    const plan = await Plan.create({
+      name,
+      price: Number(price),
+      query_limit: Number(query_limit),
+      duration_days: duration_days !== undefined ? Number(duration_days) : 30,
+      is_active: is_active !== undefined ? !!is_active : true,
+      max_chat_history: max_chat_history !== undefined ? Number(max_chat_history) : 10,
+      services: services !== undefined ? (Array.isArray(services) ? services : JSON.parse(services)) : []
+    });
+    return res.json({ success: true, plan });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 60. GET /plans — Get all active pricing plans (Public) ───────────────────────
+apiRouter.get('/plans', async (req: Request, res: Response) => {
+  try {
+    const plans = await Plan.findAll({ 
+      where: { is_active: true },
+      order: [['price', 'ASC']] 
+    });
+    return res.json({ success: true, plans });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }

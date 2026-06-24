@@ -16,7 +16,18 @@ import {
   createChatbot,
   getPaymentMethods,
   submitUpgrade,
+  getPlans,
 } from './api/client';
+
+interface Plan {
+  id: number;
+  name: string;
+  price: number;
+  query_limit: number;
+  duration_days: number;
+  max_chat_history: number;
+  services: string[];
+}
 
 interface AdminProfile {
   id: number;
@@ -109,7 +120,8 @@ export default function App() {
   const [editError, setEditError] = useState('');
 
   const [referralCode, setReferralCode] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState<'lite' | 'basic' | 'pro' | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [kpayDetails, setKpayDetails] = useState<{ resellerId: number | null; kpay_no: string; kpay_name: string; note?: string } | null>(null);
   const [loadingKpay, setLoadingKpay] = useState(false);
   const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
@@ -157,7 +169,13 @@ export default function App() {
 
   useEffect(() => {
     if (token) fetchProfile();
-  }, [token, fetchProfile]);
+
+    getPlans().then(res => {
+      if (res.success && res.plans) {
+        setPlans(res.plans);
+      }
+    }).catch(err => console.error("Error fetching plans", err));
+  }, [fetchProfile]);
 
   useEffect(() => {
     if (!token) return;
@@ -271,7 +289,7 @@ export default function App() {
     } finally { setCreatingBot(false); }
   };
 
-  const handleSelectPlan = async (plan: 'lite' | 'basic' | 'pro') => {
+  const handleSelectPlan = async (plan: string) => {
     setSelectedPlan(plan);
     setLoadingKpay(true);
     setUpgradeMsg('');
@@ -935,21 +953,22 @@ export default function App() {
                         Choose a plan:
                       </div>
                       <div className="plans-grid">
-                        {(['lite', 'basic', 'pro'] as const).map((plan) => {
-                          const prices = { lite: '3,000', basic: '15,000', pro: '30,000' };
-                          const credits = { lite: '500', basic: '3,000', pro: '10,000' };
-                          return (
-                            <div
-                              key={plan}
-                              className={`plan-card-option ${selectedPlan === plan ? 'selected' : ''}`}
-                              onClick={() => handleSelectPlan(plan)}
-                            >
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'capitalize', marginBottom: '4px' }}>{plan}</div>
-                              <div style={{ color: 'var(--text-link)', fontSize: '0.85rem', fontWeight: 700 }}>{prices[plan]}</div>
-                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '3px' }}>{credits[plan]} msgs</div>
-                            </div>
-                          );
-                        })}
+                        {plans.map((plan) => (
+                          <div
+                            key={plan.name}
+                            className={`plan-card-option ${selectedPlan === plan.name ? 'selected' : ''}`}
+                            onClick={() => handleSelectPlan(plan.name)}
+                          >
+                            <div style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'capitalize', marginBottom: '4px' }}>{plan.name}</div>
+                            <div style={{ color: 'var(--text-link)', fontSize: '0.85rem', fontWeight: 700 }}>{plan.price.toLocaleString()} MMK</div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '3px' }}>{plan.query_limit.toLocaleString()} msgs</div>
+                            {plan.services && plan.services.length > 0 && (
+                              <ul style={{ marginTop: '8px', paddingLeft: '16px', fontSize: '0.65rem', color: 'var(--text-main)', textAlign: 'left' }}>
+                                {plan.services.map((svc, i) => <li key={i}>{svc}</li>)}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
                       </div>
 
                       {selectedPlan && (

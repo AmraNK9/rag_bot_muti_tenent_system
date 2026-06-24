@@ -9,7 +9,8 @@ export class Business extends Model<InferAttributes<Business>, InferCreationAttr
   declare plan: CreationOptional<'free' | 'prepaid_credits' | 'subscription'>;
   declare active_messages_count: CreationOptional<number>; // remaining message credits
   declare subscription_end_date: CreationOptional<Date | null>;
-  declare subscription_plan: CreationOptional<'lite' | 'basic' | 'pro' | 'enterprise' | null>;
+  declare plan_id: CreationOptional<number | null>;
+  declare subscription_plan: CreationOptional<string | null>;
   declare total_chatbots: CreationOptional<number>; // max allowed chatbots for current plan
   declare referred_by_reseller_id: CreationOptional<number | null>; // referrer tracking
   declare created_at: CreationOptional<Date>;
@@ -75,7 +76,8 @@ export class PlanRequest extends Model<InferAttributes<PlanRequest>, InferCreati
   declare id: CreationOptional<number>;
   declare business_id: ForeignKey<Business['id']>;
   declare reseller_id: ForeignKey<Reseller['id']> | null;
-  declare plan_name: 'lite' | 'basic' | 'pro';
+  declare plan_id: CreationOptional<number | null>;
+  declare plan_name: string;
   declare screenshot_url: string; // URL file path, NO base64
   declare status: CreationOptional<'pending' | 'approved' | 'rejected'>;
   declare price: number;
@@ -164,6 +166,8 @@ export class Plan extends Model<InferAttributes<Plan>, InferCreationAttributes<P
   declare query_limit: number;
   declare duration_days: number;
   declare is_active: CreationOptional<boolean>;
+  declare max_chat_history: CreationOptional<number>;
+  declare services: CreationOptional<string[]>;
 }
 
 // ─── SystemSetting Model ─────────────────────────────────────────────────────
@@ -211,8 +215,13 @@ export function initModels(sequelize: Sequelize) {
         allowNull: true,
         defaultValue: null,
       },
+      plan_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
       subscription_plan: {
-        type: DataTypes.ENUM('lite', 'basic', 'pro', 'enterprise'),
+        type: DataTypes.STRING(255),
         allowNull: true,
         defaultValue: null,
       },
@@ -590,8 +599,13 @@ export function initModels(sequelize: Sequelize) {
         allowNull: true,
         defaultValue: null,
       },
+      plan_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
       plan_name: {
-        type: DataTypes.ENUM('lite', 'basic', 'pro'),
+        type: DataTypes.STRING(255),
         allowNull: false,
       },
       screenshot_url: {
@@ -669,6 +683,16 @@ export function initModels(sequelize: Sequelize) {
       query_limit: {
         type: DataTypes.INTEGER,
         allowNull: false,
+      },
+      max_chat_history: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 10,
+      },
+      services: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: [],
       },
       duration_days: {
         type: DataTypes.INTEGER,

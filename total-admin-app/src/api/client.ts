@@ -80,10 +80,26 @@ export const getPlans = () =>
 export const updatePlan = (
   id: number,
   data: {
+    name?: string;
     price?: number;
     query_limit?: number;
     duration_days?: number;
     is_active?: boolean;
+    max_chat_history?: number;
+    services?: string[];
   }
 ) =>
   api.put(`/total-admin/plans/${id}`, data).then((r) => r.data);
+
+export const createPlan = (
+  data: {
+    name: string;
+    price: number;
+    query_limit: number;
+    duration_days: number;
+    is_active: boolean;
+    max_chat_history: number;
+    services: string[];
+  }
+) =>
+  api.post(`/total-admin/plans`, data).then((r) => r.data);
