@@ -42,12 +42,17 @@ export const updateReseller = (
     custom_referrer_recurring_rate?: number | null;
     custom_approver_rate?: number | null;
     trust_score_factor?: number;
+    postpaid_limit?: number;
+    can_sell?: boolean;
   }
 ) =>
   api.put(`/total-admin/resellers/${id}`, data).then((r) => r.data);
 
 export const getAnalytics = () =>
   api.get('/total-admin/analytics').then((r) => r.data);
+
+export const getAuditLogs = () =>
+  api.get('/total-admin/audit-logs').then((r) => r.data);
 
 export const getRequests = () =>
   api.get('/total-admin/requests').then((r) => r.data);

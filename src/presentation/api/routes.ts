@@ -10,7 +10,7 @@ import { VoyageEmbeddingService } from '../../infrastructure/embeddings/voyage.s
 import { PgVectorStoreService } from '../../infrastructure/vectorstore/pgvector.service';
 import { TelegramService } from '../../infrastructure/telegram/telegram.service';
 import { tunnelService } from '../../infrastructure/tunnel/tunnel.service';
-import { ChatBot, Messages, ChatbotAdmin, Business, Reseller, PlanRequest, ChatbotActivity, ResellerTopUp, Plan, SystemSetting } from '../../infrastructure/db/models';
+import { ChatBot, Messages, ChatbotAdmin, Business, Reseller, PlanRequest, ChatbotActivity, ResellerTopUp, Plan, SystemSetting, AuditLog, P2PTopupTransaction } from '../../infrastructure/db/models';
 import { QueryTypes } from 'sequelize';
 import { SequelizeService } from '../../infrastructure/db/sequelize.service';
 import bcrypt from 'bcryptjs';
@@ -680,6 +680,7 @@ apiRouter.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: 
         plan: business.plan,
         subscriptionPlan: business.subscription_plan,
         subscriptionEndDate: business.subscription_end_date,
+        topupId: business.topup_id,
       } : null,
     });
   } catch (error) {
@@ -1150,6 +1151,23 @@ apiRouter.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: 
   }
 });
 
+// ─── 40.5 GET /subscription/history ──────────────────────────────────────────
+apiRouter.get('/subscription/history', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const chatbotAdminId = (req as any).adminId;
+    const admin = await ChatbotAdmin.findByPk(chatbotAdminId, { include: [ChatBot] });
+    if (!admin || !admin.chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    const requests = await PlanRequest.findAll({
+      where: { business_id: admin.chatbot.business_id },
+      order: [['created_at', 'DESC']]
+    });
+
+    return res.json({ success: true, history: requests });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
 // ═══════════════════════════════════════════════════════════════════════════
 // RESELLER APIS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1244,6 +1262,10 @@ apiRouter.get('/reseller/dashboard', resellerAuthMiddleware, async (req: Request
       stats: {
         name: reseller.name,
         balance: reseller.balance,
+        prepaid_balance: reseller.prepaid_balance,
+        pending_debt: reseller.pending_debt,
+        postpaid_limit: reseller.postpaid_limit,
+        can_sell: reseller.can_sell,
         totalCollected: reseller.total_collected,
         commissionPercentage: reseller.commission_percentage,
         reliabilityScore: reseller.reliability_score,
@@ -1274,6 +1296,24 @@ apiRouter.get('/reseller/requests', resellerAuthMiddleware, async (req: Request,
   }
 });
 
+// ─── 44.5 GET /reseller/requests/history — Get handled requests history ────────
+apiRouter.get('/reseller/requests/history', resellerAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const resReq = req as ResellerRequest;
+    const { Op } = require('sequelize');
+    const requests = await PlanRequest.findAll({
+      where: { 
+        reseller_id: resReq.reseller.resellerId, 
+        status: { [Op.ne]: 'pending' } 
+      },
+      include: [{ model: Business, as: 'business', attributes: ['name', 'detail_info'] }],
+      order: [['created_at', 'DESC']]
+    });
+    return res.json({ success: true, requests });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
 // ─── 45. POST /reseller/requests/:id/approve — Reseller approve payment request ───
 apiRouter.post('/reseller/requests/:id/approve', resellerAuthMiddleware, async (req: Request, res: Response) => {
   try {
@@ -1295,12 +1335,30 @@ apiRouter.post('/reseller/requests/:id/approve', resellerAuthMiddleware, async (
     const calc = await calculateCommissions(business.id, Number(planRequest.price), reseller.id);
     const netRequiredPrice = calc.price - calc.approverFee;
 
-    // Handle Prepaid Wallet Check (check if balance covers net price)
-    if (!reseller.can_collect_payments) {
-      if (Number(reseller.balance) < netRequiredPrice) {
+    // Check if account is suspended
+    if (!reseller.can_sell) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is suspended for selling. Please settle your pending debts.',
+      });
+    }
+
+    const usedPrepaid = !reseller.can_collect_payments;
+    if (usedPrepaid) {
+      // For prepaid, check if they have enough balance for the FULL price. 
+      // (They will get commission back immediately, but need full balance to clear).
+      if (Number(reseller.prepaid_balance) < calc.price) {
         return res.status(400).json({
           success: false,
-          error: `Insufficient wallet balance. Net required: ${netRequiredPrice.toLocaleString()} MMK (Price: ${calc.price.toLocaleString()} minus Approver Fee: ${calc.approverFee.toLocaleString()}).`
+          error: `Insufficient prepaid balance. (Prepaid: ${reseller.prepaid_balance}, Required: ${calc.price})`
+        });
+      }
+    } else {
+      // Fallback to Postpaid Limit
+      if (Number(reseller.pending_debt) + calc.price > Number(reseller.postpaid_limit)) {
+        return res.status(400).json({
+          success: false,
+          error: `Postpaid limit exceeded. (Pending Debt: ${reseller.pending_debt}, Required: ${calc.price}, Limit: ${reseller.postpaid_limit})`
         });
       }
     }
@@ -1334,12 +1392,16 @@ apiRouter.post('/reseller/requests/:id/approve', resellerAuthMiddleware, async (
     }
 
     // 3. Allocate Approver Fee / Deduct prepaid balance
-    if (!reseller.can_collect_payments) {
+    if (usedPrepaid) {
       await reseller.update({
-        balance: Number(reseller.balance) - netRequiredPrice,
+        prepaid_balance: Number(reseller.prepaid_balance) - calc.price,
+        balance: Number(reseller.balance) + calc.approverFee,
+        total_collected: Number(reseller.total_collected) + calc.price,
       });
     } else {
+      // Postpaid: they collected the physical cash. They owe the Admin the full amount, but get commission in wallet.
       await reseller.update({
+        pending_debt: Number(reseller.pending_debt) + calc.price,
         balance: Number(reseller.balance) + calc.approverFee,
         total_collected: Number(reseller.total_collected) + calc.price,
       });
@@ -1384,20 +1446,14 @@ apiRouter.post('/reseller/requests/:id/reject', resellerAuthMiddleware, async (r
 apiRouter.post('/reseller/topup', resellerAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const resReq = req as ResellerRequest;
-    const { amountPaid, screenshotBase64 } = req.body;
-    if (!amountPaid || !screenshotBase64) {
-      return res.status(400).json({ success: false, error: 'Missing required fields: amountPaid and screenshotBase64.' });
-    }
+    const { amount_paid, credit_amount, type, screenshotBase64 } = req.body;
+    const amtPaidNum = Number(amount_paid);
+    const crtAmtNum = Number(credit_amount);
+    const topupType = type === 'postpaid_settlement' ? 'postpaid_settlement' : 'prepaid_topup';
 
-    const reseller = await Reseller.findByPk(resReq.reseller.resellerId);
-    if (!reseller) return res.status(404).json({ success: false, error: 'Reseller not found.' });
-
-    // Calculate credit amount based on reseller commission percentage:
-    // credit_amount = amountPaid / (1 - commission_percentage / 100)
-    // E.g., at 30% commission, paying 14,000 MMK gives 14,000 / 0.70 = 20,000 MMK credit
-    const commissionPercentage = Number(reseller.commission_percentage);
-    const divisor = 1 - (commissionPercentage / 100);
-    const creditAmount = divisor > 0 ? Number(amountPaid) / divisor : Number(amountPaid);
+    if (!screenshotBase64) return res.status(400).json({ success: false, error: 'Receipt image is required.' });
+    if (isNaN(amtPaidNum) || amtPaidNum <= 0) return res.status(400).json({ success: false, error: 'Valid amount_paid is required.' });
+    if (isNaN(crtAmtNum) || crtAmtNum <= 0) return res.status(400).json({ success: false, error: 'Valid credit_amount is required.' });
 
     // Decode and save base64 receipt to disk
     const base64Data = screenshotBase64.replace(/^data:image\/\w+;base64,/, "");
@@ -1411,13 +1467,13 @@ apiRouter.post('/reseller/topup', resellerAuthMiddleware, async (req: Request, r
     const fileUrl = `/uploads/receipts/${filename}`;
 
     const topup = await ResellerTopUp.create({
-      reseller_id: reseller.id,
-      amount_paid: Number(amountPaid),
-      credit_amount: Number(creditAmount),
+      reseller_id: resReq.reseller.resellerId,
+      amount_paid: amtPaidNum,
+      credit_amount: crtAmtNum,
+      type: topupType,
       screenshot_url: fileUrl,
       status: 'pending',
     });
-
     return res.json({ success: true, topup });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
@@ -1437,7 +1493,113 @@ apiRouter.get('/reseller/topups', resellerAuthMiddleware, async (req: Request, r
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 });
+// ─── 46c. GET /reseller/p2p-verify/:topup_id — Verify business topup ID ──────────────────
+apiRouter.get('/reseller/p2p-verify/:topup_id', resellerAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { topup_id } = req.params;
+    const business = await Business.findOne({ where: { topup_id } });
+    if (!business) return res.status(404).json({ success: false, error: 'User not found.' });
+    
+    // Mask name: Show first 2 chars, then ***, then last 2 chars
+    const name = business.name;
+    const maskedName = name.length > 4 
+      ? `${name.substring(0, 2)}***${name.substring(name.length - 2)}`
+      : `${name.substring(0, 1)}***`;
 
+    return res.json({ success: true, maskedName });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 46d. POST /reseller/p2p-topup — Execute P2P Direct Top-Up ───────────────────────
+apiRouter.post('/reseller/p2p-topup', resellerAuthMiddleware, async (req: Request, res: Response) => {
+  const sequelize = SequelizeService.getClient();
+  const t = await sequelize.transaction();
+  try {
+    const resReq = req as ResellerRequest;
+    const resellerId = resReq.reseller.resellerId;
+    const { topup_id, package_price, credit_amount } = req.body;
+
+    if (!topup_id || !package_price || !credit_amount) {
+      await t.rollback();
+      return res.status(400).json({ success: false, error: 'Missing required fields.' });
+    }
+
+    // 1. Lock Reseller
+    const reseller = await Reseller.findByPk(resellerId, { transaction: t, lock: true });
+    if (!reseller) {
+      await t.rollback();
+      return res.status(404).json({ success: false, error: 'Reseller not found.' });
+    }
+
+    if (!reseller.can_sell) {
+      await t.rollback();
+      return res.status(403).json({ success: false, error: 'Account suspended.' });
+    }
+
+    // 2. Lock Business
+    const business = await Business.findOne({ where: { topup_id }, transaction: t, lock: true });
+    if (!business) {
+      await t.rollback();
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    // 3. Calculate financial details
+    const commissionRate = reseller.commission_percentage || 0;
+    const commissionEarned = package_price * (commissionRate / 100);
+    const netDeduction = package_price - commissionEarned;
+
+    // 4. Verify balance/limits
+    const isPrepaid = !reseller.can_collect_payments;
+    if (isPrepaid) {
+      if (Number(reseller.prepaid_balance || 0) < package_price) {
+        await t.rollback();
+        return res.status(400).json({ success: false, error: `Insufficient prepaid balance. Required: ${package_price}` });
+      }
+      
+      await reseller.update({
+        prepaid_balance: Number(reseller.prepaid_balance) - package_price,
+        balance: Number(reseller.balance) + commissionEarned,
+        total_collected: Number(reseller.total_collected || 0) + package_price,
+      }, { transaction: t });
+
+    } else {
+      // Postpaid Check
+      if (Number(reseller.pending_debt || 0) + package_price > Number(reseller.postpaid_limit || 0)) {
+        await t.rollback();
+        return res.status(400).json({ success: false, error: `Postpaid limit exceeded. Required: ${package_price}` });
+      }
+
+      await reseller.update({
+        pending_debt: Number(reseller.pending_debt) + package_price,
+        balance: Number(reseller.balance) + commissionEarned,
+        total_collected: Number(reseller.total_collected || 0) + package_price,
+      }, { transaction: t });
+    }
+
+    // 5. Add Credits to Business
+    await business.update({
+      active_messages_count: Number(business.active_messages_count || 0) + Number(credit_amount)
+    }, { transaction: t });
+
+    // 6. Log Transaction
+    await P2PTopupTransaction.create({
+      reseller_id: resellerId,
+      business_id: business.id,
+      package_price,
+      credit_amount,
+      commission_earned: commissionEarned,
+      net_deducted: netDeduction,
+    }, { transaction: t });
+
+    await t.commit();
+    return res.json({ success: true, message: 'Top-up successful.', commissionEarned });
+  } catch (error) {
+    await t.rollback();
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
 // ═══════════════════════════════════════════════════════════════════════════
 // TOTAL (SUPER) ADMIN APIS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1472,7 +1634,9 @@ apiRouter.put('/total-admin/resellers/:id', adminSecretAuth, async (req: Request
       custom_referrer_first_rate,
       custom_referrer_recurring_rate,
       custom_approver_rate,
-      trust_score_factor
+      trust_score_factor,
+      postpaid_limit,
+      can_sell
     } = req.body;
 
     const reseller = await Reseller.findByPk(resellerId);
@@ -1492,6 +1656,8 @@ apiRouter.put('/total-admin/resellers/:id', adminSecretAuth, async (req: Request
       updates.custom_approver_rate = custom_approver_rate === null ? null : Number(custom_approver_rate);
     }
     if (trust_score_factor !== undefined) updates.trust_score_factor = Number(trust_score_factor);
+    if (postpaid_limit !== undefined) updates.postpaid_limit = Number(postpaid_limit);
+    if (can_sell !== undefined) updates.can_sell = !!can_sell;
 
     await reseller.update(updates);
     return res.json({ success: true, reseller });
@@ -1504,6 +1670,13 @@ apiRouter.put('/total-admin/resellers/:id', adminSecretAuth, async (req: Request
 apiRouter.get('/total-admin/analytics', adminSecretAuth, async (req: Request, res: Response) => {
   try {
     const activeChatbots = await ChatBot.count();
+    const totalBusinesses = await Business.count();
+    const totalResellers = await Reseller.count();
+    
+    // Revenue from Plan Requests
+    const approvedRequests = await PlanRequest.findAll({ where: { status: 'approved' } });
+    const totalRevenue = approvedRequests.reduce((sum, req) => sum + Number(req.price || 0), 0);
+
     const activities = await ChatbotActivity.findAll({ order: [['activity_date', 'ASC']] });
 
     let totalQueries = 0;
@@ -1517,11 +1690,24 @@ apiRouter.get('/total-admin/analytics', adminSecretAuth, async (req: Request, re
       success: true,
       stats: {
         activeChatbots,
+        totalBusinesses,
+        totalResellers,
+        totalRevenue,
         totalQueries,
         totalApiCost,
         activities,
       }
     });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 49B. GET /total-admin/audit-logs — Fetch audit logs ─────────────
+apiRouter.get('/total-admin/audit-logs', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const logs = await AuditLog.findAll({ order: [['created_at', 'DESC']], limit: 100 });
+    return res.json({ success: true, logs });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
@@ -1592,12 +1778,15 @@ apiRouter.post('/total-admin/requests/:id/approve', adminSecretAuth, async (req:
         if (!reseller.can_collect_payments) {
           const netRequiredPrice = calc.price - calc.approverFee;
           await reseller.update({
-            balance: Number(reseller.balance) - netRequiredPrice,
+            prepaid_balance: Number(reseller.prepaid_balance || 0) - netRequiredPrice,
+            balance: Number(reseller.balance) + calc.approverFee, // Credit their commission wallet so 'Earned' goes up
+            total_collected: Number(reseller.total_collected || 0) + calc.price,
           });
         } else {
           await reseller.update({
-            balance: Number(reseller.balance) + calc.approverFee,
-            total_collected: Number(reseller.total_collected) + calc.price,
+            balance: Number(reseller.balance) + calc.approverFee, // Credit their commission wallet
+            total_collected: Number(reseller.total_collected || 0) + calc.price,
+            pending_debt: Number(reseller.pending_debt || 0) + calc.price, // Add full price to their debt
           });
         }
       }
@@ -1645,11 +1834,24 @@ apiRouter.post('/total-admin/topups/:id/approve', adminSecretAuth, async (req: R
     const reseller = await Reseller.findByPk(topup.reseller_id);
     if (!reseller) return res.status(404).json({ success: false, error: 'Reseller not found.' });
 
-    // Update status to approved and credit the balance
+    // Update status to approved and apply the credit appropriately
     await topup.update({ status: 'approved' });
-    await reseller.update({
-      balance: Number(reseller.balance) + Number(topup.credit_amount),
-    });
+
+    if (topup.type === 'prepaid_topup') {
+      await reseller.update({
+        prepaid_balance: Number(reseller.prepaid_balance || 0) + Number(topup.credit_amount),
+      });
+    } else if (topup.type === 'postpaid_settlement') {
+      const currentDebt = Number(reseller.pending_debt || 0);
+      const paymentAmount = Number(topup.amount_paid);
+      
+      let newDebt = currentDebt - paymentAmount;
+      if (newDebt < 0) newDebt = 0; // Prevent negative debt
+
+      await reseller.update({
+        pending_debt: newDebt,
+      });
+    }
 
     return res.json({ success: true, message: `Approved reseller top-up. Credited ${topup.credit_amount} MMK.` });
   } catch (error) {

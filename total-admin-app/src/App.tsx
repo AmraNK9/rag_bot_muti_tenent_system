@@ -13,6 +13,7 @@ import {
   getPlans,
   updatePlan,
   createPlan,
+  getAuditLogs
 } from './api/client';
 
 interface Reseller {
@@ -30,22 +31,21 @@ interface Reseller {
   custom_referrer_recurring_rate: number | null;
   custom_approver_rate: number | null;
   trust_score_factor: number;
+  prepaid_balance?: number;
+  pending_debt?: number;
+  postpaid_limit?: number;
+  can_sell?: boolean;
   created_at: string;
 }
 
 interface Analytics {
   activeChatbots: number;
+  totalBusinesses: number;
+  totalResellers: number;
+  totalRevenue: number;
   totalQueries: number;
-  cumulativeApiCost: number;
-  activityLogs: Array<{
-    id: number;
-    chatbot_id: number;
-    activity_date: string;
-    query_count: number;
-    api_cost: number;
-    active_duration_seconds: number;
-    chatbot?: { name: string };
-  }>;
+  totalApiCost: number;
+  activities: any[];
 }
 
 interface PlanRequest {
@@ -100,7 +100,7 @@ export default function App() {
   const [tempSecret, setTempSecret] = useState('');
   const [authError, setAuthError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'analytics' | 'resellers' | 'requests' | 'topups' | 'settings'>('analytics');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
@@ -116,6 +116,8 @@ export default function App() {
   const [customReferrerRecurringRate, setCustomReferrerRecurringRate] = useState<string>('');
   const [customApproverRate, setCustomApproverRate] = useState<string>('');
   const [trustScoreFactor, setTrustScoreFactor] = useState<number>(1.00);
+  const [postpaidLimit, setPostpaidLimit] = useState<number>(10000);
+  const [canSell, setCanSell] = useState<boolean>(true);
   const [updatingReseller, setUpdatingReseller] = useState(false);
 
   const [requests, setRequests] = useState<PlanRequest[]>([]);
@@ -133,6 +135,9 @@ export default function App() {
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [creatingPlan, setCreatingPlan] = useState(false);
+
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const [planName, setPlanName] = useState('');
   const [planPrice, setPlanPrice] = useState(0);
   const [planQueryLimit, setPlanQueryLimit] = useState(0);
@@ -148,21 +153,28 @@ export default function App() {
   const fetchTabDetails = useCallback(async () => {
     if (!secret) return;
     try {
-      if (activeTab === 'analytics') {
+      if (activeTab === 'dashboard') {
         setLoadingAnalytics(true);
         const res = await getAnalytics();
         if (res.success) {
-          setAnalytics({
-            activeChatbots: res.activeChatbots || 0,
-            totalQueries: res.totalQueries || 0,
-            cumulativeApiCost: Number(res.cumulativeApiCost) || 0,
-            activityLogs: res.activityLogs || [],
-          });
+          setAnalytics(res.stats);
         }
       } else if (activeTab === 'resellers') {
         setLoadingResellers(true);
         const res = await getResellers();
         if (res.success) setResellers(res.resellers || []);
+      } else if (activeTab === 'plans') {
+        setLoadingPlans(true);
+        getPlans().then(res => {
+          if (res.success) setPlans(res.plans || []);
+          setLoadingPlans(false);
+        }).catch(() => setLoadingPlans(false));
+      } else if (activeTab === 'logs') {
+        setLoadingLogs(true);
+        getAuditLogs().then(res => {
+          if (res.success) setLogs(res.logs || []);
+          setLoadingLogs(false);
+        }).catch(() => setLoadingLogs(false));
       } else if (activeTab === 'requests') {
         setLoadingRequests(true);
         const res = await getRequests();
@@ -231,6 +243,8 @@ export default function App() {
     setCustomReferrerRecurringRate(reseller.custom_referrer_recurring_rate === null ? '' : String(reseller.custom_referrer_recurring_rate));
     setCustomApproverRate(reseller.custom_approver_rate === null ? '' : String(reseller.custom_approver_rate));
     setTrustScoreFactor(reseller.trust_score_factor === null ? 1.00 : Number(reseller.trust_score_factor));
+    setPostpaidLimit(reseller.postpaid_limit !== undefined ? Number(reseller.postpaid_limit) : 10000);
+    setCanSell(reseller.can_sell !== undefined ? reseller.can_sell : true);
   };
 
   const handleUpdateResellerSubmit = async (e: React.FormEvent) => {
@@ -246,6 +260,8 @@ export default function App() {
         custom_referrer_recurring_rate: customReferrerRecurringRate === '' ? null : Number(customReferrerRecurringRate),
         custom_approver_rate: customApproverRate === '' ? null : Number(customApproverRate),
         trust_score_factor: Number(trustScoreFactor),
+        postpaid_limit: Number(postpaidLimit),
+        can_sell: canSell,
       });
       if (res.success) {
         alert('Reseller configurations updated successfully!');
@@ -426,91 +442,421 @@ export default function App() {
 
   // ─── MAIN ADMIN PANEL ────────────────────────────────────────────────────
   return (
-    <div className="container">
-      {/* HEADER */}
-      <div className="header-bar">
-        <div>
-          <h1>🛡️ Super Admin</h1>
-          <p style={{ marginTop: '2px' }}>Global analytics, resellers & payments</p>
+    <div className="app-layout">
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          🛡️ Total Admin
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={handleLogout}>
-          Exit
-        </button>
-      </div>
+        <nav className="sidebar-nav">
+          <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+            📊 Dashboard
+          </div>
+          <div className={`sidebar-item ${activeTab === 'resellers' ? 'active' : ''}`} onClick={() => setActiveTab('resellers')}>
+            👥 Resellers
+          </div>
+          <div className={`sidebar-item ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => setActiveTab('requests')}>
+            📄 Subscriptions
+          </div>
+          <div className={`sidebar-item ${activeTab === 'topups' ? 'active' : ''}`} onClick={() => setActiveTab('topups')}>
+            💼 Top-ups
+          </div>
+          <div className={`sidebar-item ${activeTab === 'plans' ? 'active' : ''}`} onClick={() => setActiveTab('plans')}>
+            📦 Pricing Plans
+          </div>
+          <div className={`sidebar-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}>
+            📜 Audit Logs
+          </div>
+          <div className={`sidebar-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+            ⚙️ Settings
+          </div>
+        </nav>
+      </aside>
 
-      {/* TABS */}
-      <div className="tabs-header">
-        {([
-          { key: 'analytics', label: '📊 Analytics' },
-          { key: 'resellers', label: '🤝 Resellers' },
-          { key: 'requests', label: '🗂️ Requests' },
-          { key: 'topups', label: '💼 Top-ups' },
-          { key: 'settings', label: '⚙️ Settings' },
-        ] as const).map(({ key, label }) => (
-          <button
-            key={key}
-            className={`tab-btn ${activeTab === key ? 'active' : ''}`}
-            onClick={() => setActiveTab(key)}
-          >
-            {label}
+      {/* MAIN CONTENT AREA */}
+      <main className="main-content">
+        <header className="top-header">
+          <div style={{ fontWeight: 600, color: 'var(--text-muted)' }}>
+            Super Admin Console
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={handleLogout}>
+            Exit System
           </button>
-        ))}
-      </div>
+        </header>
 
-      {/* TAB 1: ANALYTICS */}
-      {activeTab === 'analytics' && (
-        <>
-          {loadingAnalytics ? (
-            <div className="loading-state"><div className="spinner" /> Loading analytics...</div>
-          ) : (
+        <div className="container">
+          {/* TAB 1: DASHBOARD */}
+          {activeTab === 'dashboard' && (
             <>
-              <div className="metrics-grid">
-                <div className="metric-card">
-                  <h3>Active Chatbots</h3>
-                  <div className="metric-card-val">{analytics?.activeChatbots || '0'}</div>
-                  <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Total registered</p>
-                </div>
-                <div className="metric-card">
-                  <h3>Total Queries</h3>
-                  <div className="metric-card-val">{analytics?.totalQueries || '0'}</div>
-                  <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Messages processed</p>
-                </div>
-                <div className="metric-card">
-                  <h3>LLM Costs</h3>
-                  <div className="metric-card-val" style={{ color: 'var(--danger)', fontSize: '1.3rem' }}>
-                    ${analytics?.cumulativeApiCost ? Number(analytics.cumulativeApiCost).toFixed(4) : '0.00'}
+              {loadingAnalytics ? (
+                <div className="loading-state"><div className="spinner" /> Loading analytics...</div>
+              ) : (
+                <>
+                  <div className="metrics-grid">
+                    <div className="metric-card">
+                      <h3>Total Revenue</h3>
+                      <div className="metric-card-val" style={{ color: 'var(--success)' }}>{analytics?.totalRevenue ? Number(analytics.totalRevenue).toLocaleString() : '0'} MMK</div>
+                      <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Lifetime approved revenue</p>
+                    </div>
+                    <div className="metric-card">
+                      <h3>Active Resellers</h3>
+                      <div className="metric-card-val">{analytics?.totalResellers || '0'}</div>
+                      <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Registered agents</p>
+                    </div>
+                    <div className="metric-card">
+                      <h3>Active Businesses</h3>
+                      <div className="metric-card-val">{analytics?.totalBusinesses || '0'}</div>
+                      <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Registered businesses</p>
+                    </div>
+                    <div className="metric-card">
+                      <h3>Active Chatbots</h3>
+                      <div className="metric-card-val">{analytics?.activeChatbots || '0'}</div>
+                      <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Total chatbots running</p>
+                    </div>
+                    <div className="metric-card">
+                      <h3>LLM Costs</h3>
+                      <div className="metric-card-val" style={{ color: 'var(--danger)', fontSize: '1.3rem' }}>
+                        ${analytics?.totalApiCost ? Number(analytics.totalApiCost).toFixed(4) : '0.00'}
+                      </div>
+                      <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Cumulative API spend</p>
+                    </div>
                   </div>
-                  <p style={{ fontSize: '0.7rem', marginTop: '4px' }}>Cumulative API spend</p>
-                </div>
-              </div>
 
-              <div className="card">
-                <h2>📈 Daily Activity Logs</h2>
-                {analytics?.activityLogs.length === 0 ? (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📭</div>
-                    <p>No activity records yet.</p>
+                  <div className="card">
+                    <h2>📈 Daily Activity Logs</h2>
+                    {!analytics?.activities || analytics?.activities.length === 0 ? (
+                      <div className="empty-state">
+                        <div className="empty-state-icon">📭</div>
+                        <p>No activity records yet.</p>
+                      </div>
+                    ) : (
+                      <div className="table-scroll">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Chatbot</th>
+                              <th>Queries</th>
+                              <th>API Cost</th>
+                              <th>Duration</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analytics?.activities?.map((log) => (
+                              <tr key={log.id}>
+                                <td>{log.activity_date}</td>
+                                <td>#{log.chatbot_id} {log.chatbot?.name ? `(${log.chatbot.name})` : ''}</td>
+                                <td><strong>{log.query_count}</strong></td>
+                                <td style={{ color: 'var(--danger)' }}>${Number(log.api_cost).toFixed(5)}</td>
+                                <td>{Math.round(log.active_duration_seconds / 60)} min</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* TAB 2: RESELLERS */}
+          {activeTab === 'resellers' && (
+            <>
+              {loadingResellers ? (
+                <div className="loading-state"><div className="spinner" /> Loading resellers...</div>
+              ) : resellers.length === 0 ? (
+                <div className="card">
+                  <div className="empty-state">
+                    <div className="empty-state-icon">🤝</div>
+                    <p>No reseller accounts registered.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="resellers-list">
+                  {resellers.map((reseller) => (
+                    <div key={reseller.id} className="reseller-item-card">
+                      <div className="reseller-item-header">
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{reseller.name}</span>
+                        <span className="badge badge-purple">ID: {reseller.id}</span>
+                      </div>
+
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        <div>{reseller.email}</div>
+                        <div style={{ marginTop: '2px' }}>KPay: {reseller.kpay_no} · {reseller.kpay_name}</div>
+                      </div>
+
+                      <div className="reseller-meta-row">
+                        <span>Commission <strong style={{ color: 'var(--text-main)' }}>{reseller.commission_percentage}%</strong></span>
+                        <span>Collected <strong style={{ color: 'var(--success)' }}>{reseller.total_collected.toLocaleString()} MMK</strong></span>
+                      </div>
+
+                      <div className="reseller-meta-row">
+                        <span>Earned <strong style={{ color: 'var(--text-main)' }}>{reseller.balance.toLocaleString()} MMK</strong></span>
+                        <span>Prepaid <strong style={{ color: 'var(--primary)' }}>{Number(reseller.prepaid_balance || 0).toLocaleString()} MMK</strong></span>
+                      </div>
+
+                      <div className="reseller-meta-row">
+                        <span>Debt <strong style={{ color: (reseller.pending_debt || 0) > 0 ? 'var(--error)' : 'var(--text-main)' }}>{Number(reseller.pending_debt || 0).toLocaleString()} MMK</strong> / {Number(reseller.postpaid_limit || 0).toLocaleString()}</span>
+                        <span>Trust <strong>{reseller.reliability_score}/100</strong></span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {reseller.can_collect_payments ? (
+                            <span className="badge badge-green">Postpaid ✓</span>
+                          ) : (
+                            <span className="badge badge-yellow">Prepaid</span>
+                          )}
+                          {!reseller.can_sell && (
+                            <span className="badge badge-red">Suspended</span>
+                          )}
+                        </div>
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditReseller(reseller)}>
+                          ✏️ Edit
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB 3: REQUESTS */}
+          {activeTab === 'requests' && (
+            <>
+              {loadingRequests ? (
+                <div className="loading-state"><div className="spinner" /> Loading requests...</div>
+              ) : requests.length === 0 ? (
+                <div className="card">
+                  <div className="empty-state">
+                    <div className="empty-state-icon">🗂️</div>
+                    <p>No active subscription requests.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="requests-grid">
+                  {requests.map((req) => (
+                    <div key={req.id} className="request-card">
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{req.business?.name || `Business #${req.business_id}`}</span>
+                          <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-yellow'}`}>
+                            {req.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          <div>Plan: <strong style={{ color: 'var(--text-main)' }}>{req.plan_name.toUpperCase()}</strong> · {req.price.toLocaleString()} MMK</div>
+                          <div>Via: <strong>{req.reseller?.name || 'Central Office'}</strong></div>
+                          <div>{new Date(req.created_at).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+
+                      <img
+                        className="request-screenshot"
+                        src={getImgSrc(req.screenshot_url)}
+                        alt="Receipt"
+                        onClick={() => setZoomImgUrl(req.screenshot_url)}
+                        onError={(e) => handleImgError(e, req.screenshot_url)}
+                      />
+
+                      {req.status === 'pending' && (
+                        <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={() => handleOverrideApprove(req.id)}>
+                          ⚡ Override Approve
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB 4: TOP-UPS */}
+          {activeTab === 'topups' && (
+            <>
+              {loadingTopUps ? (
+                <div className="loading-state"><div className="spinner" /> Loading top-ups...</div>
+              ) : topups.length === 0 ? (
+                <div className="card">
+                  <div className="empty-state">
+                    <div className="empty-state-icon">💼</div>
+                    <p>No reseller top-up requests found.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="requests-grid">
+                  {topups.map((t) => (
+                    <div key={t.id} className="request-card">
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{t.reseller?.name || `Reseller #${t.reseller_id}`}</span>
+                          <span className={`badge ${t.status === 'approved' ? 'badge-green' : t.status === 'rejected' ? 'badge-red' : 'badge-yellow'}`}>
+                            {t.status.toUpperCase()}
+                          </span>
+                        </div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            <div>Type: <strong style={{ color: 'var(--primary)' }}>{t.type === 'postpaid_settlement' ? 'Postpaid Settlement' : 'Prepaid Top-up'}</strong></div>
+                            <div>Paid: <strong style={{ color: 'var(--text-main)' }}>{Number(t.amount_paid).toLocaleString()} MMK</strong></div>
+                            {t.type !== 'postpaid_settlement' && (
+                              <div>Credit: <strong style={{ color: 'var(--success)' }}>+{Number(t.credit_amount).toLocaleString()} MMK</strong></div>
+                            )}
+                            <div>Commission: {t.reseller?.commission_percentage || '30'}%</div>
+                          <div>{new Date(t.created_at).toLocaleString()}</div>
+                        </div>
+                      </div>
+
+                      <img
+                        className="request-screenshot"
+                        src={getImgSrc(t.screenshot_url)}
+                        alt="Receipt"
+                        onClick={() => setZoomImgUrl(t.screenshot_url)}
+                        onError={(e) => handleImgError(e, t.screenshot_url)}
+                      />
+
+                      {t.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => handleRejectTopUp(t.id)}>Reject</button>
+                          <button className="btn btn-success btn-sm" style={{ flex: 1 }} onClick={() => handleApproveTopUp(t.id)}>Approve</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB 6: AUDIT LOGS */}
+          {activeTab === 'logs' && (
+            <div className="card">
+              <h2>📜 System Audit Logs</h2>
+              <p style={{ marginBottom: '16px', color: 'var(--text-muted)' }}>Tracks all critical system changes and admin actions.</p>
+              
+              {loadingLogs ? (
+                <div className="loading-state"><div className="spinner" /> Loading audit logs...</div>
+              ) : logs.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">✅</div>
+                  <p>No audit logs found.</p>
+                </div>
+              ) : (
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Action Type</th>
+                        <th>Description</th>
+                        <th>Admin ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs.map((log, idx) => (
+                        <tr key={idx}>
+                          <td>{new Date(log.created_at).toLocaleString()}</td>
+                          <td><span className="badge badge-purple">{log.action}</span></td>
+                          <td>{log.description}</td>
+                          <td>{log.admin_id || 'System'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: SETTINGS & PLANS */}
+          {activeTab === 'settings' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Global Commission Settings */}
+              <div className="card">
+                <h2>⚙️ Commission Settings</h2>
+                {settings && (
+                  <p style={{ color: 'var(--success)', fontSize: '0.78rem', marginBottom: '12px' }}>
+                    ✓ System defaults synced (Config ID: {settings.id})
+                  </p>
+                )}
+                <p style={{ marginBottom: '16px' }}>Default commission rates across the platform when no reseller overrides are active.</p>
+                {loadingSettings ? (
+                  <div className="loading-state"><div className="spinner" /> Loading...</div>
+                ) : (
+                  <form onSubmit={handleUpdateSettingsSubmit}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>Referrer First Month (%)</label>
+                        <input className="form-control" type="number" min="0" max="100" step="0.01" required
+                          value={referrerFirstMonthRate} onChange={(e) => setReferrerFirstMonthRate(Number(e.target.value))} />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>Referrer Renewal (%)</label>
+                        <input className="form-control" type="number" min="0" max="100" step="0.01" required
+                          value={referrerRecurringRate} onChange={(e) => setReferrerRecurringRate(Number(e.target.value))} />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label>Approver Fee (%)</label>
+                        <input className="form-control" type="number" min="0" max="100" step="0.01" required
+                          value={approverFeeRate} onChange={(e) => setApproverFeeRate(Number(e.target.value))} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button className="btn btn-primary" style={{ width: 'auto' }} type="submit" disabled={updatingSettings}>
+                        {updatingSettings ? 'Saving...' : 'Save Settings'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: PRICING PLANS */}
+          {activeTab === 'plans' && (
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h2 style={{ margin: 0 }}>Subscription Plans</h2>
+                    <p style={{ margin: 0 }}>Configure subscription plan tiers and limits.</p>
+                  </div>
+                  <button className="btn btn-primary btn-sm" onClick={handleOpenCreatePlan}>
+                    + Create New Plan
+                  </button>
+                </div>
+                {loadingPlans ? (
+                  <div className="loading-state"><div className="spinner" /> Loading plans...</div>
                 ) : (
                   <div className="table-scroll">
                     <table className="data-table">
                       <thead>
                         <tr>
-                          <th>Date</th>
-                          <th>Chatbot</th>
+                          <th>Plan</th>
+                          <th>Price (MMK)</th>
                           <th>Queries</th>
-                          <th>API Cost</th>
                           <th>Duration</th>
+                          <th>Status</th>
+                          <th style={{ textAlign: 'right' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {analytics?.activityLogs.map((log) => (
-                          <tr key={log.id}>
-                            <td>{log.activity_date}</td>
-                            <td>#{log.chatbot_id} {log.chatbot?.name ? `(${log.chatbot.name})` : ''}</td>
-                            <td><strong>{log.query_count}</strong></td>
-                            <td style={{ color: 'var(--danger)' }}>${Number(log.api_cost).toFixed(5)}</td>
-                            <td>{Math.round(log.active_duration_seconds / 60)} min</td>
+                        {plans.map((plan) => (
+                          <tr key={plan.id}>
+                            <td><strong style={{ textTransform: 'uppercase' }}>{plan.name}</strong></td>
+                            <td>{plan.price.toLocaleString()}</td>
+                            <td>{plan.query_limit.toLocaleString()}</td>
+                            <td>{plan.duration_days}d</td>
+                            <td>
+                              {plan.is_active
+                                ? <span className="badge badge-green">Active</span>
+                                : <span className="badge badge-red">Inactive</span>}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditPlan(plan)}>
+                                Edit
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -518,262 +864,9 @@ export default function App() {
                   </div>
                 )}
               </div>
-            </>
           )}
-        </>
-      )}
+        {/* END MAIN TABS */}
 
-      {/* TAB 2: RESELLERS */}
-      {activeTab === 'resellers' && (
-        <>
-          {loadingResellers ? (
-            <div className="loading-state"><div className="spinner" /> Loading resellers...</div>
-          ) : resellers.length === 0 ? (
-            <div className="card">
-              <div className="empty-state">
-                <div className="empty-state-icon">🤝</div>
-                <p>No reseller accounts registered.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="resellers-list">
-              {resellers.map((reseller) => (
-                <div key={reseller.id} className="reseller-item-card">
-                  <div className="reseller-item-header">
-                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{reseller.name}</span>
-                    <span className="badge badge-purple">ID: {reseller.id}</span>
-                  </div>
-
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    <div>{reseller.email}</div>
-                    <div style={{ marginTop: '2px' }}>KPay: {reseller.kpay_no} · {reseller.kpay_name}</div>
-                  </div>
-
-                  <div className="reseller-meta-row">
-                    <span>Commission <strong style={{ color: 'var(--text-main)' }}>{reseller.commission_percentage}%</strong></span>
-                    <span>Collected <strong style={{ color: 'var(--success)' }}>{reseller.total_collected.toLocaleString()} MMK</strong></span>
-                  </div>
-
-                  <div className="reseller-meta-row">
-                    <span>Balance <strong style={{ color: 'var(--text-main)' }}>{reseller.balance.toLocaleString()} MMK</strong></span>
-                    <span>Trust <strong>{reseller.reliability_score}/100</strong></span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    {reseller.can_collect_payments ? (
-                      <span className="badge badge-green">Collector ✓</span>
-                    ) : (
-                      <span className="badge badge-red">Collector Off</span>
-                    )}
-                    <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditReseller(reseller)}>
-                      ✏️ Edit
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* TAB 3: REQUESTS */}
-      {activeTab === 'requests' && (
-        <>
-          {loadingRequests ? (
-            <div className="loading-state"><div className="spinner" /> Loading requests...</div>
-          ) : requests.length === 0 ? (
-            <div className="card">
-              <div className="empty-state">
-                <div className="empty-state-icon">🗂️</div>
-                <p>No active subscription requests.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="requests-grid">
-              {requests.map((req) => (
-                <div key={req.id} className="request-card">
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{req.business?.name || `Business #${req.business_id}`}</span>
-                      <span className={`badge ${req.status === 'approved' ? 'badge-green' : req.status === 'rejected' ? 'badge-red' : 'badge-yellow'}`}>
-                        {req.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      <div>Plan: <strong style={{ color: 'var(--text-main)' }}>{req.plan_name.toUpperCase()}</strong> · {req.price.toLocaleString()} MMK</div>
-                      <div>Via: <strong>{req.reseller?.name || 'Central Office'}</strong></div>
-                      <div>{new Date(req.created_at).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-
-                  <img
-                    className="request-screenshot"
-                    src={getImgSrc(req.screenshot_url)}
-                    alt="Receipt"
-                    onClick={() => setZoomImgUrl(req.screenshot_url)}
-                    onError={(e) => handleImgError(e, req.screenshot_url)}
-                  />
-
-                  {req.status === 'pending' && (
-                    <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={() => handleOverrideApprove(req.id)}>
-                      ⚡ Override Approve
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* TAB 4: TOP-UPS */}
-      {activeTab === 'topups' && (
-        <>
-          {loadingTopUps ? (
-            <div className="loading-state"><div className="spinner" /> Loading top-ups...</div>
-          ) : topups.length === 0 ? (
-            <div className="card">
-              <div className="empty-state">
-                <div className="empty-state-icon">💼</div>
-                <p>No reseller top-up requests found.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="requests-grid">
-              {topups.map((t) => (
-                <div key={t.id} className="request-card">
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{t.reseller?.name || `Reseller #${t.reseller_id}`}</span>
-                      <span className={`badge ${t.status === 'approved' ? 'badge-green' : t.status === 'rejected' ? 'badge-red' : 'badge-yellow'}`}>
-                        {t.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      <div>Paid: <strong style={{ color: 'var(--text-main)' }}>{Number(t.amount_paid).toLocaleString()} MMK</strong></div>
-                      <div>Credit: <strong style={{ color: 'var(--success)' }}>+{Number(t.credit_amount).toLocaleString()} MMK</strong></div>
-                      <div>Commission: {t.reseller?.commission_percentage || '30'}% · {t.reseller?.can_collect_payments ? 'Postpaid' : 'Prepaid'}</div>
-                      <div>{new Date(t.created_at).toLocaleString()}</div>
-                    </div>
-                  </div>
-
-                  <img
-                    className="request-screenshot"
-                    src={getImgSrc(t.screenshot_url)}
-                    alt="Receipt"
-                    onClick={() => setZoomImgUrl(t.screenshot_url)}
-                    onError={(e) => handleImgError(e, t.screenshot_url)}
-                  />
-
-                  {t.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => handleRejectTopUp(t.id)}>Reject</button>
-                      <button className="btn btn-success btn-sm" style={{ flex: 1 }} onClick={() => handleApproveTopUp(t.id)}>Approve</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* TAB 5: SETTINGS & PLANS */}
-      {activeTab === 'settings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Global Commission Settings */}
-          <div className="card">
-            <h2>⚙️ Commission Settings</h2>
-            {settings && (
-              <p style={{ color: 'var(--success)', fontSize: '0.78rem', marginBottom: '12px' }}>
-                ✓ System defaults synced (Config ID: {settings.id})
-              </p>
-            )}
-            <p style={{ marginBottom: '16px' }}>Default commission rates across the platform when no reseller overrides are active.</p>
-            {loadingSettings ? (
-              <div className="loading-state"><div className="spinner" /> Loading...</div>
-            ) : (
-              <form onSubmit={handleUpdateSettingsSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '16px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Referrer First Month (%)</label>
-                    <input className="form-control" type="number" min="0" max="100" step="0.01" required
-                      value={referrerFirstMonthRate} onChange={(e) => setReferrerFirstMonthRate(Number(e.target.value))} />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Referrer Renewal (%)</label>
-                    <input className="form-control" type="number" min="0" max="100" step="0.01" required
-                      value={referrerRecurringRate} onChange={(e) => setReferrerRecurringRate(Number(e.target.value))} />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Approver Fee (%)</label>
-                    <input className="form-control" type="number" min="0" max="100" step="0.01" required
-                      value={approverFeeRate} onChange={(e) => setApproverFeeRate(Number(e.target.value))} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button className="btn btn-primary" style={{ width: 'auto' }} type="submit" disabled={updatingSettings}>
-                    {updatingSettings ? 'Saving...' : 'Save Settings'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-
-          {/* Pricing Plans */}
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h2 style={{ margin: 0 }}>Subscription Plans</h2>
-                <p style={{ margin: 0 }}>Configure subscription plan tiers and limits.</p>
-              </div>
-              <button className="btn btn-primary btn-sm" onClick={handleOpenCreatePlan}>
-                + Create New Plan
-              </button>
-            </div>
-            {loadingPlans ? (
-              <div className="loading-state"><div className="spinner" /> Loading plans...</div>
-            ) : (
-              <div className="table-scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Plan</th>
-                      <th>Price (MMK)</th>
-                      <th>Queries</th>
-                      <th>Duration</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plans.map((plan) => (
-                      <tr key={plan.id}>
-                        <td><strong style={{ textTransform: 'uppercase' }}>{plan.name}</strong></td>
-                        <td>{plan.price.toLocaleString()}</td>
-                        <td>{plan.query_limit.toLocaleString()}</td>
-                        <td>{plan.duration_days}d</td>
-                        <td>
-                          {plan.is_active
-                            ? <span className="badge badge-green">Active</span>
-                            : <span className="badge badge-red">Inactive</span>}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditPlan(plan)}>
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* EDIT PLAN MODAL */}
       {/* CREATE/EDIT PLAN MODAL */}
       {(editingPlan || creatingPlan) && (
         <div className="modal-overlay" onClick={() => { setEditingPlan(null); setCreatingPlan(false); }}>
@@ -863,7 +956,15 @@ export default function App() {
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '16px 0' }}>
                 <input type="checkbox" id="can-collect" checked={canCollectPayments} onChange={(e) => setCanCollectPayments(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                <label htmlFor="can-collect" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Enable KPay Collector (Payment routing)</label>
+                <label htmlFor="can-collect" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Enable Postpaid Mode (can_collect_payments)</label>
+              </div>
+              <div className="form-group">
+                <label>Postpaid Credit Limit (MMK)</label>
+                <input className="form-control" type="number" min="0" required value={postpaidLimit} onChange={(e) => setPostpaidLimit(Number(e.target.value))} />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '16px 0' }}>
+                <input type="checkbox" id="can-sell" checked={canSell} onChange={(e) => setCanSell(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                <label htmlFor="can-sell" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Account Active (Can Approve Customers)</label>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                 <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={() => setEditingReseller(null)}>Cancel</button>
@@ -891,6 +992,8 @@ export default function App() {
           </div>
         </div>
       )}
+        </div> {/* END MAIN CONTENT CONTAINER */}
+      </main>
     </div>
   );
 }

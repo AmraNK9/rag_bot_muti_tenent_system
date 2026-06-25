@@ -11,6 +11,7 @@ import { PgVectorStoreService } from '../infrastructure/vectorstore/pgvector.ser
 import { ToolCallingRegistry } from '../infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from '../infrastructure/prompt/prompt.factory';
 import { QueryExtractionTool } from '../modules/chat/query-extraction.tool';
+import { SocketService } from '../infrastructure/socket/socket.service';
 import { Request, Response } from 'express';
 
 declare const process: {
@@ -133,7 +134,7 @@ app.post(
 export function startServer(port: number) {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  return app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`\n============================================================`);
     console.log(`🚀 Chatbot Management Prototype Server Running!`);
     console.log(`🔧 Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
@@ -145,4 +146,7 @@ export function startServer(port: number) {
     console.log(`📡 Webhook endpoint:    /webhook/:businessId/:chatbotId`);
     console.log(`============================================================\n`);
   });
+
+  SocketService.init(server);
+  return server;
 }

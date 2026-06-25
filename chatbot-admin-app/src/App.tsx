@@ -81,7 +81,8 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [submittingAuth, setSubmittingAuth] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'chats' | 'knowledge' | 'prompt' | 'profile'>('chats');
+  const [activeTab, setActiveTab] = useState<'chats' | 'knowledge' | 'prompt' | 'billing'>('chats');
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(false);
@@ -179,7 +180,7 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
-    if (activeTab === 'chats') loadConversations();
+    else if (activeTab === 'billing') loadBillingHistory();
     else if (activeTab === 'knowledge' && profile?.canManageKnowledge) loadKnowledge();
     else if (activeTab === 'prompt' && profile?.canManageSystemPrompt) loadSystemPrompt();
   }, [activeTab, token, profile]);
@@ -236,6 +237,10 @@ export default function App() {
     } catch (e) { console.error(e); }
     finally { setLoadingPrompt(false); }
   };
+
+  const loadBillingHistory = async () => {
+      // Placeholder logic for future implementation
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -618,20 +623,108 @@ export default function App() {
     <div className="app-container">
       {/* HEADER */}
       <header className="app-header">
-        <div>
-          <h2>{chatbot?.name || '...'}</h2>
+        <button className="app-bar-icon-btn" onClick={() => setDrawerOpen(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', padding: '0 8px', marginRight: '8px' }}>
+          ☰
+        </button>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{chatbot?.name || '...'}</h2>
           <div className="app-header-subtitle">
             {profile?.isStandalone ? 'Standalone' : 'Business'} · {credits} credits
           </div>
         </div>
-        <button
-          className="btn btn-ghost"
-          style={{ width: 'auto', padding: '6px 12px', fontSize: '0.8rem', minHeight: '34px' }}
-          onClick={handleLogout}
-        >
-          Sign out
-        </button>
       </header>
+
+      {/* DRAWER (SIDEBAR) */}
+      {drawerOpen && (
+        <div className="drawer-overlay" onClick={() => setDrawerOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex' }}>
+          <div className="drawer" onClick={(e) => e.stopPropagation()} style={{ width: '300px', background: 'var(--bg-card)', height: '100%', padding: '20px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <div className="drawer-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Profile</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setDrawerOpen(false)} style={{ padding: '4px 8px' }}>✕</button>
+            </div>
+            
+            <div className="drawer-profile" style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div className="drawer-profile-icon" style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                {profile?.name?.charAt(0).toUpperCase() || 'A'}
+              </div>
+              <h3 style={{ margin: 0 }}>{profile?.name || 'Admin'}</h3>
+              <p style={{ fontSize: '0.8rem', marginTop: '4px', color: 'var(--text-muted)' }}>
+                {profile?.email}
+              </p>
+            </div>
+
+            <div className="drawer-item" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}>
+              <span className="drawer-item-label" style={{ color: 'var(--text-muted)' }}>Account Type</span>
+              <span className="drawer-item-val">
+                {profile?.isStandalone
+                  ? <span className="badge badge-green">Standalone</span>
+                  : <span className="badge badge-blue">Business</span>}
+              </span>
+            </div>
+            
+            <div className="drawer-item" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}>
+              <span className="drawer-item-label" style={{ color: 'var(--text-muted)' }}>Message Credits</span>
+              <span className="drawer-item-val" style={{ fontWeight: 700, color: 'var(--text-link)' }}>{credits}</span>
+            </div>
+
+            {businessPlanInfo?.topupId && (
+              <div className="drawer-item" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}>
+                <span className="drawer-item-label" style={{ color: 'var(--text-muted)' }}>Top-Up ID</span>
+                <span className="drawer-item-val" style={{ fontWeight: 700, background: 'rgba(37, 99, 235, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                  {businessPlanInfo.topupId}
+                </span>
+              </div>
+            )}
+
+            {profile?.isStandalone && (
+              <div style={{ marginTop: '24px' }}>
+                <h4 style={{ marginBottom: '12px', fontSize: '1rem', color: 'var(--text)' }}>Subscription Info</h4>
+                <div className="drawer-item" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}>
+                  <span className="drawer-item-label" style={{ color: 'var(--text-muted)' }}>Active Plan</span>
+                  <span className="drawer-item-val" style={{ fontWeight: 600, color: 'var(--text-link)', textTransform: 'capitalize' }}>
+                    {businessPlanInfo?.plan === 'subscription'
+                      ? `${businessPlanInfo?.subscriptionPlan} Plan`
+                      : 'Free (Prepaid)'}
+                  </span>
+                </div>
+                {businessPlanInfo?.subscriptionEndDate && (
+                  <div className="drawer-item" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}>
+                    <span className="drawer-item-label" style={{ color: 'var(--text-muted)' }}>Expires</span>
+                    <span className="drawer-item-val">
+                      {new Date(businessPlanInfo.subscriptionEndDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+                
+                {chatbot && (
+                  <div style={{ marginTop: '24px' }}>
+                    <h4 style={{ marginBottom: '12px', fontSize: '1rem', color: 'var(--text)' }}>Bot Setup</h4>
+                    <form onSubmit={handleUpdateBotMetadata}>
+                      <div className="form-group" style={{ marginBottom: '12px' }}>
+                        <label style={{ fontSize: '0.8rem' }}>Bot Name</label>
+                        <input className="form-control" type="text" required value={editBotName} onChange={(e) => setEditBotName(e.target.value)} style={{ fontSize: '0.85rem', padding: '6px' }} />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '12px' }}>
+                        <label style={{ fontSize: '0.8rem' }}>Description</label>
+                        <textarea className="form-control" style={{ height: '60px', resize: 'vertical', fontSize: '0.85rem', padding: '6px' }} value={editBotDesc} onChange={(e) => setEditBotDesc(e.target.value)} placeholder="What does this bot do?" />
+                      </div>
+                      <button className="btn btn-primary" type="submit" disabled={updatingBot} style={{ width: '100%', fontSize: '0.85rem', padding: '8px' }}>
+                        {updatingBot ? 'Saving...' : 'Save Bot Info'}
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
+              <button className="btn btn-danger" style={{ width: '100%' }} onClick={handleLogout}>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CONTENT */}
       <main className="app-content">
@@ -875,60 +968,19 @@ export default function App() {
               </div>
             )}
 
-            {/* PROFILE TAB */}
-            {activeTab === 'profile' && (
+            {/* BILLING TAB */}
+            {activeTab === 'billing' && (
               <div className="settings-list">
-                {chatbot && profile?.isStandalone && (
+                {!profile?.isStandalone ? (
                   <div className="settings-card">
-                    <div className="settings-card-title">Bot Information</div>
-                    <div className="settings-card-body">
-                      <form onSubmit={handleUpdateBotMetadata}>
-                        <div className="form-group">
-                          <label>Bot Name</label>
-                          <input className="form-control" type="text" required value={editBotName}
-                            onChange={(e) => setEditBotName(e.target.value)} />
-                        </div>
-                        <div className="form-group">
-                          <label>Description</label>
-                          <textarea className="form-control" style={{ height: '72px', resize: 'vertical' }}
-                            value={editBotDesc} onChange={(e) => setEditBotDesc(e.target.value)}
-                            placeholder="What does this bot do?" />
-                        </div>
-                        <button className="btn btn-primary" type="submit" disabled={updatingBot}>
-                          {updatingBot ? 'Saving...' : 'Save Bot Info'}
-                        </button>
-                      </form>
+                    <div className="empty-state" style={{ padding: '32px 16px' }}>
+                      <div className="empty-icon">💳</div>
+                      <p style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>Managed Billing</p>
+                      <p style={{ fontSize: '0.8rem' }}>Your billing is managed by your Provider. Please contact them to top-up credits or upgrade plans.</p>
                     </div>
                   </div>
-                )}
-
-                <div className="settings-card">
-                  <div className="settings-card-title">Account Details</div>
-                  <div className="settings-row">
-                    <div className="settings-label">Name</div>
-                    <div className="settings-value">{profile?.name}</div>
-                  </div>
-                  <div className="settings-row">
-                    <div className="settings-label">Email</div>
-                    <div className="settings-value" style={{ fontSize: '0.8rem' }}>{profile?.email}</div>
-                  </div>
-                  <div className="settings-row">
-                    <div className="settings-label">Account Type</div>
-                    <div className="settings-value">
-                      {profile?.isStandalone
-                        ? <span className="badge badge-green">Standalone</span>
-                        : <span className="badge badge-blue">Business</span>}
-                    </div>
-                  </div>
-                  <div className="settings-row">
-                    <div className="settings-label">Message Credits</div>
-                    <div className="settings-value" style={{ fontWeight: 700, color: 'var(--text-link)' }}>
-                      {credits}
-                    </div>
-                  </div>
-                </div>
-
-                {profile?.isStandalone && (
+                ) : (
+                  <>
                   <div className="settings-card">
                     <div className="settings-card-title">Subscription & Upgrade</div>
                     <div className="settings-row">
@@ -1027,6 +1079,7 @@ export default function App() {
                       )}
                     </div>
                   </div>
+                  </>
                 )}
 
                 <div className="settings-card">
@@ -1060,7 +1113,7 @@ export default function App() {
           { key: 'chats', icon: '💬', label: 'Chats' },
           { key: 'knowledge', icon: '📚', label: 'Knowledge' },
           { key: 'prompt', icon: '⚙️', label: 'Prompt' },
-          { key: 'profile', icon: '👤', label: 'Profile' },
+          { key: 'billing', icon: '💳', label: 'Billing' },
         ] as const).map(({ key, icon, label }) => (
           <button
             key={key}

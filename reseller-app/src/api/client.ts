@@ -49,6 +49,9 @@ export const getDashboard = () =>
 export const getRequests = () =>
   api.get('/reseller/requests').then((r) => r.data);
 
+export const getRequestsHistory = () =>
+  api.get('/reseller/requests/history').then((r) => r.data);
+
 export const approveRequest = (id: number) =>
   api.post(`/reseller/requests/${id}/approve`).then((r) => r.data);
 
@@ -58,5 +61,11 @@ export const rejectRequest = (id: number) =>
 export const getTopUpHistory = () =>
   api.get('/reseller/topups').then((r) => r.data);
 
-export const submitTopUp = (amountPaid: number, screenshotBase64: string) =>
-  api.post('/reseller/topup', { amountPaid, screenshotBase64 }).then((r) => r.data);
+export const submitTopUp = (amount_paid: number, credit_amount: number, type: 'prepaid_topup' | 'postpaid_settlement', screenshotBase64: string) =>
+  api.post('/reseller/topup', { amount_paid, credit_amount, type, screenshotBase64 }).then((r) => r.data);
+
+export const verifyTopupId = (topup_id: string) =>
+  api.get(`/reseller/p2p-verify/${topup_id}`).then((r) => r.data);
+
+export const submitP2PTopup = (topup_id: string, package_price: number, credit_amount: number) =>
+  api.post('/reseller/p2p-topup', { topup_id, package_price, credit_amount }).then((r) => r.data);

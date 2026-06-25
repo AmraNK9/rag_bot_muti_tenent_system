@@ -4,6 +4,8 @@ import { ChatBot } from '../../infrastructure/db/models';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { debugLogger } from '../../core/logger';
 import { ChatbotAnalyticsService } from './chatbot-analytics.service';
+import { SocketService } from '../../infrastructure/socket/socket.service';
+
 declare const process: {
   env: {
     NODE_ENV?: string;
@@ -89,7 +91,12 @@ export class WebhookController {
       }
 
       // Save user's incoming message to DB first (so it appears in history)
-      await this.chatMemoryService.saveMessage(chatbotId, senderId, userText, true);
+      const userMsgRecord = await this.chatMemoryService.saveMessage(chatbotId, senderId, userText, true);
+      
+      // Real-time UI update: emit event to chatbot admin room
+      try {
+        SocketService.io.to(chatbotId.toString()).emit('new_message', userMsgRecord.toJSON());
+      } catch (err) { console.error('Socket emit error:', err); }
 
       // Stream response chunks and deliver progressively to Telegram
       const assistantReply = await this.streamAndDeliver(
@@ -100,8 +107,12 @@ export class WebhookController {
         userText
       );
 
-      // Fire-and-forget: save bot's response message to DB
-      void this.chatMemoryService.saveMessage(chatbotId, senderId, assistantReply, false).catch(err => {
+      // Fire-and-forget: save bot's response message to DB and emit to UI
+      void this.chatMemoryService.saveMessage(chatbotId, senderId, assistantReply, false).then(botMsgRecord => {
+        try {
+          SocketService.io.to(chatbotId.toString()).emit('new_message', botMsgRecord.toJSON());
+        } catch (err) { console.error('Socket emit error:', err); }
+      }).catch(err => {
         console.error(`[Webhook] Failed to save bot reply to DB:`, err);
       });
 

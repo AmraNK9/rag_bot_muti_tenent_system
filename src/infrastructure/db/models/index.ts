@@ -3,6 +3,7 @@ import { Sequelize, Model, DataTypes, CreationOptional, InferAttributes, InferCr
 // ─── Business Model ─────────────────────────────────────────────────────────
 export class Business extends Model<InferAttributes<Business>, InferCreationAttributes<Business>> {
   declare id: CreationOptional<number>;
+  declare topup_id: CreationOptional<string>; // Unique 10-char string (e.g. UID-XXXXXX)
   declare name: string;
   declare detail_info: string;
   declare password: string; // bcrypt hashed
@@ -59,6 +60,10 @@ export class Reseller extends Model<InferAttributes<Reseller>, InferCreationAttr
   declare password: string; // bcrypt hashed
   declare commission_percentage: CreationOptional<number>; // e.g. 10.00%
   declare balance: CreationOptional<number>; // commission wallet balance
+  declare prepaid_balance: CreationOptional<number>;
+  declare pending_debt: CreationOptional<number>;
+  declare postpaid_limit: CreationOptional<number>;
+  declare can_sell: CreationOptional<boolean>;
   declare can_collect_payments: CreationOptional<boolean>; // flag to accept cash collection
   declare reliability_score: CreationOptional<number>; // trust rating (0 - 100)
   declare total_collected: CreationOptional<number>; // collected payments cash today
@@ -150,12 +155,29 @@ export class ResellerTopUp extends Model<InferAttributes<ResellerTopUp>, InferCr
   declare reseller_id: ForeignKey<Reseller['id']>;
   declare amount_paid: number;
   declare credit_amount: number;
+  declare type: CreationOptional<'prepaid_topup' | 'postpaid_settlement'>;
   declare screenshot_url: string;
   declare status: CreationOptional<'pending' | 'approved' | 'rejected'>;
   declare created_at: CreationOptional<Date>;
 
   // Relationships
   declare reseller?: Reseller;
+}
+
+// ─── P2PTopupTransaction Model ───────────────────────────────────────────────
+export class P2PTopupTransaction extends Model<InferAttributes<P2PTopupTransaction>, InferCreationAttributes<P2PTopupTransaction>> {
+  declare id: CreationOptional<number>;
+  declare reseller_id: ForeignKey<Reseller['id']>;
+  declare business_id: ForeignKey<Business['id']>;
+  declare package_price: number;
+  declare credit_amount: number;
+  declare commission_earned: number;
+  declare net_deducted: number;
+  declare created_at: CreationOptional<Date>;
+
+  // Relationships
+  declare reseller?: Reseller;
+  declare business?: Business;
 }
 
 // ─── Plan Model ──────────────────────────────────────────────────────────────
@@ -178,6 +200,15 @@ export class SystemSetting extends Model<InferAttributes<SystemSetting>, InferCr
   declare approver_fee_rate: number;
 }
 
+// ─── AuditLog Model ────────────────────────────────────────────────────────
+export class AuditLog extends Model<InferAttributes<AuditLog>, InferCreationAttributes<AuditLog>> {
+  declare id: CreationOptional<number>;
+  declare admin_id: CreationOptional<number | null>;
+  declare action: string;
+  declare description: string;
+  declare created_at: CreationOptional<Date>;
+}
+
 // ─── Model Initialization ────────────────────────────────────────────────────
 export function initModels(sequelize: Sequelize) {
   Business.init(
@@ -186,6 +217,11 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true,
+      },
+      topup_id: {
+        type: DataTypes.STRING(15),
+        allowNull: true,
+        unique: true,
       },
       name: {
         type: DataTypes.STRING(255),
@@ -522,16 +558,12 @@ export function initModels(sequelize: Sequelize) {
         allowNull: false,
         defaultValue: 10.00,
       },
-      balance: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        defaultValue: 5000.00,
-      },
-      can_collect_payments: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
+      balance: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
+      prepaid_balance: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
+      pending_debt: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
+      postpaid_limit: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 10000 },
+      can_sell: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+      can_collect_payments: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
       reliability_score: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -662,6 +694,20 @@ export function initModels(sequelize: Sequelize) {
       tableName: 'plan_request',
       timestamps: false,
     }
+  );
+
+  P2PTopupTransaction.init(
+    {
+      id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+      reseller_id: { type: DataTypes.INTEGER, allowNull: false },
+      business_id: { type: DataTypes.INTEGER, allowNull: false },
+      package_price: { type: DataTypes.FLOAT, allowNull: false },
+      credit_amount: { type: DataTypes.INTEGER, allowNull: false },
+      commission_earned: { type: DataTypes.FLOAT, allowNull: false },
+      net_deducted: { type: DataTypes.FLOAT, allowNull: false },
+      created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    },
+    { sequelize, tableName: 'p2p_topup_transactions', timestamps: false }
   );
 
   Plan.init(
@@ -811,14 +857,9 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
       },
-      credit_amount: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-      },
-      screenshot_url: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-      },
+      credit_amount: { type: DataTypes.FLOAT, allowNull: false },
+      type: { type: DataTypes.ENUM('prepaid_topup', 'postpaid_settlement'), allowNull: false, defaultValue: 'prepaid_topup' },
+      screenshot_url: { type: DataTypes.STRING, allowNull: false },
       status: {
         type: DataTypes.ENUM('pending', 'approved', 'rejected'),
         allowNull: false,
@@ -837,6 +878,36 @@ export function initModels(sequelize: Sequelize) {
     }
   );
 
-  ResellerTopUp.belongsTo(Reseller, { foreignKey: 'reseller_id', as: 'reseller', constraints: false });
+  AuditLog.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      admin_id: { type: DataTypes.INTEGER, allowNull: true },
+      action: { type: DataTypes.STRING, allowNull: false },
+      description: { type: DataTypes.TEXT, allowNull: false },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      }
+    },
+    {
+      sequelize,
+      tableName: 'audit_logs',
+      timestamps: false,
+    }
+  );
+
+  ResellerTopUp.belongsTo(Reseller, { foreignKey: 'reseller_id', as: 'reseller' });
+
+  // P2PTopupTransaction Relationships
+  Reseller.hasMany(P2PTopupTransaction, { foreignKey: 'reseller_id', as: 'p2p_topups' });
+  P2PTopupTransaction.belongsTo(Reseller, { foreignKey: 'reseller_id', as: 'reseller' });
+  Business.hasMany(P2PTopupTransaction, { foreignKey: 'business_id', as: 'p2p_topups' });
+  P2PTopupTransaction.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
+
   Reseller.hasMany(ResellerTopUp, { foreignKey: 'reseller_id', as: 'topups', constraints: false });
 }

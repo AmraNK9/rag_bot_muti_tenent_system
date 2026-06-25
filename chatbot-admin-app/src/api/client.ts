@@ -87,3 +87,5 @@ export const submitUpgrade = (planName: string, screenshotBase64: string, resell
   api.post('/subscription/upgrade', { planName, screenshotBase64, resellerId }).then((r) => r.data);
 export const getPlans = () =>
   api.get('/plans').then((res) => res.data);
+export const getSubscriptionHistory = () =>
+  api.get('/subscription/history').then((res) => res.data);

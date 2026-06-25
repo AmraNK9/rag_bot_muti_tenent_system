@@ -13,6 +13,16 @@ export interface AuthTokenPayload {
   name: string;
 }
 
+function generateUID(): string {
+  // Base58 omitting 0, O, I, 1
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let uid = '';
+  for (let i = 0; i < 6; i++) {
+    uid += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `UID-${uid}`;
+}
+
 export class AuthService {
   /**
    * Register a new business with hashed password.
@@ -26,7 +36,20 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+    // Generate unique topup_id
+    let topupId = '';
+    let isUnique = false;
+    while (!isUnique) {
+      topupId = generateUID();
+      const existingUid = await Business.findOne({ where: { topup_id: topupId } });
+      if (!existingUid) {
+        isUnique = true;
+      }
+    }
+
     const business = await Business.create({
+      topup_id: topupId,
       name,
       detail_info: detailInfo,
       password: hashedPassword,

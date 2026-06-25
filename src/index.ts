@@ -12,6 +12,7 @@ import { ChatMemoryService } from './modules/chat/chat-memory.service';
 import { Business, ChatBot } from './infrastructure/db/models';
 import { chunkMyanmarText } from './modules/knowledge/myanmar-chunker';
 import { startServer } from './presentation/server';
+import { startResellerCronJobs } from './modules/reseller/reseller.cron';
 import { tunnelService } from './infrastructure/tunnel/tunnel.service';
 import { ChatbotAnalyticsService } from './modules/chat/chatbot-analytics.service';
 
@@ -107,6 +108,9 @@ async function bootstrap() {
   
   // 5. Start the Express Presentation Server
   startServer(port);
+
+  // 6. Start Reseller Cron Jobs
+  startResellerCronJobs();
 }
 
 bootstrap().catch(console.error);
