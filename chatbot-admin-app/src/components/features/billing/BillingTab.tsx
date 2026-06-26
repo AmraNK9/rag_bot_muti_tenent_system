@@ -30,7 +30,14 @@ export const BillingTab: React.FC = () => {
     setLoadingKpay(true);
     try {
       const data = await getPaymentMethods(plan.name);
-      if (data.success && data.methods?.kpay) setKpayDetails(data.methods.kpay);
+      if (data.success) {
+        setKpayDetails({
+          resellerId: data.resellerId !== undefined ? data.resellerId : null,
+          kpay_no: data.kpay_no || '',
+          kpay_name: data.kpay_name || '',
+          note: data.note || ''
+        });
+      }
     } catch (e) { console.error(e); }
     finally { setLoadingKpay(false); }
   };
