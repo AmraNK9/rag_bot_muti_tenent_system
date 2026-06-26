@@ -364,7 +364,7 @@ body {
   background: var(--bg-page);
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: 110;
   animation: slideInRight 0.28s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
