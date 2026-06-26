@@ -22,6 +22,7 @@ import { ChatbotAdminAuthService } from '../../modules/auth/chatbot-admin-auth.s
 import { PaymentRoutingService } from '../../modules/subscription/payment-routing.service';
 import { resellerAuthMiddleware, ResellerRequest } from '../middleware/reseller-auth.middleware';
 import { SystemPromptFactory } from '../../infrastructure/prompt/prompt.factory';
+import { SocketService } from '../../infrastructure/socket/socket.service';
 
 // ─── Service Initialization ──────────────────────────────────────────────────
 const authService = new AuthService();
@@ -817,6 +818,13 @@ apiRouter.post('/chatbot-admin/conversations/:senderId/reply', chatbotAdminAuthM
       message: message,
       sender_type: 'bot',
     });
+
+    // Broadcast new message via Socket.io
+    try {
+      SocketService.io.to(chatbotId.toString()).emit('new_message', savedMsg.toJSON());
+    } catch (err) {
+      console.error('Socket emit error (admin reply):', err);
+    }
 
     return res.json({ success: true, message: savedMsg });
   } catch (error) {

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'; import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import type { ChatbotDetails } from '../types';
+import { io } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 
 interface ChatbotContextType {
@@ -11,6 +13,7 @@ interface ChatbotContextType {
   loadProfileData: () => Promise<void>;
   showInAppTour: boolean;
   setShowInAppTour: (show: boolean) => void;
+  socket: Socket | null;
 }
 
 const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined);
@@ -22,6 +25,32 @@ export const ChatbotProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [credits, setCredits] = useState<number>(0);
   const [businessPlanInfo, setBusinessPlanInfo] = useState<any>(null);
   const [showInAppTour, setShowInAppTour] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  useEffect(() => {
+    if (!token || !chatbot?.id) {
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+      return;
+    }
+
+    const newSocket = io({
+      transports: ['websocket', 'polling']
+    });
+
+    newSocket.on('connect', () => {
+      console.log('[Socket] Connected, joining room:', chatbot.id);
+      newSocket.emit('join_room', chatbot.id);
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [token, chatbot?.id]);
 
   const loadProfileData = useCallback(async () => {
     if (!token) return;
@@ -74,7 +103,8 @@ export const ChatbotProvider: React.FC<{ children: ReactNode }> = ({ children })
       setChatbot, 
       loadProfileData,
       showInAppTour,
-      setShowInAppTour
+      setShowInAppTour,
+      socket
     }}>
       {children}
     </ChatbotContext.Provider>

@@ -4,7 +4,7 @@ import type { Conversation, Message } from '../../../types';
 import { getConversations, getMessages, replyToConversation } from '../../../api/client';
 
 export const ChatsTab: React.FC = () => {
-  const { chatbot } = useChatbot();
+  const { chatbot, socket } = useChatbot();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(false);
@@ -45,20 +45,31 @@ export const ChatsTab: React.FC = () => {
     if (chatbot) loadConversations();
   }, [chatbot]);
 
-  // Poll for new messages
+  // Listen to incoming messages in real-time via Socket.io
   useEffect(() => {
-    if (!activeSender) return;
-    const interval = setInterval(async () => {
-      try {
-        const data = await getMessages(activeSender, 100, 0);
-        if (data.messages?.length !== messages.length) {
-          setMessages(data.messages || []);
+    if (!socket) return;
+
+    const handleNewMessage = (msg: any) => {
+      // 1. Refresh conversations list (to update previews, badges, and sorting)
+      loadConversations();
+
+      // 2. If the message belongs to the active conversation, append it in real-time
+      if (activeSender && String(msg.sender_id) === String(activeSender)) {
+        setMessages((prev) => {
+          // Avoid appending duplicate messages
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          const newMsgs = [...prev, msg];
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
-        }
-      } catch (_) {}
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [activeSender, messages.length]);
+          return newMsgs;
+        });
+      }
+    };
+
+    socket.on('new_message', handleNewMessage);
+    return () => {
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, activeSender]);
 
   const openChat = (senderId: string) => {
     setActiveSender(senderId);
