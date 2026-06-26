@@ -99,6 +99,8 @@ async function calculateCommissions(
     if (approver) {
       if (approver.custom_approver_rate !== null) {
         approverRate = Number(approver.custom_approver_rate);
+      } else if (approver.commission_percentage !== undefined && approver.commission_percentage !== null) {
+        approverRate = Number(approver.commission_percentage);
       }
       const baseFee = (planPrice * approverRate) / 100;
       // Adjust by reliability and trust score factor
@@ -1374,11 +1376,11 @@ apiRouter.post('/reseller/requests/:id/approve', resellerAuthMiddleware, async (
         });
       }
     } else {
-      // Fallback to Postpaid Limit
-      if (Number(reseller.pending_debt) + calc.price > Number(reseller.postpaid_limit)) {
+      // Fallback to Postpaid Limit (Checking Net Price)
+      if (Number(reseller.pending_debt) + netRequiredPrice > Number(reseller.postpaid_limit)) {
         return res.status(400).json({
           success: false,
-          error: `Postpaid limit exceeded. (Pending Debt: ${reseller.pending_debt}, Required: ${calc.price}, Limit: ${reseller.postpaid_limit})`
+          error: `Postpaid limit exceeded. (Pending Debt: ${reseller.pending_debt}, Required Net: ${netRequiredPrice}, Limit: ${reseller.postpaid_limit})`
         });
       }
     }
@@ -1419,9 +1421,10 @@ apiRouter.post('/reseller/requests/:id/approve', resellerAuthMiddleware, async (
         total_collected: Number(reseller.total_collected) + calc.price,
       });
     } else {
-      // Postpaid: they collected the physical cash. They owe the Admin the full amount, but get commission in wallet.
+      // Postpaid: they collected the physical cash. They owe the Admin the net amount, keeping their commission.
+      const netDebtIncrease = calc.price - calc.approverFee;
       await reseller.update({
-        pending_debt: Number(reseller.pending_debt) + calc.price,
+        pending_debt: Number(reseller.pending_debt) + netDebtIncrease,
         balance: Number(reseller.balance) + calc.approverFee,
         total_collected: Number(reseller.total_collected) + calc.price,
       });
@@ -1585,14 +1588,15 @@ apiRouter.post('/reseller/p2p-topup', resellerAuthMiddleware, async (req: Reques
       }, { transaction: t });
 
     } else {
-      // Postpaid Check
-      if (Number(reseller.pending_debt || 0) + package_price > Number(reseller.postpaid_limit || 0)) {
+      // Postpaid Check (Checking Net Price)
+      const netDebtIncrease = package_price - commissionEarned;
+      if (Number(reseller.pending_debt || 0) + netDebtIncrease > Number(reseller.postpaid_limit || 0)) {
         await t.rollback();
-        return res.status(400).json({ success: false, error: `Postpaid limit exceeded. Required: ${package_price}` });
+        return res.status(400).json({ success: false, error: `Postpaid limit exceeded. Required Net: ${netDebtIncrease}` });
       }
 
       await reseller.update({
-        pending_debt: Number(reseller.pending_debt) + package_price,
+        pending_debt: Number(reseller.pending_debt) + netDebtIncrease,
         balance: Number(reseller.balance) + commissionEarned,
         total_collected: Number(reseller.total_collected || 0) + package_price,
       }, { transaction: t });
@@ -1803,10 +1807,11 @@ apiRouter.post('/total-admin/requests/:id/approve', adminSecretAuth, async (req:
             total_collected: Number(reseller.total_collected || 0) + calc.price,
           });
         } else {
+          const netDebtIncrease = calc.price - calc.approverFee;
           await reseller.update({
             balance: Number(reseller.balance) + calc.approverFee, // Credit their commission wallet
             total_collected: Number(reseller.total_collected || 0) + calc.price,
-            pending_debt: Number(reseller.pending_debt || 0) + calc.price, // Add full price to their debt
+            pending_debt: Number(reseller.pending_debt || 0) + netDebtIncrease, // Add net price to their debt
           });
         }
       }
