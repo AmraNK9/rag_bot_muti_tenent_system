@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'; import type { ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'; import type { ReactNode } from 'react';
 import { getProfile } from '../api/client';
 import type { AdminProfile } from '../types';
 
@@ -6,6 +6,8 @@ interface AuthContextType {
   token: string | null;
   profile: AdminProfile | null;
   loadingProfile: boolean;
+  initialized: boolean;
+  initialProfileData: any;
   login: (token: string) => void;
   logout: () => void;
   fetchProfile: () => Promise<any>;
@@ -17,14 +19,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(localStorage.getItem('chatbot_admin_token'));
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const [initialProfileData, setInitialProfileData] = useState<any>(null);
 
   const logout = useCallback(() => {
     localStorage.removeItem('chatbot_admin_token');
     setToken(null);
     setProfile(null);
+    setInitialProfileData(null);
   }, []);
 
   const login = useCallback((newToken: string) => {
+    setInitialized(false);
     localStorage.setItem('chatbot_admin_token', newToken);
     setToken(newToken);
   }, []);
@@ -35,6 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await getProfile();
       if (data.success) {
         setProfile(data.admin);
+        setInitialProfileData(data);
         return data; // Return full data so ChatbotContext can use it
       } else {
         logout();
@@ -48,8 +55,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return null;
   }, [logout]);
 
+  useEffect(() => {
+    if (token) {
+      fetchProfile().finally(() => {
+        setInitialized(true);
+      });
+    } else {
+      setInitialized(true);
+    }
+  }, [token, fetchProfile]);
+
   return (
-    <AuthContext.Provider value={{ token, profile, loadingProfile, login, logout, fetchProfile }}>
+    <AuthContext.Provider value={{ token, profile, loadingProfile, initialized, initialProfileData, login, logout, fetchProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -62,3 +79,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

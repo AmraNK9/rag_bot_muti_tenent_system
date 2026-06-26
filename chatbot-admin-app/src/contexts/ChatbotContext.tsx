@@ -16,7 +16,7 @@ interface ChatbotContextType {
 const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined);
 
 export const ChatbotProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { token, fetchProfile } = useAuth();
+  const { token, fetchProfile, initialProfileData } = useAuth();
   
   const [chatbot, setChatbot] = useState<ChatbotDetails | null>(null);
   const [credits, setCredits] = useState<number>(0);
@@ -41,8 +41,21 @@ export const ChatbotProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [token, fetchProfile]);
 
   useEffect(() => {
-    loadProfileData();
-  }, [loadProfileData]);
+    if (initialProfileData && initialProfileData.success) {
+      setChatbot(initialProfileData.chatbot);
+      setCredits(initialProfileData.credits);
+      setBusinessPlanInfo(initialProfileData.business);
+      
+      if (initialProfileData.chatbot) {
+        const inAppTourDone = localStorage.getItem('chatbot_admin_intro_completed');
+        if (!inAppTourDone) {
+          setShowInAppTour(true);
+        }
+      }
+    } else {
+      loadProfileData();
+    }
+  }, [initialProfileData, loadProfileData]);
 
   // Clean up when logged out
   useEffect(() => {

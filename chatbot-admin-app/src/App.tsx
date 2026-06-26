@@ -6,14 +6,14 @@ import { LoginScreen } from './components/auth/LoginScreen';
 import { MainLayout } from './components/layout/MainLayout';
 
 const AppContent: React.FC = () => {
-  const { token, loadingProfile } = useAuth();
+  const { token, initialized } = useAuth();
   const [landingCompleted, setLandingCompleted] = useState<boolean>(() => localStorage.getItem('chatbot_admin_landing_completed') === 'true');
 
   if (!landingCompleted) {
     return <LandingOnboarding onComplete={() => setLandingCompleted(true)} />;
   }
 
-  if (loadingProfile) {
+  if (!initialized) {
     return (
       <div className="app-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div className="spinner" style={{ width: '40px', height: '40px' }} />
