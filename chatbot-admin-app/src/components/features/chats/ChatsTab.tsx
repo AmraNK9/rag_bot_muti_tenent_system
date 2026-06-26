@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import type { Conversation, Message } from '../../../types';
 import { getConversations, getMessages, replyToConversation } from '../../../api/client';
@@ -16,19 +16,19 @@ export const ChatsTab: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const loadConversations = async () => {
-    setLoadingConvs(true);
+  const loadConversations = useCallback(async (silent = false) => {
+    if (!silent) setLoadingConvs(true);
     try {
       const data = await getConversations();
       setConversations(data.conversations || []);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoadingConvs(false);
+      if (!silent) setLoadingConvs(false);
     }
-  };
+  }, []);
 
-  const loadMessages = async (senderId: string) => {
+  const loadMessages = useCallback(async (senderId: string) => {
     setLoadingMsgs(true);
     try {
       const data = await getMessages(senderId, 100, 0);
@@ -39,19 +39,19 @@ export const ChatsTab: React.FC = () => {
     } finally {
       setLoadingMsgs(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (chatbot) loadConversations();
-  }, [chatbot]);
+  }, [chatbot, loadConversations]);
 
   // Listen to incoming messages in real-time via Socket.io
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (msg: any) => {
-      // 1. Refresh conversations list (to update previews, badges, and sorting)
-      loadConversations();
+      // 1. Refresh conversations list silently (to update previews, badges, and sorting)
+      loadConversations(true);
 
       // 2. If the message belongs to the active conversation, append it in real-time
       if (activeSender && String(msg.sender_id) === String(activeSender)) {
@@ -69,7 +69,7 @@ export const ChatsTab: React.FC = () => {
     return () => {
       socket.off('new_message', handleNewMessage);
     };
-  }, [socket, activeSender]);
+  }, [socket, activeSender, loadConversations]);
 
   const openChat = (senderId: string) => {
     setActiveSender(senderId);
@@ -88,8 +88,18 @@ export const ChatsTab: React.FC = () => {
     const text = replyText;
     setReplyText('');
     try {
-      await replyToConversation(activeSender, text);
-      loadMessages(activeSender);
+      const data = await replyToConversation(activeSender, text);
+      if (data.success && data.message) {
+        // Append the new message immediately to the message list without triggering a full loadMessages spinner
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === data.message.id)) return prev;
+          const newMsgs = [...prev, data.message];
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+          return newMsgs;
+        });
+        // Silently refresh the conversations list in the background to update the previews/badges
+        loadConversations(true);
+      }
     } catch (e: any) {
       alert(e?.response?.data?.error || 'Failed to send');
       setReplyText(text);

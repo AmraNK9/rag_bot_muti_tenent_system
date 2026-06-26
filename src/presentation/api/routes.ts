@@ -457,6 +457,7 @@ apiRouter.post('/chatbots/:id/conversations/:senderId/reply', authMiddleware, as
 
     return res.json({ success: true, message: savedMsg });
   } catch (error) {
+    console.error('[Error in business-admin reply API]:', error);
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 });
@@ -828,6 +829,7 @@ apiRouter.post('/chatbot-admin/conversations/:senderId/reply', chatbotAdminAuthM
 
     return res.json({ success: true, message: savedMsg });
   } catch (error) {
+    console.error('[Error in chatbot-admin reply API]:', error);
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 });
