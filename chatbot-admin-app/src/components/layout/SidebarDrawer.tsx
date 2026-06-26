@@ -61,10 +61,10 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
           </div>
 
           {/* Topup ID */}
-          {businessPlanInfo?.topup_id && (
+          {businessPlanInfo?.topupId && (
             <div className="topup-pill" style={{ margin: '10px 16px' }}>
               <div className="topup-pill-label">Top-up ID (Reseller ကိုပေး)</div>
-              <div className="topup-pill-value">{businessPlanInfo.topup_id}</div>
+              <div className="topup-pill-value">{businessPlanInfo.topupId}</div>
             </div>
           )}
 
