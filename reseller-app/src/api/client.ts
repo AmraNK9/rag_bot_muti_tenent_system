@@ -72,3 +72,7 @@ export const submitP2PTopup = (topup_id: string, package_price: number, credit_a
 
 export const getPlans = () =>
   api.get('/plans').then((r) => r.data);
+
+export const getP2PHistory = () =>
+  api.get('/reseller/p2p-history').then((r) => r.data);
+

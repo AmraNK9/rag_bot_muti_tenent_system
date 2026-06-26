@@ -1634,6 +1634,23 @@ apiRouter.post('/reseller/p2p-topup', resellerAuthMiddleware, async (req: Reques
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 });
+
+// ─── 46e. GET /reseller/p2p-history — Get P2P Direct Top-Up History ──────────────────
+apiRouter.get('/reseller/p2p-history', resellerAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const resReq = req as ResellerRequest;
+    const resellerId = resReq.reseller.resellerId;
+    const transactions = await P2PTopupTransaction.findAll({
+      where: { reseller_id: resellerId },
+      include: [{ model: Business, as: 'business', attributes: ['name', 'topup_id'] }],
+      order: [['created_at', 'DESC']],
+    });
+    return res.json({ success: true, history: transactions });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TOTAL (SUPER) ADMIN APIS
 // ═══════════════════════════════════════════════════════════════════════════
