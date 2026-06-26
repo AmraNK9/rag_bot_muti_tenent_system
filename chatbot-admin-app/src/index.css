@@ -128,7 +128,7 @@ body {
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: -0.2px;
-  max-width: 120px;
+  max-width: 200px;
   min-width: 0;
 }
 
@@ -172,6 +172,8 @@ body {
 .nav-credits {
   display: flex;
   align-items: center;
+  flex-direction: row;
+  width: 100px;
   gap: 5px;
   background: rgba(10, 132, 255, 0.12);
   border: 1px solid rgba(10, 132, 255, 0.25);

@@ -32,11 +32,12 @@ export const MainLayout: React.FC = () => {
         <div className="nav-brand">
           <span className="brand-icon">🤖</span>
           <span className="brand-name">{chatbot ? chatbot.name : 'Bot Admin'}</span>
+          <div className="nav-credits">
+            ⚡ {credits}
+          </div>
         </div>
 
-        <div className="nav-credits">
-          ⚡ {credits}
-        </div>
+
 
         <div className="nav-profile" onClick={() => setDrawerOpen(true)}>
           <div className="profile-avatar">{profile?.name?.charAt(0).toUpperCase() || 'U'}</div>
