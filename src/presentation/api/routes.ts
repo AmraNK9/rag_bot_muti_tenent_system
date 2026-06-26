@@ -1149,7 +1149,7 @@ apiRouter.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: 
     const base64Data = screenshotBase64.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
     const filename = `receipt_${Date.now()}_${Math.floor(Math.random() * 1000)}.jpg`;
-    const filepath = path.join(__dirname, '../../uploads/receipts', filename);
+    const filepath = path.join(__dirname, '../../../uploads/receipts', filename);
 
     // Save to disk
     fs.writeFileSync(filepath, buffer);
@@ -1479,7 +1479,7 @@ apiRouter.post('/reseller/topup', resellerAuthMiddleware, async (req: Request, r
     const base64Data = screenshotBase64.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
     const filename = `receipt_topup_${Date.now()}_${Math.floor(Math.random() * 1000)}.jpg`;
-    const filepath = path.join(__dirname, '../../uploads/receipts', filename);
+    const filepath = path.join(__dirname, '../../../uploads/receipts', filename);
 
     // Ensure directory exists
     fs.mkdirSync(path.dirname(filepath), { recursive: true });
