@@ -11,6 +11,7 @@ import {
   getRequestsHistory,
   verifyTopupId,
   submitP2PTopup,
+  getPlans,
 } from './api/client';
 
 interface DashboardStats {
@@ -83,13 +84,18 @@ export default function App() {
   const [p2pSelectedPackage, setP2pSelectedPackage] = useState<any>(null);
   const [p2pLoading, setP2pLoading] = useState(false);
   const [p2pStatusMsg, setP2pStatusMsg] = useState({ error: '', success: '' });
-  
-  const P2P_PACKAGES = [
-    { id: 1, price: 1500, credits: 500, name: 'Lite (500 Queries)' },
-    { id: 2, price: 5000, credits: 2000, name: 'Basic (2000 Queries)' },
-    { id: 3, price: 10000, credits: 5000, name: 'Pro (5000 Queries)' },
-    { id: 4, price: 25000, credits: 15000, name: 'Ultra (15000 Queries)' },
-  ];
+  const [p2pPackages, setP2pPackages] = useState<any[]>([]);
+
+  const fetchPlans = useCallback(async () => {
+    try {
+      const res = await getPlans();
+      if (res.success && res.plans) {
+        setP2pPackages(res.plans);
+      }
+    } catch (e) {
+      console.error('Failed to fetch plans', e);
+    }
+  }, []);
 
   const fetchDashboard = useCallback(async () => {
     if (!token) return;
@@ -113,8 +119,11 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
-    if (token) fetchDashboard();
-  }, [token, fetchDashboard]);
+    if (token) {
+      fetchDashboard();
+      fetchPlans();
+    }
+  }, [token, fetchDashboard, fetchPlans]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,11 +248,18 @@ export default function App() {
 
   const handleP2PSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!p2pTopupId || !p2pSelectedPackage) return;
+    console.log('handleP2PSubmit called with:', { p2pTopupId, p2pSelectedPackage });
+    if (!p2pTopupId || !p2pSelectedPackage) {
+      console.warn('p2pTopupId or p2pSelectedPackage is missing');
+      return;
+    }
     setP2pLoading(true);
     setP2pStatusMsg({ error: '', success: '' });
     try {
-      const res = await submitP2PTopup(p2pTopupId.trim(), p2pSelectedPackage.price, p2pSelectedPackage.credits);
+      const priceVal = Number(p2pSelectedPackage.price);
+      console.log('Submitting P2P Top-up:', { topupId: p2pTopupId.trim(), price: priceVal, queryLimit: p2pSelectedPackage.query_limit });
+      const res = await submitP2PTopup(p2pTopupId.trim(), priceVal, p2pSelectedPackage.query_limit);
+      console.log('P2P Top-up response:', res);
       if (res.success) {
         setP2pStatusMsg({ error: '', success: `Top-up successful! Commission earned: ${res.commissionEarned} MMK` });
         setP2pVerifiedName(null);
@@ -252,6 +268,7 @@ export default function App() {
         fetchDashboard();
       }
     } catch (err: any) {
+      console.error('P2P Top-up execution failed:', err);
       setP2pStatusMsg({ error: err.response?.data?.error || 'Top-up failed.', success: '' });
     } finally {
       setP2pLoading(false);
@@ -607,7 +624,7 @@ export default function App() {
 
           {/* Submission Step */}
           {p2pVerifiedName && (
-            <div className="animate-slide-up" style={{ marginTop: '24px', padding: '16px', background: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <form onSubmit={handleP2PSubmit} className="animate-slide-up" style={{ marginTop: '24px', padding: '16px', background: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border)' }}>
               <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                   {p2pVerifiedName.charAt(0)}
@@ -621,30 +638,30 @@ export default function App() {
               <div className="form-group" style={{ marginTop: '20px' }}>
                 <label>Select Top-Up Package</label>
                 <div className="requests-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', marginTop: '8px' }}>
-                  {P2P_PACKAGES.map(pkg => (
+                  {p2pPackages.map(pkg => (
                     <div 
                       key={pkg.id} 
                       className="request-card" 
                       style={{ cursor: 'pointer', padding: '12px', border: p2pSelectedPackage?.id === pkg.id ? '2px solid var(--primary)' : '1px solid var(--border)', background: p2pSelectedPackage?.id === pkg.id ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card)' }}
                       onClick={() => setP2pSelectedPackage(pkg)}
                     >
-                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{pkg.name}</div>
-                      <div style={{ color: 'var(--primary)', fontWeight: 'bold', marginTop: '4px' }}>{pkg.price.toLocaleString()} MMK</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>+{pkg.credits} Queries</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', textTransform: 'uppercase' }}>{pkg.name}</div>
+                      <div style={{ color: 'var(--primary)', fontWeight: 'bold', marginTop: '4px' }}>{Number(pkg.price).toLocaleString()} MMK</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>+{pkg.query_limit.toLocaleString()} Queries</div>
                     </div>
                   ))}
                 </div>
               </div>
 
               <button 
+                type="submit"
                 className="btn btn-primary" 
                 style={{ width: '100%', marginTop: '24px', padding: '12px', fontSize: '1rem' }} 
-                onClick={handleP2PSubmit} 
                 disabled={p2pLoading || !p2pSelectedPackage}
               >
-                {p2pLoading ? 'Processing...' : p2pSelectedPackage ? `Confirm Top-Up (${p2pSelectedPackage.price.toLocaleString()} MMK)` : 'Select a Package'}
+                {p2pLoading ? 'Processing...' : p2pSelectedPackage ? `Confirm Top-Up (${Number(p2pSelectedPackage.price).toLocaleString()} MMK)` : 'Select a Package'}
               </button>
-            </div>
+            </form>
           )}
         </div>
       )}

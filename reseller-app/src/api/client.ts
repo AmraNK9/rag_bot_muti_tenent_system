@@ -69,3 +69,6 @@ export const verifyTopupId = (topup_id: string) =>
 
 export const submitP2PTopup = (topup_id: string, package_price: number, credit_amount: number) =>
   api.post('/reseller/p2p-topup', { topup_id, package_price, credit_amount }).then((r) => r.data);
+
+export const getPlans = () =>
+  api.get('/plans').then((r) => r.data);

@@ -190,6 +190,7 @@ export class Plan extends Model<InferAttributes<Plan>, InferCreationAttributes<P
   declare is_active: CreationOptional<boolean>;
   declare max_chat_history: CreationOptional<number>;
   declare services: CreationOptional<string[]>;
+  declare is_only_p2p: CreationOptional<boolean>;
 }
 
 // ─── SystemSetting Model ─────────────────────────────────────────────────────
@@ -749,6 +750,11 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true,
+      },
+      is_only_p2p: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
     },
     {

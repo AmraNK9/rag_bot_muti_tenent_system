@@ -77,6 +77,7 @@ interface Plan {
   is_active: boolean;
   max_chat_history: number;
   services: string[];
+  is_only_p2p?: boolean;
 }
 
 // Resolve screenshot URL — use Vite proxy path (/uploads/…) when relative
@@ -145,6 +146,7 @@ export default function App() {
   const [planIsActive, setPlanIsActive] = useState(true);
   const [planMaxChatHistory, setPlanMaxChatHistory] = useState(10);
   const [planServicesStr, setPlanServicesStr] = useState('');
+  const [planIsOnlyP2p, setPlanIsOnlyP2p] = useState(false);
   const [updatingPlan, setUpdatingPlan] = useState(false);
 
   const [topups, setTopups] = useState<any[]>([]);
@@ -347,6 +349,7 @@ export default function App() {
     setPlanIsActive(true);
     setPlanMaxChatHistory(10);
     setPlanServicesStr('');
+    setPlanIsOnlyP2p(false);
   };
 
   const handleOpenEditPlan = (plan: Plan) => {
@@ -359,6 +362,7 @@ export default function App() {
     setPlanIsActive(plan.is_active);
     setPlanMaxChatHistory(plan.max_chat_history || 10);
     setPlanServicesStr((plan.services || []).join(', '));
+    setPlanIsOnlyP2p(plan.is_only_p2p || false);
   };
 
   const handleSavePlanSubmit = async (e: React.FormEvent) => {
@@ -374,6 +378,7 @@ export default function App() {
         is_active: planIsActive,
         max_chat_history: Number(planMaxChatHistory),
         services,
+        is_only_p2p: planIsOnlyP2p,
       };
 
       if (creatingPlan) {
@@ -851,6 +856,9 @@ export default function App() {
                               {plan.is_active
                                 ? <span className="badge badge-green">Active</span>
                                 : <span className="badge badge-red">Inactive</span>}
+                              {plan.is_only_p2p && (
+                                <span className="badge" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)', color: 'rgb(37, 99, 235)', marginLeft: '6px' }}>P2P Only</span>
+                              )}
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditPlan(plan)}>
@@ -905,9 +913,15 @@ export default function App() {
                 <label>Services (Comma-separated)</label>
                 <textarea className="form-control" rows={3} value={planServicesStr} onChange={(e) => setPlanServicesStr(e.target.value)} placeholder="Live Chat, Priority Support, Analytics..."></textarea>
               </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '16px 0' }}>
-                <input type="checkbox" id="plan-active" checked={planIsActive} onChange={(e) => setPlanIsActive(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                <label htmlFor="plan-active" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Enable Plan (Available for purchase)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '16px 0' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input type="checkbox" id="plan-active" checked={planIsActive} onChange={(e) => setPlanIsActive(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                  <label htmlFor="plan-active" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Enable Plan (Available for purchase)</label>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input type="checkbox" id="plan-p2p-only" checked={planIsOnlyP2p} onChange={(e) => setPlanIsOnlyP2p(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                  <label htmlFor="plan-p2p-only" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>Is P2P Direct Top-Up Only (Reseller App Only)</label>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                 <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={() => { setEditingPlan(null); setCreatingPlan(false); }}>Cancel</button>

@@ -17,7 +17,10 @@ export const BillingTab: React.FC = () => {
 
   useEffect(() => {
     getPlans().then(res => {
-      if (res.success && res.plans) setPlans(res.plans);
+      if (res.success && res.plans) {
+        const filtered = res.plans.filter((p: any) => !p.is_only_p2p && !p.isOnlyP2p);
+        setPlans(filtered);
+      }
     }).catch(console.error);
   }, []);
 

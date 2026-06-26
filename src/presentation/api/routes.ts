@@ -1962,7 +1962,7 @@ apiRouter.get('/total-admin/plans', adminSecretAuth, async (req: Request, res: R
 apiRouter.put('/total-admin/plans/:id', adminSecretAuth, async (req: Request, res: Response) => {
   try {
     const planId = Number(req.params.id);
-    const { name, price, query_limit, duration_days, is_active, max_chat_history, services } = req.body;
+    const { name, price, query_limit, duration_days, is_active, max_chat_history, services, is_only_p2p } = req.body;
     const plan = await Plan.findByPk(planId);
     if (!plan) return res.status(404).json({ success: false, error: 'Plan not found.' });
 
@@ -1974,6 +1974,7 @@ apiRouter.put('/total-admin/plans/:id', adminSecretAuth, async (req: Request, re
     if (is_active !== undefined) updates.is_active = !!is_active;
     if (max_chat_history !== undefined) updates.max_chat_history = Number(max_chat_history);
     if (services !== undefined) updates.services = Array.isArray(services) ? services : JSON.parse(services);
+    if (is_only_p2p !== undefined) updates.is_only_p2p = !!is_only_p2p;
 
     await plan.update(updates);
     return res.json({ success: true, plan });
@@ -1984,7 +1985,7 @@ apiRouter.put('/total-admin/plans/:id', adminSecretAuth, async (req: Request, re
 // ─── 59. POST /total-admin/plans — Create a new plan configuration ────────────────
 apiRouter.post('/total-admin/plans', adminSecretAuth, async (req: Request, res: Response) => {
   try {
-    const { name, price, query_limit, duration_days, is_active, max_chat_history, services } = req.body;
+    const { name, price, query_limit, duration_days, is_active, max_chat_history, services, is_only_p2p } = req.body;
     const plan = await Plan.create({
       name,
       price: Number(price),
@@ -1992,7 +1993,8 @@ apiRouter.post('/total-admin/plans', adminSecretAuth, async (req: Request, res: 
       duration_days: duration_days !== undefined ? Number(duration_days) : 30,
       is_active: is_active !== undefined ? !!is_active : true,
       max_chat_history: max_chat_history !== undefined ? Number(max_chat_history) : 10,
-      services: services !== undefined ? (Array.isArray(services) ? services : JSON.parse(services)) : []
+      services: services !== undefined ? (Array.isArray(services) ? services : JSON.parse(services)) : [],
+      is_only_p2p: is_only_p2p !== undefined ? !!is_only_p2p : false,
     });
     return res.json({ success: true, plan });
   } catch (error) {
