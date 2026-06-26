@@ -42,23 +42,23 @@ export const registerStandalone = (params: {
   api.post('/chatbot-admin/register', params).then((r) => r.data);
 
 // ─── Profile & Metadata ────────────────────────────────────────────────────
-export const getProfile = () => api.get('/chatbot-admin/profile').then((r) => r.data);
+export const getProfile = () => api.get(`/chatbot-admin/profile?t=${Date.now()}`).then((r) => r.data);
 
 export const updateChatbot = (name: string, description: string) =>
   api.put('/chatbot-admin/chatbot', { name, description }).then((r) => r.data);
 
 // ─── Conversations ─────────────────────────────────────────────────────────
-export const getConversations = () => api.get('/chatbot-admin/conversations').then((r) => r.data);
+export const getConversations = () => api.get(`/chatbot-admin/conversations?t=${Date.now()}`).then((r) => r.data);
 
 export const getMessages = (senderId: string, limit = 50, offset = 0) =>
-  api.get(`/chatbot-admin/conversations/${senderId}`, { params: { limit, offset } }).then((r) => r.data);
+  api.get(`/chatbot-admin/conversations/${senderId}?limit=${limit}&offset=${offset}&t=${Date.now()}`).then((r) => r.data);
 
 export const replyToConversation = (senderId: string, message: string) =>
   api.post(`/chatbot-admin/conversations/${senderId}/reply`, { message }).then((r) => r.data);
 
 // ─── Knowledge Base ────────────────────────────────────────────────────────
 export const getKnowledgeChunks = (limit = 20, offset = 0) =>
-  api.get('/chatbot-admin/knowledge', { params: { limit, offset } }).then((r) => r.data);
+  api.get(`/chatbot-admin/knowledge?limit=${limit}&offset=${offset}&t=${Date.now()}`).then((r) => r.data);
 
 export const ingestDocument = (documentText: string) =>
   api.post('/chatbot-admin/knowledge/ingest', { documentText }).then((r) => r.data);
@@ -74,7 +74,7 @@ export const createChatbot = (name: string, token: string, type: 'telegram' | 'f
   api.post('/chatbot-admin/chatbot', { name, token, type, botRole }).then((r) => r.data);
 
 // ─── System Prompt ─────────────────────────────────────────────────────────
-export const getSystemPrompt = () => api.get('/chatbot-admin/system-prompt').then((r) => r.data);
+export const getSystemPrompt = () => api.get(`/chatbot-admin/system-prompt?t=${Date.now()}`).then((r) => r.data);
 
 export const updateSystemPrompt = (customSystemPrompt: string) =>
   api.put('/chatbot-admin/system-prompt', { customSystemPrompt }).then((r) => r.data);

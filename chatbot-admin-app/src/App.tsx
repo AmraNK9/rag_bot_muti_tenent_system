@@ -176,14 +176,15 @@ export default function App() {
         setPlans(res.plans);
       }
     }).catch(err => console.error("Error fetching plans", err));
-  }, [fetchProfile]);
+  }, [token, fetchProfile]);
 
   useEffect(() => {
     if (!token) return;
+    if (activeTab === 'chats' && chatbot) loadConversations();
     else if (activeTab === 'billing') loadBillingHistory();
     else if (activeTab === 'knowledge' && profile?.canManageKnowledge) loadKnowledge();
     else if (activeTab === 'prompt' && profile?.canManageSystemPrompt) loadSystemPrompt();
-  }, [activeTab, token, profile]);
+  }, [activeTab, token, profile, chatbot]);
 
   const loadConversations = async () => {
     setLoadingConvs(true);

@@ -11,11 +11,13 @@ const authService = new ChatbotAdminAuthService();
  * Express middleware that verifies ChatbotAdmin JWT from Authorization header.
  * On success, attaches `req.chatbotAdmin` with token payload.
  */
-export function chatbotAdminAuthMiddleware(
+import { ChatbotAdmin } from '../../infrastructure/db/models';
+
+export async function chatbotAdminAuthMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -30,6 +32,13 @@ export function chatbotAdminAuthMiddleware(
 
   try {
     const payload = authService.verifyToken(token);
+    
+    // Fetch latest admin from DB to ensure chatbotId is up-to-date even for old tokens
+    const admin = await ChatbotAdmin.findByPk(payload.adminId);
+    if (admin && admin.chatbot_id) {
+      payload.chatbotId = admin.chatbot_id;
+    }
+
     (req as ChatbotAdminRequest).chatbotAdmin = payload;
     next();
   } catch (error) {

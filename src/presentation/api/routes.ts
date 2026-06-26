@@ -622,7 +622,11 @@ apiRouter.post('/chatbot-admin/login', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Missing email or password.' });
     }
 
+    console.log(`[LOGIN API] Attempting login for email: ${email}`);
+
     const result = await chatbotAdminAuthService.login(email, password);
+    
+    console.log(`[LOGIN API] Success for: ${email}`);
     return res.json({
       success: true,
       token: result.token,
@@ -643,6 +647,8 @@ apiRouter.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: 
     let chatbot: ChatBot | null = null;
     let credits = 0;
 
+    console.log(`[Profile API] Hit by adminId: ${admin.id}, email: ${admin.email}, chatbot_id in DB: ${admin.chatbot_id}`);
+
     if (admin.chatbot_id) {
       chatbot = await ChatBot.findByPk(admin.chatbot_id);
     }
@@ -651,9 +657,23 @@ apiRouter.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: 
       ? await Business.findByPk(chatbot.business_id)
       : await Business.findOne({ where: { name: `Standalone_${admin.email}` } });
 
+    // Auto-heal logic: If admin has no chatbot_id but their standalone business has a chatbot
+    if (!chatbot && business) {
+      const possibleBot = await ChatBot.findOne({ where: { business_id: business.id } });
+      if (possibleBot) {
+        chatbot = possibleBot;
+        await admin.update({ chatbot_id: possibleBot.id });
+      }
+    }
+
     if (business) {
       credits = business.active_messages_count;
+      console.log(`[Profile API] Business found: ${business.id}, credits: ${credits}`);
+    } else {
+      console.log(`[Profile API] Business NOT found for ${admin.email}`);
     }
+
+    console.log(`[Profile API] Returning chatbot:`, chatbot ? chatbot.id : 'null', `credits:`, credits);
 
     return res.json({
       success: true,
