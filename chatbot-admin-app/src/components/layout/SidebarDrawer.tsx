@@ -6,9 +6,10 @@ import { updateChatbot } from '../../api/client';
 interface SidebarDrawerProps {
   drawerOpen: boolean;
   setDrawerOpen: (open: boolean) => void;
+  onSelectBilling: () => void;
 }
 
-export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen }) => {
+export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onSelectBilling }) => {
   const { profile, logout } = useAuth();
   const { chatbot, credits, businessPlanInfo, setChatbot } = useChatbot();
 
@@ -77,6 +78,22 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
           <div className="drawer-item">
             <span className="drawer-item-label">Email</span>
             <span className="drawer-item-val">{profile?.email}</span>
+          </div>
+
+          {/* Billing Section */}
+          <div className="drawer-section-title" style={{ marginTop: 8 }}>Billing & Account</div>
+          <div 
+            className="drawer-item" 
+            onClick={() => {
+              onSelectBilling();
+              setDrawerOpen(false);
+            }}
+            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background-color 0.2s' }}
+          >
+            <span className="drawer-item-label" style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+              💳 Billing & Subscriptions
+            </span>
+            <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>❯</span>
           </div>
 
           {/* Bot settings */}

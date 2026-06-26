@@ -18,11 +18,11 @@ export const MainLayout: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showCreateBotModal, setShowCreateBotModal] = useState(false);
 
+  // Exclude billing from bottom tab bar
   const tabs = [
     { id: 'chats' as TabId, label: 'Chats', icon: '💬' },
     ...(profile?.canManageKnowledge ? [{ id: 'knowledge' as TabId, label: 'Knowledge', icon: '📚' }] : []),
     ...(profile?.canManageSystemPrompt ? [{ id: 'prompt' as TabId, label: 'Prompt', icon: '⚙️' }] : []),
-    { id: 'billing' as TabId, label: 'Billing', icon: '💳' },
   ];
 
   return (
@@ -32,23 +32,31 @@ export const MainLayout: React.FC = () => {
         <div className="nav-brand">
           <span className="brand-icon">🤖</span>
           <span className="brand-name">{chatbot ? chatbot.name : 'Bot Admin'}</span>
-          <div className="nav-credits">
+          <div 
+            className="nav-credits clickable-credits" 
+            onClick={() => setActiveTab('billing')}
+            title="View Billing & Buy Credits"
+          >
             ⚡ {credits}
           </div>
         </div>
-
-
 
         <div className="nav-profile" onClick={() => setDrawerOpen(true)}>
           <div className="profile-avatar">{profile?.name?.charAt(0).toUpperCase() || 'U'}</div>
         </div>
       </nav>
 
-      <SidebarDrawer drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} />
+      <SidebarDrawer 
+        drawerOpen={drawerOpen} 
+        setDrawerOpen={setDrawerOpen} 
+        onSelectBilling={() => setActiveTab('billing')}
+      />
 
       {/* CONTENT */}
       <main className="main-content">
-        {!chatbot ? (
+        {activeTab === 'billing' ? (
+          <BillingTab />
+        ) : !chatbot ? (
           <div className="empty-state" style={{ height: '100%' }}>
             <div className="empty-icon">🔌</div>
             <h3>Connect Your First Bot</h3>
@@ -62,7 +70,6 @@ export const MainLayout: React.FC = () => {
             {activeTab === 'chats' && <ChatsTab />}
             {activeTab === 'knowledge' && profile?.canManageKnowledge && <KnowledgeTab />}
             {activeTab === 'prompt' && profile?.canManageSystemPrompt && <SystemPromptTab />}
-            {activeTab === 'billing' && <BillingTab />}
           </>
         )}
       </main>

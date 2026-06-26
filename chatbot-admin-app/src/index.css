@@ -184,6 +184,20 @@ body {
   color: var(--primary);
 }
 
+.nav-credits.clickable-credits {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+.nav-credits.clickable-credits:hover {
+  background: rgba(10, 132, 255, 0.2);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  transform: scale(1.03);
+}
+.nav-credits.clickable-credits:active {
+  transform: scale(0.98);
+}
+
+
 /* ═══════════════════════════════════════════════════════════
    BOTTOM NAVIGATION (Primary mobile nav)
    ═══════════════════════════════════════════════════════════ */
