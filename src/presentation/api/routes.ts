@@ -1177,6 +1177,20 @@ apiRouter.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: 
       price: price,
     });
 
+    // Real-time broadcast to reseller via WebSocket
+    if (request.reseller_id) {
+      try {
+        const fullRequest = await PlanRequest.findByPk(request.id, {
+          include: [{ model: Business, as: 'business', attributes: ['name'] }]
+        });
+        if (fullRequest) {
+          SocketService.io.to(`reseller_${request.reseller_id}`).emit('new_upgrade_request', fullRequest.toJSON());
+        }
+      } catch (err) {
+        console.error('[Socket Broadcast Error] Failed to emit new_upgrade_request:', err);
+      }
+    }
+
     return res.json({ success: true, request });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
@@ -1292,6 +1306,7 @@ apiRouter.get('/reseller/dashboard', resellerAuthMiddleware, async (req: Request
     return res.json({
       success: true,
       stats: {
+        id: reseller.id,
         name: reseller.name,
         balance: reseller.balance,
         prepaid_balance: reseller.prepaid_balance,
