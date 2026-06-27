@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { login as apiLogin, registerStandalone } from '../../api/client';
 
@@ -13,6 +13,15 @@ export const LoginScreen: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('referralCode');
+    if (ref) {
+      setReferralCode(ref);
+      setIsLogin(false);
+    }
+  }, []);
 
   const switchTab = (toLogin: boolean) => {
     setIsLogin(toLogin);

@@ -141,26 +141,32 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
         <div style={{ marginTop: '20px' }}>
           <div className="drawer-item-label" style={{ marginBottom: '8px' }}>
-            Your Referral Link
+            Your Client Referral Link
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              className="form-control"
-              readOnly
-              value={`https://app.example.com/ref/${stats?.id || '0'}`}
-              style={{ minHeight: '36px', padding: '8px', fontSize: '0.75rem' }}
-            />
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                navigator.clipboard.writeText(`https://app.example.com/ref/${stats?.id || '0'}`);
-                alert('Link copied!');
-              }}
-              style={{ minHeight: '36px' }}
-            >
-              Copy
-            </button>
-          </div>
+          {(() => {
+            const chatbotAdminOrigin = window.location.origin.replace(':5175', ':5174').replace(':3000', ':5174');
+            const referralLink = `${chatbotAdminOrigin}/?ref=${stats?.id || '0'}`;
+            return (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  className="form-control"
+                  readOnly
+                  value={referralLink}
+                  style={{ minHeight: '36px', padding: '8px', fontSize: '0.75rem' }}
+                />
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(referralLink);
+                    alert('Referral link copied to clipboard!');
+                  }}
+                  style={{ minHeight: '36px' }}
+                >
+                  Copy
+                </button>
+              </div>
+            );
+          })()}
         </div>
 
         <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
