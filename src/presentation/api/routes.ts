@@ -1468,6 +1468,22 @@ apiRouter.post('/reseller/requests/:id/approve', resellerAuthMiddleware, async (
       is_first_payment: calc.isFirstPayment,
     });
 
+    // 4.5. Create system chat notification & broadcast
+    try {
+      const chatbot = await ChatBot.findOne({ where: { business_id: business.id } });
+      if (chatbot) {
+        const savedMsg = await Messages.create({
+          chatbot_id: chatbot.id,
+          sender_id: 'system',
+          message: `Your Plan Upgrade Request for "${planRequest.plan_name.toUpperCase()}" has been Approved! Your bot credit limit has been increased by ${newCredits} messages.`,
+          sender_type: 'user',
+        });
+        SocketService.io.to(chatbot.id.toString()).emit('new_message', savedMsg.toJSON());
+      }
+    } catch (err) {
+      console.error('[System Notification Error] Failed to create or emit system message:', err);
+    }
+
     return res.json({ success: true, message: `Approved plan ${planRequest.plan_name} for Business ID ${business.id}` });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
@@ -1486,6 +1502,23 @@ apiRouter.post('/reseller/requests/:id/reject', resellerAuthMiddleware, async (r
     if (!planRequest) return res.status(404).json({ success: false, error: 'Pending plan request not found.' });
 
     await planRequest.update({ status: 'rejected' });
+
+    // Create system chat notification & broadcast
+    try {
+      const chatbot = await ChatBot.findOne({ where: { business_id: planRequest.business_id } });
+      if (chatbot) {
+        const savedMsg = await Messages.create({
+          chatbot_id: chatbot.id,
+          sender_id: 'system',
+          message: `Your Plan Upgrade Request for "${planRequest.plan_name.toUpperCase()}" has been Rejected. Please verify your payment details and submit again.`,
+          sender_type: 'user',
+        });
+        SocketService.io.to(chatbot.id.toString()).emit('new_message', savedMsg.toJSON());
+      }
+    } catch (err) {
+      console.error('[System Notification Error] Failed to create or emit system message:', err);
+    }
+
     return res.json({ success: true, message: 'Request rejected.' });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
@@ -1871,6 +1904,22 @@ apiRouter.post('/total-admin/requests/:id/approve', adminSecretAuth, async (req:
       approver_commission_amount: calc.approverFee,
       is_first_payment: calc.isFirstPayment,
     });
+
+    // 4.5. Create system chat notification & broadcast
+    try {
+      const chatbot = await ChatBot.findOne({ where: { business_id: business.id } });
+      if (chatbot) {
+        const savedMsg = await Messages.create({
+          chatbot_id: chatbot.id,
+          sender_id: 'system',
+          message: `Your Plan Upgrade Request for "${planRequest.plan_name.toUpperCase()}" has been Approved! Your bot credit limit has been increased by ${newCredits} messages.`,
+          sender_type: 'user',
+        });
+        SocketService.io.to(chatbot.id.toString()).emit('new_message', savedMsg.toJSON());
+      }
+    } catch (err) {
+      console.error('[System Notification Error] Failed to create or emit system message:', err);
+    }
 
     return res.json({ success: true, message: 'Request approved via admin override.' });
   } catch (error) {

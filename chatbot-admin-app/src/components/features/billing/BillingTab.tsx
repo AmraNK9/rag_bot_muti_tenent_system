@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import type { Plan } from '../../../types';
-import { getPlans, getPaymentMethods, submitUpgrade } from '../../../api/client';
+import { getPlans, getPaymentMethods, submitUpgrade, getSubscriptionHistory } from '../../../api/client';
 
 export const BillingTab: React.FC = () => {
   const { loadProfileData } = useChatbot();
@@ -14,6 +14,18 @@ export const BillingTab: React.FC = () => {
   const [receiptFilename, setReceiptFilename] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState('');
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchHistory = () => {
+    setLoadingHistory(true);
+    getSubscriptionHistory()
+      .then((res) => {
+        if (res.success && res.history) setHistory(res.history);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingHistory(false));
+  };
 
   useEffect(() => {
     getPlans().then(res => {
@@ -22,6 +34,8 @@ export const BillingTab: React.FC = () => {
         setPlans(filtered);
       }
     }).catch(console.error);
+
+    fetchHistory();
   }, []);
 
   const handleSelectPlan = async (plan: Plan) => {
@@ -66,6 +80,7 @@ export const BillingTab: React.FC = () => {
         setReceiptBase64(null);
         setReceiptFilename('');
         loadProfileData();
+        fetchHistory();
       }
     } catch (e: any) {
       setUpgradeMsg(e?.response?.data?.error || 'Submission failed');
@@ -180,6 +195,61 @@ export const BillingTab: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Billing History Section */}
+      <div style={{ marginTop: 24, padding: '0 14px 14px' }}>
+        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>
+          📜 Billing & Payment History
+        </div>
+
+        {loadingHistory ? (
+          <div className="loading-row"><div className="spinner" /> Loading history...</div>
+        ) : history.length === 0 ? (
+          <div style={{
+            padding: '24px 16px',
+            textAlign: 'center',
+            background: 'var(--bg-surface-2)',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-muted)',
+            fontSize: '0.86rem'
+          }}>
+            No payment history records found.
+          </div>
+        ) : (
+          <div style={{
+            overflowX: 'auto',
+            background: 'var(--bg-surface-2)',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)'
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255, 255, 255, 0.02)' }}>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Date</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Package</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Amount</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'center' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h: any) => (
+                  <tr key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '10px 12px' }}>{new Date(h.created_at).toLocaleDateString()}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 600, textTransform: 'uppercase' }}>{h.plan_name}</td>
+                    <td style={{ padding: '10px 12px' }}>{Number(h.price).toLocaleString()} Ks</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                      <span className={`badge ${h.status === 'approved' ? 'badge-green' : h.status === 'rejected' ? 'badge-red' : 'badge-gray'}`} style={{ textTransform: 'uppercase', fontSize: '0.68rem', padding: '2px 6px' }}>
+                        {h.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
