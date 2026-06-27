@@ -1,6 +1,6 @@
 import { ITool } from '../../core/interfaces/tool.interface';
 import { ToolDefinition } from '../../core/interfaces/llm.interface';
-import { ChatBot, Business } from '../../infrastructure/db/models';
+import { ChatBot, Business, Messages } from '../../infrastructure/db/models';
 import { SystemBotService } from '../system-bot/system-bot.service';
 
 export interface RequestHumanAgentArgs {
@@ -33,6 +33,29 @@ export class RequestHumanAgentTool implements ITool {
       try {
         const chatbot = await ChatBot.findByPk(chatbotId);
         if (chatbot && chatbot.business_id) {
+          // 1. Create in-app system message in customer chat thread
+          try {
+            const custMsg = await Messages.create({
+              chatbot_id: chatbotId,
+              sender_id: senderId,
+              message: `🙋‍♂️ [SYSTEM ALERT] Customer requested human staff assistance. Reason: ${reason}`,
+              sender_type: 'bot',
+            });
+            const sysMsg = await Messages.create({
+              chatbot_id: chatbotId,
+              sender_id: 'system',
+              message: `🙋‍♂️ [STAFF REQUEST] Customer User #${senderId} requested staff intervention. Reason: ${reason}`,
+              sender_type: 'user',
+            });
+            const { SocketService } = await import('../../infrastructure/socket/socket.service');
+            SocketService.io.to(chatbotId.toString()).emit('new_message', custMsg.toJSON());
+            SocketService.io.to(chatbotId.toString()).emit('new_message', sysMsg.toJSON());
+            console.log(`[RequestHumanAgentTool] In-app system notifications created and emitted via WebSocket.`);
+          } catch (mErr) {
+            console.error('[RequestHumanAgentTool In-App Msg Error]', mErr);
+          }
+
+          // 2. Telegram Alert to Business Owner
           const business = await Business.findByPk(chatbot.business_id);
           if (business) {
             console.log(`[RequestHumanAgentTool] Business #${business.id} (${business.name}), telegram_chat_id: ${business.telegram_chat_id || 'NOT LINKED'}`);

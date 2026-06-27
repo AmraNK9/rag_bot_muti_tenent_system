@@ -166,8 +166,27 @@ export class SubscriptionService {
     const remaining = business.active_messages_count - 1;
     console.log(`[Subscription] Credit deducted for Business #${businessId} (${business.name}). Remaining credits: ${remaining}`);
 
-    // Trigger Telegram Low Credit Alert when credits reach thresholds (e.g. 50, 20, 10, 5, 1)
+    // Trigger Telegram & In-App Low Credit Alert when credits reach thresholds (e.g. 50, 20, 10, 5, 1)
     if ([50, 20, 10, 5, 1].includes(remaining) || (remaining <= 10 && remaining > 0)) {
+      // 1. In-App Notification in Chatbot Admin
+      try {
+        const { ChatBot, Messages } = await import('../../infrastructure/db/models');
+        const chatbot = await ChatBot.findOne({ where: { business_id: businessId } });
+        if (chatbot) {
+          const sysMsg = await Messages.create({
+            chatbot_id: chatbot.id,
+            sender_id: 'system',
+            message: `⚠️ [LOW CREDITS] Your chatbot message credits are running low (${remaining} remaining). Please top up in Billing!`,
+            sender_type: 'user',
+          });
+          const { SocketService } = await import('../../infrastructure/socket/socket.service');
+          SocketService.io.to(chatbot.id.toString()).emit('new_message', sysMsg.toJSON());
+        }
+      } catch (inAppErr) {
+        console.error('[LowCreditInAppAlert Error]', inAppErr);
+      }
+
+      // 2. Telegram Notification to Business Owner
       if (business.telegram_chat_id) {
         try {
           const { SystemBotService } = await import('../system-bot/system-bot.service');
