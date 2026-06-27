@@ -20,7 +20,14 @@ export const ChatsTab: React.FC = () => {
     if (!silent) setLoadingConvs(true);
     try {
       const data = await getConversations();
-      setConversations(data.conversations || []);
+      const rawList: Conversation[] = data.conversations || [];
+      // Pin 'system' conversation to the top
+      const sorted = [...rawList].sort((a, b) => {
+        if (a.sender_id === 'system') return -1;
+        if (b.sender_id === 'system') return 1;
+        return 0;
+      });
+      setConversations(sorted);
     } catch (e) {
       console.error(e);
     } finally {
@@ -151,8 +158,13 @@ export const ChatsTab: React.FC = () => {
                   {isSystem ? '🛡️' : '👤'}
                 </div>
                 <div className="conv-info">
-                  <div className="conv-name" style={isSystem ? { fontWeight: 700, color: 'var(--primary)' } : undefined}>
-                    {isSystem ? 'System Notifications' : `User ${c.sender_id}`}
+                  <div className="conv-name" style={isSystem ? { fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' } : undefined}>
+                    {isSystem ? (
+                      <>
+                        System Notifications
+                        <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>📌 PINNED</span>
+                      </>
+                    ) : `User ${c.sender_id}`}
                   </div>
                   <div className="conv-preview">
                     {isSystem ? 'Platform messages' : `${c.message_count} messages`}
