@@ -10,7 +10,7 @@ import { VoyageEmbeddingService } from '../../infrastructure/embeddings/voyage.s
 import { PgVectorStoreService } from '../../infrastructure/vectorstore/pgvector.service';
 import { TelegramService } from '../../infrastructure/telegram/telegram.service';
 import { tunnelService } from '../../infrastructure/tunnel/tunnel.service';
-import { ChatBot, Messages, ChatbotAdmin, Business, Reseller, PlanRequest, ChatbotActivity, ResellerTopUp, Plan, SystemSetting, AuditLog, P2PTopupTransaction } from '../../infrastructure/db/models';
+import { ChatBot, Messages, ChatbotAdmin, Business, Reseller, PlanRequest, ChatbotActivity, ResellerTopUp, Plan, SystemSetting, AuditLog, P2PTopupTransaction, SystemBotConfig, SystemBotFaq } from '../../infrastructure/db/models';
 import { QueryTypes } from 'sequelize';
 import { SequelizeService } from '../../infrastructure/db/sequelize.service';
 import bcrypt from 'bcryptjs';
@@ -23,6 +23,7 @@ import { PaymentRoutingService } from '../../modules/subscription/payment-routin
 import { resellerAuthMiddleware, ResellerRequest } from '../middleware/reseller-auth.middleware';
 import { SystemPromptFactory } from '../../infrastructure/prompt/prompt.factory';
 import { SocketService } from '../../infrastructure/socket/socket.service';
+import { SystemBotService } from '../../modules/system-bot/system-bot.service';
 
 // ─── Service Initialization ──────────────────────────────────────────────────
 const authService = new AuthService();
@@ -34,6 +35,7 @@ const knowledgeService = new KnowledgeService(embeddingService, vectorStore);
 const telegramService = new TelegramService();
 const chatbotWebhookService = new ChatbotWebhookService(telegramService, tunnelService);
 const chatbotAdminAuthService = new ChatbotAdminAuthService();
+const systemBotService = new SystemBotService(telegramService);
 
 const apiRouter = Router();
 
@@ -1193,6 +1195,23 @@ apiRouter.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: 
       console.error('[Socket Broadcast Error] Failed to emit new_upgrade_request:', err);
     }
 
+    // Trigger Telegram notification to assigned reseller if linked
+    if (request.reseller_id) {
+      try {
+        const reseller = await Reseller.findByPk(request.reseller_id);
+        if (reseller && reseller.telegram_chat_id) {
+          const business = await Business.findByPk(businessId);
+          await systemBotService.notifyResellerUpgradeRequest(reseller.telegram_chat_id, {
+            businessName: business ? business.name : `Business #${businessId}`,
+            planName: planName,
+            price: price,
+          });
+        }
+      } catch (tErr) {
+        console.error('[System Bot Notification Error]', tErr);
+      }
+    }
+
     return res.json({ success: true, request });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
@@ -1324,6 +1343,8 @@ apiRouter.get('/reseller/dashboard', resellerAuthMiddleware, async (req: Request
         referrerFirstRate,
         referrerRecRate,
         trustScoreFactor: Number(reseller.trust_score_factor),
+        telegram_chat_id: reseller.telegram_chat_id,
+        telegram_username: reseller.telegram_username,
       }
     });
   } catch (error) {
@@ -2093,6 +2114,163 @@ apiRouter.get('/plans', async (req: Request, res: Response) => {
       order: [['price', 'ASC']] 
     });
     return res.json({ success: true, plans });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 61. POST /webhook/system-bot — System Core Telegram Bot Webhook Receiver ───
+apiRouter.post('/webhook/system-bot', async (req: Request, res: Response) => {
+  try {
+    await systemBotService.handleUpdate(req.body);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('[System Bot Webhook Error]', error);
+    return res.status(500).json({ success: false });
+  }
+});
+
+// ─── 62. GET /total-admin/system-bot/config — Get core bot configuration ─────────
+apiRouter.get('/total-admin/system-bot/config', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    let config = await SystemBotConfig.findOne();
+    if (!config) {
+      config = await SystemBotConfig.create({
+        bot_token: process.env.SYSTEM_BOT_TOKEN || 'mock-system-bot-token',
+        bot_name: 'SaaS Platform Assistant',
+        system_prompt: 'You are the official AI Sales and Support Assistant for our SaaS Chatbot Management Platform.',
+        is_active: true,
+      });
+    }
+    return res.json({ success: true, config });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 63. PUT /total-admin/system-bot/config — Update core bot configuration ──────
+apiRouter.put('/total-admin/system-bot/config', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const { bot_token, bot_name, system_prompt, is_active } = req.body;
+    let config = await SystemBotConfig.findOne();
+    if (!config) {
+      config = await SystemBotConfig.create({
+        bot_token: bot_token || 'mock-system-bot-token',
+        bot_name: bot_name || 'SaaS Platform Assistant',
+        system_prompt: system_prompt || '',
+        is_active: is_active !== undefined ? !!is_active : true,
+      });
+    } else {
+      await config.update({
+        bot_token: bot_token !== undefined ? bot_token : config.bot_token,
+        bot_name: bot_name !== undefined ? bot_name : config.bot_name,
+        system_prompt: system_prompt !== undefined ? system_prompt : config.system_prompt,
+        is_active: is_active !== undefined ? !!is_active : config.is_active,
+      });
+    }
+
+    // Auto-register webhook if tunnel active and valid bot_token
+    try {
+      const publicUrl = tunnelService.getPublicUrl();
+      if (publicUrl && config.bot_token && config.bot_token !== 'mock-system-bot-token') {
+        await systemBotService.registerWebhook(config.bot_token, publicUrl);
+      }
+    } catch (whErr) {
+      console.error('[System Bot Webhook Auto-Register Error]', whErr);
+    }
+
+    return res.json({ success: true, config });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 63a. GET /system-bot/info — Public endpoint to get system bot info ───────────
+apiRouter.get('/system-bot/info', async (req: Request, res: Response) => {
+  try {
+    const config = await SystemBotConfig.findOne({ where: { is_active: true } });
+    if (!config) return res.json({ success: true, username: 'mock_bot' });
+
+    const username = await systemBotService.getBotUsername(config.bot_token);
+    return res.json({ success: true, username, bot_name: config.bot_name });
+  } catch (error) {
+    return res.json({ success: true, username: 'mock_bot' });
+  }
+});
+
+// ─── 64. GET /total-admin/system-bot/faqs — Get all FAQs ──────────────────────────
+apiRouter.get('/total-admin/system-bot/faqs', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const faqs = await SystemBotFaq.findAll({ order: [['id', 'ASC']] });
+    return res.json({ success: true, faqs });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 65. POST /total-admin/system-bot/faqs — Create FAQ ───────────────────────────
+apiRouter.post('/total-admin/system-bot/faqs', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const { question, answer, category, is_active } = req.body;
+    const faq = await SystemBotFaq.create({
+      question,
+      answer,
+      category: category || 'general',
+      is_active: is_active !== undefined ? !!is_active : true,
+    });
+    return res.json({ success: true, faq });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 66. PUT /total-admin/system-bot/faqs/:id — Update FAQ ────────────────────────
+apiRouter.put('/total-admin/system-bot/faqs/:id', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const faqId = Number(req.params.id);
+    const faq = await SystemBotFaq.findByPk(faqId);
+    if (!faq) return res.status(404).json({ success: false, error: 'FAQ not found.' });
+
+    const { question, answer, category, is_active } = req.body;
+    await faq.update({
+      question: question !== undefined ? question : faq.question,
+      answer: answer !== undefined ? answer : faq.answer,
+      category: category !== undefined ? category : faq.category,
+      is_active: is_active !== undefined ? !!is_active : faq.is_active,
+    });
+    return res.json({ success: true, faq });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 67. DELETE /total-admin/system-bot/faqs/:id — Delete FAQ ─────────────────────
+apiRouter.delete('/total-admin/system-bot/faqs/:id', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const faqId = Number(req.params.id);
+    const faq = await SystemBotFaq.findByPk(faqId);
+    if (!faq) return res.status(404).json({ success: false, error: 'FAQ not found.' });
+
+    await faq.destroy();
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 68. PUT /reseller/profile/telegram — Reseller update telegram account ─────────
+apiRouter.put('/reseller/profile/telegram', resellerAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const resReq = req as ResellerRequest;
+    const reseller = await Reseller.findByPk(resReq.reseller.resellerId);
+    if (!reseller) return res.status(404).json({ success: false, error: 'Reseller not found.' });
+
+    const { telegram_chat_id, telegram_username } = req.body;
+    await reseller.update({
+      telegram_chat_id: telegram_chat_id !== undefined ? telegram_chat_id : reseller.telegram_chat_id,
+      telegram_username: telegram_username !== undefined ? telegram_username : reseller.telegram_username,
+    });
+    return res.json({ success: true, reseller });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }

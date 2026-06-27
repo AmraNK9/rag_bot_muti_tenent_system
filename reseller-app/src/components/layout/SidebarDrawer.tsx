@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardStats } from '../../types';
+import { updateTelegramProfile, getSystemBotInfo } from '../../api/client';
 
 interface SidebarDrawerProps {
   drawerOpen: boolean;
@@ -14,7 +15,39 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   stats,
   onLogout,
 }) => {
+  const [chatIdInput, setChatIdInput] = useState('');
+  const [savingTelegram, setSavingTelegram] = useState(false);
+  const [botUsername, setBotUsername] = useState('mock_bot');
+
+  useEffect(() => {
+    if (stats?.telegram_chat_id) {
+      setChatIdInput(stats.telegram_chat_id);
+    }
+    getSystemBotInfo()
+      .then((res) => {
+        if (res.success && res.username) {
+          setBotUsername(res.username);
+        }
+      })
+      .catch(() => {});
+  }, [stats]);
+
   if (!drawerOpen) return null;
+
+  const handleSaveTelegram = async () => {
+    if (!chatIdInput.trim()) return;
+    setSavingTelegram(true);
+    try {
+      const res = await updateTelegramProfile(chatIdInput.trim());
+      if (res.success) {
+        alert('Telegram Chat ID updated successfully!');
+      }
+    } catch (e) {
+      alert('Failed to update Telegram Chat ID');
+    } finally {
+      setSavingTelegram(false);
+    }
+  };
 
   return (
     <div className="drawer-overlay" onClick={() => setDrawerOpen(false)}>
@@ -69,7 +102,44 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           <span className="drawer-item-val">{stats?.referredCount || '0'} clients</span>
         </div>
 
-        <div style={{ marginTop: '32px' }}>
+        {/* TELEGRAM NOTIFICATIONS CONNECT SECTION */}
+        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+          <div className="drawer-item-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🔔 Telegram Instant Alerts
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+            Receive real-time Telegram messages when clients request plan upgrades.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <input
+              className="form-control"
+              placeholder="Enter Telegram Chat ID..."
+              value={chatIdInput}
+              onChange={(e) => setChatIdInput(e.target.value)}
+              style={{ minHeight: '36px', padding: '8px', fontSize: '0.78rem' }}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleSaveTelegram}
+              disabled={savingTelegram || !chatIdInput.trim()}
+              style={{ minHeight: '36px', whiteSpace: 'nowrap' }}
+            >
+              {savingTelegram ? '...' : 'Save'}
+            </button>
+          </div>
+          {stats?.id && (
+            <a
+              href={`https://t.me/${botUsername}?start=connect_${stats.id}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'none', display: 'inline-block' }}
+            >
+              👉 Or click here to Auto-Connect via Telegram Bot
+            </a>
+          )}
+        </div>
+
+        <div style={{ marginTop: '20px' }}>
           <div className="drawer-item-label" style={{ marginBottom: '8px' }}>
             Your Referral Link
           </div>

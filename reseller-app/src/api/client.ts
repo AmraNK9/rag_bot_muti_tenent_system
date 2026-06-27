@@ -76,3 +76,9 @@ export const getPlans = () =>
 export const getP2PHistory = () =>
   api.get('/reseller/p2p-history').then((r) => r.data);
 
+export const updateTelegramProfile = (telegram_chat_id: string, telegram_username?: string) =>
+  api.put('/reseller/profile/telegram', { telegram_chat_id, telegram_username }).then((r) => r.data);
+
+export const getSystemBotInfo = () =>
+  api.get('/system-bot/info').then((r) => r.data);
+

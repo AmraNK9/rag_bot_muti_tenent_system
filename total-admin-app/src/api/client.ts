@@ -108,3 +108,22 @@ export const createPlan = (
   }
 ) =>
   api.post(`/total-admin/plans`, data).then((r) => r.data);
+
+// ─── System Core Bot APIs ───────────────────────────────────────────────────
+export const getSystemBotConfig = () =>
+  api.get('/total-admin/system-bot/config').then((r) => r.data);
+
+export const updateSystemBotConfig = (data: { bot_token?: string; bot_name?: string; system_prompt?: string; is_active?: boolean }) =>
+  api.put('/total-admin/system-bot/config', data).then((r) => r.data);
+
+export const getSystemBotFaqs = () =>
+  api.get('/total-admin/system-bot/faqs').then((r) => r.data);
+
+export const createSystemBotFaq = (data: { question: string; answer: string; category?: string; is_active?: boolean }) =>
+  api.post('/total-admin/system-bot/faqs', data).then((r) => r.data);
+
+export const updateSystemBotFaq = (id: number, data: { question?: string; answer?: string; category?: string; is_active?: boolean }) =>
+  api.put(`/total-admin/system-bot/faqs/${id}`, data).then((r) => r.data);
+
+export const deleteSystemBotFaq = (id: number) =>
+  api.delete(`/total-admin/system-bot/faqs/${id}`).then((r) => r.data);

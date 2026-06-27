@@ -24,8 +24,9 @@ import { TopupsTab } from './components/features/topups/TopupsTab';
 import { PlansTab } from './components/features/plans/PlansTab';
 import { SettingsTab } from './components/features/settings/SettingsTab';
 import { LogsTab } from './components/features/logs/LogsTab';
+import { SystemBotTab } from './components/features/system-bot/SystemBotTab';
 
-type TabId = 'analytics' | 'resellers' | 'requests' | 'topups' | 'plans' | 'settings' | 'logs';
+type TabId = 'analytics' | 'resellers' | 'requests' | 'topups' | 'plans' | 'system-bot' | 'settings' | 'logs';
 
 export default function App() {
   const [secret, setSecret] = useState<string | null>(localStorage.getItem('total_admin_secret'));
@@ -213,6 +214,7 @@ export default function App() {
               {activeTab === 'requests' && 'Approve plan upgrades and process screenshot attachments.'}
               {activeTab === 'topups' && 'Manage reseller credit balance refills and collections.'}
               {activeTab === 'plans' && 'Define system service tiers and direct payment models.'}
+              {activeTab === 'system-bot' && 'Configure AI Assistant guidelines, FAQs, and Telegram Bot token.'}
               {activeTab === 'settings' && 'Update system defaults for referrals and fee splits.'}
               {activeTab === 'logs' && 'Global actions audit history trails.'}
             </p>
@@ -254,6 +256,8 @@ export default function App() {
           {activeTab === 'plans' && (
             <PlansTab plans={plans} loadingPlans={loadingPlans} setPlans={setPlans} />
           )}
+
+          {activeTab === 'system-bot' && <SystemBotTab />}
 
           {activeTab === 'settings' && (
             <SettingsTab

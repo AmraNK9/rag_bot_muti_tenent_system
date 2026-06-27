@@ -81,3 +81,20 @@ export interface AuditLog {
   description: string;
   created_at: string;
 }
+
+export interface SystemBotConfig {
+  id: number;
+  bot_token: string;
+  bot_name: string;
+  system_prompt: string;
+  is_active: boolean;
+}
+
+export interface SystemBotFaq {
+  id: number;
+  question: string;
+  answer: string;
+  category: string;
+  is_active: boolean;
+  created_at: string;
+}

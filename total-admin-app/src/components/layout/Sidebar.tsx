@@ -1,6 +1,6 @@
 import React from 'react';
 
-type TabId = 'analytics' | 'resellers' | 'requests' | 'topups' | 'plans' | 'settings' | 'logs';
+type TabId = 'analytics' | 'resellers' | 'requests' | 'topups' | 'plans' | 'system-bot' | 'settings' | 'logs';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -15,6 +15,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     { id: 'requests' as TabId, label: 'Plan Upgrades', icon: '📥' },
     { id: 'topups' as TabId, label: 'Reseller Deposits', icon: '💸' },
     { id: 'plans' as TabId, label: 'Pricing Plans', icon: '💎' },
+    { id: 'system-bot' as TabId, label: 'Core Bot & FAQs', icon: '🤖' },
     { id: 'settings' as TabId, label: 'Global Settings', icon: '⚙️' },
     { id: 'logs' as TabId, label: 'Audit Logs', icon: '📜' },
   ];

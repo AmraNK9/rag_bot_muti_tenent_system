@@ -9,12 +9,13 @@ import { QueryExtractionTool } from './modules/chat/query-extraction.tool';
 import { BusinessService } from './modules/business/business.service';
 import { KnowledgeService } from './modules/knowledge/knowledge.service';
 import { ChatMemoryService } from './modules/chat/chat-memory.service';
-import { Business, ChatBot } from './infrastructure/db/models';
+import { Business, ChatBot, SystemBotConfig } from './infrastructure/db/models';
 import { chunkMyanmarText } from './modules/knowledge/myanmar-chunker';
 import { startServer } from './presentation/server';
 import { startResellerCronJobs } from './modules/reseller/reseller.cron';
 import { tunnelService } from './infrastructure/tunnel/tunnel.service';
 import { ChatbotAnalyticsService } from './modules/chat/chatbot-analytics.service';
+import { SystemBotService } from './modules/system-bot/system-bot.service';
 
 declare const process: {
   env: {
@@ -100,7 +101,18 @@ async function bootstrap() {
     console.log(`\n[3] ngrok tunnel active:`);
     console.log(`    📡 Public URL  : ${publicUrl}`);
     console.log(`    🔗 Webhook URL : ${publicUrl}/webhook/<businessId>/<chatbotId>`);
-    console.log(`    ℹ️  Call POST /api/test/chatbot/register-webhook to bind to Telegram.`);
+
+    // Register System Core Bot webhook if configured
+    try {
+      const systemBotConfig = await SystemBotConfig.findOne({ where: { is_active: true } });
+      if (systemBotConfig && systemBotConfig.bot_token && systemBotConfig.bot_token !== 'mock-system-bot-token') {
+        const sysBotService = new SystemBotService();
+        await sysBotService.registerWebhook(systemBotConfig.bot_token, publicUrl);
+        console.log(`    🤖 System Core Bot registered to Telegram webhook.`);
+      }
+    } catch (sbErr) {
+      console.error('    ⚠️ Failed to auto-register System Core Bot webhook:', sbErr);
+    }
   } catch (err) {
     console.warn(`\n[3] ⚠️  ngrok tunnel failed to start:`, err);
     console.warn(`    Server will run locally only — real Telegram webhooks will not work.`);

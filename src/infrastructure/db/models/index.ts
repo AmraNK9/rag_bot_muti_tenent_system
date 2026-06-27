@@ -73,6 +73,8 @@ export class Reseller extends Model<InferAttributes<Reseller>, InferCreationAttr
   declare custom_referrer_recurring_rate: CreationOptional<number | null>;
   declare custom_approver_rate: CreationOptional<number | null>;
   declare trust_score_factor: CreationOptional<number>;
+  declare telegram_chat_id: CreationOptional<string | null>;
+  declare telegram_username: CreationOptional<string | null>;
   declare created_at: CreationOptional<Date>;
 }
 
@@ -207,6 +209,25 @@ export class AuditLog extends Model<InferAttributes<AuditLog>, InferCreationAttr
   declare admin_id: CreationOptional<number | null>;
   declare action: string;
   declare description: string;
+  declare created_at: CreationOptional<Date>;
+}
+
+// ─── SystemBotConfig Model ───────────────────────────────────────────────────
+export class SystemBotConfig extends Model<InferAttributes<SystemBotConfig>, InferCreationAttributes<SystemBotConfig>> {
+  declare id: CreationOptional<number>;
+  declare bot_token: string;
+  declare bot_name: string;
+  declare system_prompt: string;
+  declare is_active: CreationOptional<boolean>;
+}
+
+// ─── SystemBotFaq Model ──────────────────────────────────────────────────────
+export class SystemBotFaq extends Model<InferAttributes<SystemBotFaq>, InferCreationAttributes<SystemBotFaq>> {
+  declare id: CreationOptional<number>;
+  declare question: string;
+  declare answer: string;
+  declare category: CreationOptional<string>;
+  declare is_active: CreationOptional<boolean>;
   declare created_at: CreationOptional<Date>;
 }
 
@@ -603,6 +624,16 @@ export function initModels(sequelize: Sequelize) {
         allowNull: false,
         defaultValue: 1.00,
       },
+      telegram_chat_id: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        defaultValue: null,
+      },
+      telegram_username: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        defaultValue: null,
+      },
       created_at: {
         type: DataTypes.DATE,
         allowNull: false,
@@ -790,6 +821,77 @@ export function initModels(sequelize: Sequelize) {
     {
       sequelize,
       tableName: 'system_settings',
+      timestamps: false,
+    }
+  );
+
+  SystemBotConfig.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      bot_token: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      bot_name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        defaultValue: 'SaaS Platform Assistant',
+      },
+      system_prompt: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      is_active: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'system_bot_configs',
+      timestamps: false,
+    }
+  );
+
+  SystemBotFaq.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      question: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      answer: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      category: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        defaultValue: 'general',
+      },
+      is_active: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'system_faqs',
       timestamps: false,
     }
   );

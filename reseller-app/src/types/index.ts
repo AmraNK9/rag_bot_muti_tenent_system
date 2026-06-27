@@ -15,6 +15,8 @@ export interface DashboardStats {
   referrerFirstRate: number;
   referrerRecRate: number;
   trustScoreFactor: number;
+  telegram_chat_id?: string | null;
+  telegram_username?: string | null;
 }
 
 export interface PlanRequest {
