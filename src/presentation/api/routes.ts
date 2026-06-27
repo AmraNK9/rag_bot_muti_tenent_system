@@ -1251,12 +1251,26 @@ apiRouter.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: 
 // ─── 40.5 GET /subscription/history ──────────────────────────────────────────
 apiRouter.get('/subscription/history', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const chatbotAdminId = (req as any).adminId;
-    const admin = await ChatbotAdmin.findByPk(chatbotAdminId, { include: [ChatBot] });
-    if (!admin || !admin.chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+    const adminReq = req as ChatbotAdminRequest;
+    const admin = await ChatbotAdmin.findByPk(adminReq.chatbotAdmin.adminId);
+    if (!admin) return res.status(404).json({ success: false, error: 'Admin not found.' });
+
+    let businessId: number | null = null;
+    if (admin.chatbot_id) {
+      const chatbot = await ChatBot.findByPk(admin.chatbot_id);
+      if (chatbot) businessId = chatbot.business_id;
+    }
+    if (!businessId) {
+      const business = await Business.findOne({ where: { name: `Standalone_${admin.email}` } });
+      if (business) businessId = business.id;
+    }
+
+    if (!businessId) {
+      return res.json({ success: true, history: [] });
+    }
 
     const requests = await PlanRequest.findAll({
-      where: { business_id: admin.chatbot.business_id },
+      where: { business_id: businessId },
       order: [['created_at', 'DESC']]
     });
 
