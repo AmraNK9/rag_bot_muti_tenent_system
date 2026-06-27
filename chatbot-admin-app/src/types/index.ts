@@ -45,3 +45,14 @@ export interface KnowledgeChunk {
   text: string;
   metadata?: { chatbot_id?: number | string; source?: string };
 }
+
+export interface BusinessDetails {
+  id: number;
+  name: string;
+  plan: string;
+  subscriptionPlan?: string | null;
+  subscriptionEndDate?: string | null;
+  topupId?: string | null;
+  telegram_chat_id?: string | null;
+  telegram_username?: string | null;
+}

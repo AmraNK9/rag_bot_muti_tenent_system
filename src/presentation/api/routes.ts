@@ -707,8 +707,38 @@ apiRouter.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: 
         subscriptionPlan: business.subscription_plan,
         subscriptionEndDate: business.subscription_end_date,
         topupId: business.topup_id,
+        telegram_chat_id: business.telegram_chat_id,
+        telegram_username: business.telegram_username,
       } : null,
     });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 26a. PUT /chatbot-admin/profile/telegram — Update business telegram profile ───
+apiRouter.put('/chatbot-admin/profile/telegram', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const admin = await ChatbotAdmin.findByPk(adminReq.chatbotAdmin.adminId);
+    if (!admin) return res.status(404).json({ success: false, error: 'Admin not found.' });
+
+    let chatbot: ChatBot | null = null;
+    if (admin.chatbot_id) chatbot = await ChatBot.findByPk(admin.chatbot_id);
+
+    const business = chatbot
+      ? await Business.findByPk(chatbot.business_id)
+      : await Business.findOne({ where: { name: `Standalone_${admin.email}` } });
+
+    if (!business) return res.status(404).json({ success: false, error: 'Business not found.' });
+
+    const { telegram_chat_id, telegram_username } = req.body;
+    await business.update({
+      telegram_chat_id: telegram_chat_id !== undefined ? telegram_chat_id : business.telegram_chat_id,
+      telegram_username: telegram_username !== undefined ? telegram_username : business.telegram_username,
+    });
+
+    return res.json({ success: true, business });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }

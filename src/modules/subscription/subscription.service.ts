@@ -163,6 +163,28 @@ export class SubscriptionService {
     if (!business || business.active_messages_count <= 0) return false;
 
     await business.decrement('active_messages_count', { by: 1 });
+    const remaining = business.active_messages_count - 1;
+    console.log(`[Subscription] Credit deducted for Business #${businessId} (${business.name}). Remaining credits: ${remaining}`);
+
+    // Trigger Telegram Low Credit Alert when credits reach thresholds (e.g. 50, 20, 10, 5, 1)
+    if ([50, 20, 10, 5, 1].includes(remaining) || (remaining <= 10 && remaining > 0)) {
+      if (business.telegram_chat_id) {
+        try {
+          const { SystemBotService } = await import('../system-bot/system-bot.service');
+          const sysBot = new SystemBotService();
+          await sysBot.notifyBusinessLowCredits(business.telegram_chat_id, {
+            businessName: business.name,
+            remainingCredits: remaining,
+          });
+          console.log(`[LowCreditAlert] Dispatched Telegram alert to ChatID ${business.telegram_chat_id} (Remaining: ${remaining})`);
+        } catch (err) {
+          console.error('[LowCreditAlert Error]', err);
+        }
+      } else {
+        console.log(`[LowCreditAlert] Business #${businessId} has remaining ${remaining} credits but telegram_chat_id is NOT linked yet.`);
+      }
+    }
+
     return true;
   }
 

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChatbot } from '../../contexts/ChatbotContext';
-import { updateChatbot } from '../../api/client';
+import { updateChatbot, getSystemBotInfo } from '../../api/client';
 
 interface SidebarDrawerProps {
   drawerOpen: boolean;
@@ -17,6 +17,17 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
   const [editDesc, setEditDesc] = useState(chatbot?.description || '');
   const [saving, setSaving] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [botUsername, setBotUsername] = useState('mock_bot');
+
+  useEffect(() => {
+    getSystemBotInfo()
+      .then((res) => {
+        if (res.success && res.username) {
+          setBotUsername(res.username);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   React.useEffect(() => {
     if (chatbot) {
@@ -41,6 +52,8 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
       setSaving(false);
     }
   };
+
+  const isTelegramConnected = !!businessPlanInfo?.telegram_chat_id;
 
   return (
     <>
@@ -78,6 +91,51 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
           <div className="drawer-item">
             <span className="drawer-item-label">Email</span>
             <span className="drawer-item-val">{profile?.email}</span>
+          </div>
+
+          {/* Telegram Notifications Section */}
+          <div className="drawer-section-title" style={{ marginTop: 8 }}>🔔 Telegram Alerts</div>
+          <div style={{ padding: '0 16px 10px' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.3' }}>
+              Receive instant alerts for low credits, staff handoff requests, and plan approvals.
+            </p>
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: 'var(--radius)',
+              background: isTelegramConnected ? 'rgba(50, 215, 75, 0.1)' : 'var(--bg-surface-2)',
+              border: isTelegramConnected ? '1px solid rgba(50, 215, 75, 0.3)' : '1px solid var(--border)',
+              marginBottom: '10px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isTelegramConnected ? 'var(--green)' : 'var(--text-muted)' }}>
+                  {isTelegramConnected ? '🟢 Connected' : '⚪ Not Connected'}
+                </span>
+                {isTelegramConnected && businessPlanInfo?.telegram_username && (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    @{businessPlanInfo.telegram_username}
+                  </span>
+                )}
+              </div>
+            </div>
+            {businessPlanInfo?.id && (
+              <a
+                href={`https://t.me/${botUsername}?start=connect_business_${businessPlanInfo.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-primary btn-sm"
+                style={{
+                  width: '100%',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                🚀 {isTelegramConnected ? 'Reconnect Telegram Bot' : 'One-Click Connect Telegram'}
+              </a>
+            )}
           </div>
 
           {/* Billing Section */}

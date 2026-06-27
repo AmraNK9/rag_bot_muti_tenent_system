@@ -37,17 +37,26 @@ export class TunnelService {
 
     console.log(`[TunnelService] Starting ngrok tunnel → localhost:${port} ...`);
 
-    this.listener = await ngrok.forward({
-      addr: port,
-      authtoken,
-      domain,
-    });
+    let retries = 5;
+    while (retries > 0) {
+      try {
+        this.listener = await ngrok.forward({
+          addr: port,
+          authtoken,
+          domain,
+        });
+        this.publicUrl = this.listener.url()!;
+        console.log(`[TunnelService] ✅ ngrok tunnel active → ${this.publicUrl}`);
+        return this.publicUrl;
+      } catch (err: any) {
+        retries--;
+        console.error(`[TunnelService] ngrok connect attempt failed (${5 - retries}/5):`, err.message || err);
+        if (retries === 0) throw err;
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
 
-    this.publicUrl = this.listener.url()!;
-
-    console.log(`[TunnelService] ✅ ngrok tunnel active → ${this.publicUrl}`);
-
-    return this.publicUrl;
+    throw new Error('Failed to connect ngrok tunnel after 5 retries.');
   }
 
   /**

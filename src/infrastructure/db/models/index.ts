@@ -14,6 +14,8 @@ export class Business extends Model<InferAttributes<Business>, InferCreationAttr
   declare subscription_plan: CreationOptional<string | null>;
   declare total_chatbots: CreationOptional<number>; // max allowed chatbots for current plan
   declare referred_by_reseller_id: CreationOptional<number | null>; // referrer tracking
+  declare telegram_chat_id: CreationOptional<string | null>;
+  declare telegram_username: CreationOptional<string | null>;
   declare created_at: CreationOptional<Date>;
 }
 
@@ -290,6 +292,16 @@ export function initModels(sequelize: Sequelize) {
       },
       referred_by_reseller_id: {
         type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
+      telegram_chat_id: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        defaultValue: null,
+      },
+      telegram_username: {
+        type: DataTypes.STRING(100),
         allowNull: true,
         defaultValue: null,
       },

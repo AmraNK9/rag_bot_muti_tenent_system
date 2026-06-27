@@ -28,7 +28,7 @@ export const ChatbotProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    if (!token || !chatbot?.id) {
+    if (!token) {
       if (socket) {
         socket.disconnect();
         setSocket(null);
@@ -41,8 +41,19 @@ export const ChatbotProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
 
     newSocket.on('connect', () => {
-      console.log('[Socket] Connected, joining room:', chatbot.id);
-      newSocket.emit('join_room', chatbot.id);
+      if (chatbot?.id) {
+        console.log('[Socket] Connected, joining chatbot room:', chatbot.id);
+        newSocket.emit('join_room', chatbot.id);
+      }
+      if (businessPlanInfo?.id) {
+        console.log('[Socket] Connected, joining business room:', businessPlanInfo.id);
+        newSocket.emit('join_business_room', businessPlanInfo.id);
+      }
+    });
+
+    newSocket.on('business_telegram_connected', (data: { telegram_chat_id: string; telegram_username: string }) => {
+      console.log('[Socket] Business Telegram connected in real-time:', data);
+      setBusinessPlanInfo((prev: any) => (prev ? { ...prev, telegram_chat_id: data.telegram_chat_id, telegram_username: data.telegram_username } : prev));
     });
 
     setSocket(newSocket);
@@ -50,7 +61,7 @@ export const ChatbotProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => {
       newSocket.disconnect();
     };
-  }, [token, chatbot?.id]);
+  }, [token, chatbot?.id, businessPlanInfo?.id]);
 
   const loadProfileData = useCallback(async () => {
     if (!token) return;

@@ -11,6 +11,7 @@ import { PgVectorStoreService } from '../infrastructure/vectorstore/pgvector.ser
 import { ToolCallingRegistry } from '../infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from '../infrastructure/prompt/prompt.factory';
 import { QueryExtractionTool } from '../modules/chat/query-extraction.tool';
+import { RequestHumanAgentTool } from '../modules/chat/request-human-agent.tool';
 import { SocketService } from '../infrastructure/socket/socket.service';
 import { Request, Response } from 'express';
 
@@ -24,21 +25,12 @@ declare const process: {
   };
 };
 
+
 const app = express();
 
-// const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5000')//allow multiple origins separated by commas in the environment variable
-  // .split(',')
-  // .map((origin) => origin.trim())
-  // .filter(Boolean);
-
 app.use((req: Request, res: Response, next) => {
-  const requestOrigin = req.headers.origin;
-
-  // if (requestOrigin && (allowedOrigins.includes('*') || allowedOrigins.includes(requestOrigin))) {
-    res.setHeader('Access-Control-Allow-Origin', '*' );
-    res.setHeader('Vary', 'Origin');
-  // }
-
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 
@@ -82,6 +74,7 @@ const _vectorStore = new PgVectorStoreService();
 const _promptFactory = new SystemPromptFactory();
 const _toolRegistry = new ToolCallingRegistry();
 _toolRegistry.registerTool(new QueryExtractionTool());
+_toolRegistry.registerTool(new RequestHumanAgentTool());
 const _chatMemoryService = new ChatMemoryService(_llmService);
 
 // Keyword extraction: local (default, fast) or tool-calling (LLM-based, slower but more accurate)

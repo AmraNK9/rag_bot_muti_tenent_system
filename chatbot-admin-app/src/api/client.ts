@@ -89,3 +89,9 @@ export const getPlans = () =>
   api.get('/plans').then((res) => res.data);
 export const getSubscriptionHistory = () =>
   api.get('/subscription/history').then((res) => res.data);
+
+export const getSystemBotInfo = () =>
+  api.get('/system-bot/info').then((res) => res.data);
+
+export const updateTelegramProfile = (telegram_chat_id: string, telegram_username?: string) =>
+  api.put('/chatbot-admin/profile/telegram', { telegram_chat_id, telegram_username }).then((res) => res.data);

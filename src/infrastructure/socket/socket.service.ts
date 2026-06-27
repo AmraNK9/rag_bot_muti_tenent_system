@@ -22,6 +22,11 @@ export class SocketService {
           // console.log(`[Socket] Client ${socket.id} joined room: ${chatbotId}`);
         });
 
+        // A business asks to join their specific business room
+        socket.on('join_business_room', (businessId: string | number) => {
+          socket.join(`business_${businessId}`);
+        });
+
         // A reseller asks to join their specific reseller room
         socket.on('join_reseller_room', (resellerId: string | number) => {
           socket.join(`reseller_${resellerId}`);

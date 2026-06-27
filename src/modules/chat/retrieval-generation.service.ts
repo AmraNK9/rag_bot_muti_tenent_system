@@ -98,6 +98,19 @@ export interface SearchResultWithScores extends VectorSearchResult {
       throw new Error(`ChatBot with ID ${chatbotId} or its associated Business profile was not found.`);
     }
 
+    // Check if user message requests human agent support or staff intervention
+    const humanIntentKeywords = [
+      'human', 'staff', 'agent', 'support', 'admin', 'person', 'representative',
+      'လူ', 'ဝန်ထမ်း', 'မန်နေဂျာ', 'ပြောချင်', 'အကူအညီ'
+    ];
+    const lowerMsg = userMessage.toLowerCase();
+    if (humanIntentKeywords.some(kw => lowerMsg.includes(kw))) {
+      const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
+      if (humanTool) {
+        void humanTool.execute({ reason: userMessage }, { chatbotId, senderId }).catch(err => console.error('[HumanTool Trigger Error]', err));
+      }
+    }
+
     // ── Phase B: Search (vector-only or hybrid) ──────────────────────────
     const retrievedDocs = await this.search({
       chatbotId,

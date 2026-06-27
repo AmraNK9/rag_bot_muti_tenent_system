@@ -1,5 +1,5 @@
 import { TelegramService } from '../../infrastructure/telegram/telegram.service';
-import { SystemBotConfig, SystemBotFaq, Reseller } from '../../infrastructure/db/models';
+import { SystemBotConfig, SystemBotFaq, Reseller, Business, ChatBot } from '../../infrastructure/db/models';
 
 export class SystemBotService {
   private telegramService: TelegramService;
@@ -56,6 +56,42 @@ export class SystemBotService {
           }
 
           const replyMsg = `✅ Account Linked Successfully!\n\nHello ${reseller.name}, your Telegram account has been linked to Reseller Account #${resellerId}.\nYou will now receive real-time instant notifications right here whenever a client requests a plan upgrade.`;
+          await this.sendMessageSafely(botToken, chatId, replyMsg);
+          return;
+        }
+      }
+    }
+
+    // 1b. Check for business client account linking deep-link: /start connect_business_<businessId>
+    if (text.startsWith('/start connect_business_')) {
+      const parts = text.split('connect_business_');
+      const businessId = Number(parts[1]);
+
+      if (!isNaN(businessId) && businessId > 0) {
+        const business = await Business.findByPk(businessId);
+        if (business) {
+          await business.update({
+            telegram_chat_id: String(chatId),
+            telegram_username: username,
+          });
+
+          // Broadcast real-time WebSocket update to chatbot admin app
+          try {
+            const { SocketService } = await import('../../infrastructure/socket/socket.service');
+            const payload = {
+              telegram_chat_id: String(chatId),
+              telegram_username: username,
+            };
+            SocketService.io.to(`business_${businessId}`).emit('business_telegram_connected', payload);
+            const chatbots = await ChatBot.findAll({ where: { business_id: businessId } });
+            chatbots.forEach(bot => {
+              SocketService.io.to(bot.id.toString()).emit('business_telegram_connected', payload);
+            });
+          } catch (sErr) {
+            console.error('[Socket Broadcast Error] business_telegram_connected:', sErr);
+          }
+
+          const replyMsg = `✅ Shop Account Linked Successfully!\n\nHello ${business.name}, your Telegram account has been connected to your Chatbot Admin Portal.\nYou will now receive instant alerts right here for low message credits, staff handoff requests, and plan upgrade approvals!`;
           await this.sendMessageSafely(botToken, chatId, replyMsg);
           return;
         }
@@ -124,6 +160,35 @@ export class SystemBotService {
 
     const msg = `🔔 **NEW PLAN UPGRADE REQUEST!**\n\n🏢 Business: ${requestData.businessName}\n💎 Plan: ${requestData.planName.toUpperCase()}\n💰 Amount: ${Number(requestData.price).toLocaleString()} MMK\n\nPlease log in to your Reseller Portal to review and approve this request.`;
     await this.sendMessageSafely(botToken, resellerChatId, msg);
+  }
+
+  /**
+   * Sends a real-time Telegram notification to a business owner when human agent assistance is needed.
+   */
+  async notifyBusinessHumanAgentNeeded(businessChatId: string | number, data: {
+    chatbotName: string;
+    senderId: string;
+    reason: string;
+  }): Promise<void> {
+    const config = await this.getConfig();
+    const botToken = config?.bot_token || process.env.SYSTEM_BOT_TOKEN || 'mock-system-bot-token';
+
+    const msg = `🙋‍♂️ **STAFF ASSISTANCE REQUIRED!**\n\n🤖 Bot: ${data.chatbotName}\n👤 Customer: User ${data.senderId}\n💬 Reason: ${data.reason}\n\nPlease log in to your Chatbot Admin dashboard to reply to the customer directly!`;
+    await this.sendMessageSafely(botToken, businessChatId, msg);
+  }
+
+  /**
+   * Sends a real-time Telegram notification to a business owner when message credits run low.
+   */
+  async notifyBusinessLowCredits(businessChatId: string | number, data: {
+    businessName: string;
+    remainingCredits: number;
+  }): Promise<void> {
+    const config = await this.getConfig();
+    const botToken = config?.bot_token || process.env.SYSTEM_BOT_TOKEN || 'mock-system-bot-token';
+
+    const msg = `⚠️ **LOW MESSAGE CREDITS WARNING!**\n\n🏢 Shop: ${data.businessName}\n📊 Remaining Credits: ${data.remainingCredits} queries\n\nYour chatbot message credits are running low. Please log in to your Chatbot Admin portal under Billing to top up and prevent bot downtime!`;
+    await this.sendMessageSafely(botToken, businessChatId, msg);
   }
 
   /**
