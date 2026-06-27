@@ -1177,18 +1177,20 @@ apiRouter.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: 
       price: price,
     });
 
-    // Real-time broadcast to reseller via WebSocket
-    if (request.reseller_id) {
-      try {
-        const fullRequest = await PlanRequest.findByPk(request.id, {
-          include: [{ model: Business, as: 'business', attributes: ['name'] }]
-        });
-        if (fullRequest) {
-          SocketService.io.to(`reseller_${request.reseller_id}`).emit('new_upgrade_request', fullRequest.toJSON());
+    // Real-time broadcast to reseller and total_admin via WebSocket
+    try {
+      const fullRequest = await PlanRequest.findByPk(request.id, {
+        include: [{ model: Business, as: 'business', attributes: ['name'] }]
+      });
+      if (fullRequest) {
+        const payload = fullRequest.toJSON();
+        if (request.reseller_id) {
+          SocketService.io.to(`reseller_${request.reseller_id}`).emit('new_upgrade_request', payload);
         }
-      } catch (err) {
-        console.error('[Socket Broadcast Error] Failed to emit new_upgrade_request:', err);
+        SocketService.io.to('total_admin').emit('new_upgrade_request', payload);
       }
+    } catch (err) {
+      console.error('[Socket Broadcast Error] Failed to emit new_upgrade_request:', err);
     }
 
     return res.json({ success: true, request });

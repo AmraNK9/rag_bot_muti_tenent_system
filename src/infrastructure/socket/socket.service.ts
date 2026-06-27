@@ -28,6 +28,12 @@ export class SocketService {
           // console.log(`[Socket] Reseller client ${socket.id} joined room: reseller_${resellerId}`);
         });
 
+        // A total admin asks to join the global total admin room
+        socket.on('join_total_admin_room', () => {
+          socket.join('total_admin');
+          // console.log(`[Socket] Total Admin client ${socket.id} joined room: total_admin`);
+        });
+
         socket.on('disconnect', () => {
           // console.log(`[Socket] Client disconnected: ${socket.id}`);
         });

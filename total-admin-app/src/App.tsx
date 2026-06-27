@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import {
   getResellers,
   getAnalytics,
@@ -116,6 +117,28 @@ export default function App() {
   useEffect(() => {
     if (secret) fetchTabDetails();
   }, [secret, activeTab, fetchTabDetails]);
+
+  // Real-time socket connections for super admin upgrade requests queue
+  useEffect(() => {
+    if (!secret) return;
+
+    const socket = io({
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect', () => {
+      socket.emit('join_total_admin_room');
+    });
+
+    socket.on('new_upgrade_request', (newRequest: PlanRequest) => {
+      setRequests((prev) => [newRequest, ...prev]);
+      fetchTabDetails();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [secret, fetchTabDetails]);
 
   const handleLogout = () => {
     localStorage.removeItem('total_admin_secret');
