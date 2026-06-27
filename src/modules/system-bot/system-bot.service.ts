@@ -44,6 +44,17 @@ export class SystemBotService {
             telegram_username: username,
           });
 
+          // Broadcast real-time WebSocket update to reseller app
+          try {
+            const { SocketService } = await import('../../infrastructure/socket/socket.service');
+            SocketService.io.to(`reseller_${resellerId}`).emit('telegram_connected', {
+              telegram_chat_id: String(chatId),
+              telegram_username: username,
+            });
+          } catch (sErr) {
+            console.error('[Socket Broadcast Error] telegram_connected:', sErr);
+          }
+
           const replyMsg = `✅ Account Linked Successfully!\n\nHello ${reseller.name}, your Telegram account has been linked to Reseller Account #${resellerId}.\nYou will now receive real-time instant notifications right here whenever a client requests a plan upgrade.`;
           await this.sendMessageSafely(botToken, chatId, replyMsg);
           return;

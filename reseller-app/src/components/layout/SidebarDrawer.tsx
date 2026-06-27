@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardStats } from '../../types';
-import { updateTelegramProfile, getSystemBotInfo } from '../../api/client';
+import { getSystemBotInfo } from '../../api/client';
 
 interface SidebarDrawerProps {
   drawerOpen: boolean;
@@ -15,14 +15,9 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   stats,
   onLogout,
 }) => {
-  const [chatIdInput, setChatIdInput] = useState('');
-  const [savingTelegram, setSavingTelegram] = useState(false);
   const [botUsername, setBotUsername] = useState('mock_bot');
 
   useEffect(() => {
-    if (stats?.telegram_chat_id) {
-      setChatIdInput(stats.telegram_chat_id);
-    }
     getSystemBotInfo()
       .then((res) => {
         if (res.success && res.username) {
@@ -30,24 +25,11 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
         }
       })
       .catch(() => {});
-  }, [stats]);
+  }, []);
 
   if (!drawerOpen) return null;
 
-  const handleSaveTelegram = async () => {
-    if (!chatIdInput.trim()) return;
-    setSavingTelegram(true);
-    try {
-      const res = await updateTelegramProfile(chatIdInput.trim());
-      if (res.success) {
-        alert('Telegram Chat ID updated successfully!');
-      }
-    } catch (e) {
-      alert('Failed to update Telegram Chat ID');
-    } finally {
-      setSavingTelegram(false);
-    }
-  };
+  const isConnected = !!stats?.telegram_chat_id;
 
   return (
     <div className="drawer-overlay" onClick={() => setDrawerOpen(false)}>
@@ -102,39 +84,57 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           <span className="drawer-item-val">{stats?.referredCount || '0'} clients</span>
         </div>
 
-        {/* TELEGRAM NOTIFICATIONS CONNECT SECTION */}
+        {/* TELEGRAM REAL-TIME NOTIFICATIONS CONNECT SECTION */}
         <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
           <div className="drawer-item-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             🔔 Telegram Instant Alerts
           </div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-            Receive real-time Telegram messages when clients request plan upgrades.
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+            Receive instant Telegram messages when clients request plan upgrades.
           </p>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-            <input
-              className="form-control"
-              placeholder="Enter Telegram Chat ID..."
-              value={chatIdInput}
-              onChange={(e) => setChatIdInput(e.target.value)}
-              style={{ minHeight: '36px', padding: '8px', fontSize: '0.78rem' }}
-            />
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={handleSaveTelegram}
-              disabled={savingTelegram || !chatIdInput.trim()}
-              style={{ minHeight: '36px', whiteSpace: 'nowrap' }}
-            >
-              {savingTelegram ? '...' : 'Save'}
-            </button>
+
+          <div style={{
+            padding: '12px',
+            borderRadius: 'var(--radius)',
+            background: isConnected ? 'rgba(50, 215, 75, 0.1)' : 'var(--bg-surface-2)',
+            border: isConnected ? '1px solid rgba(50, 215, 75, 0.3)' : '1px solid var(--border)',
+            marginBottom: '12px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: isConnected ? 'var(--success)' : 'var(--text-muted)' }}>
+                {isConnected ? '🟢 Connected' : '⚪ Not Connected'}
+              </div>
+              {isConnected && stats?.telegram_username && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  @{stats.telegram_username}
+                </span>
+              )}
+            </div>
+            {isConnected && (
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                ID: {stats.telegram_chat_id}
+              </div>
+            )}
           </div>
+
           {stats?.id && (
             <a
               href={`https://t.me/${botUsername}?start=connect_${stats.id}`}
               target="_blank"
               rel="noreferrer"
-              style={{ fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'none', display: 'inline-block' }}
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                minHeight: '38px',
+                fontSize: '0.82rem'
+              }}
             >
-              👉 Or click here to Auto-Connect via Telegram Bot
+              🚀 {isConnected ? 'Reconnect Telegram Bot' : 'One-Click Connect Telegram'}
             </a>
           )}
         </div>

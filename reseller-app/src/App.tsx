@@ -107,6 +107,11 @@ export default function App() {
       fetchDashboard();
     });
 
+    socket.on('telegram_connected', (data: { telegram_chat_id: string; telegram_username: string }) => {
+      console.log('[Socket] Telegram connected in real-time:', data);
+      setStats((prev) => (prev ? { ...prev, telegram_chat_id: data.telegram_chat_id, telegram_username: data.telegram_username } : prev));
+    });
+
     return () => {
       socket.disconnect();
     };
