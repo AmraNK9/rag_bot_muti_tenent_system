@@ -6,6 +6,11 @@
   "emptyTitle": "Smart Items မရှိသေးပါ",
   "emptyDesc": "AI Bot ကို ကောင်းကောင်း ဖြေကြားနိုင်ရန် ကုန်ပစ္စည်းများ သို့မဟုတ် FAQ တွေ ထည့်ပါ",
   "addFirstBtn": "ပထမဆုံး Item ထည့်ရန်",
+  "searchPlaceholder": "နာမည် သို့မဟုတ် ကြောင်းအရာနဲ့ ရှာပါ...",
+  "filterAll": "အားလုံး",
+  "filterProduct": "ကုန်ပစ္စည်း",
+  "filterInfo": "Info / FAQ",
+  "noResults": "ရှာဖွေမှု နဲ့ ကိုက်ညီတဲ့ Item မရှိပါ",
   "type": {
     "product": "ကုန်ပစ္စည်း",
     "info": "အချက်အလက်"

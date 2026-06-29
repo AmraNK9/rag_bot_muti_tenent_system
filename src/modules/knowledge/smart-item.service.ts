@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { IEmbeddingService } from '../../core/interfaces/embedding.interface';
 import { IVectorStoreService, VectorDocument } from '../../core/interfaces/vectorstore.interface';
 import { KnowledgeAsset, ChatBot } from '../../infrastructure/db/models';
@@ -119,13 +120,32 @@ export class SmartItemService {
     return true;
   }
 
-  async getSmartItems(chatbotId: number, limit: number = 20, offset: number = 0) {
+  async getSmartItems(
+    chatbotId: number,
+    limit: number = 20,
+    offset: number = 0,
+    search?: string,
+    itemType?: 'product' | 'info'
+  ) {
+    const where: Record<string, any> = { tenant_id: chatbotId };
+
+    if (itemType) {
+      where['item_type'] = itemType;
+    }
+
+    if (search && search.trim()) {
+      where[Op.or as any] = [
+        { title: { [Op.iLike]: `%${search.trim()}%` } },
+        { content: { [Op.iLike]: `%${search.trim()}%` } },
+      ];
+    }
+
     const { count, rows } = await KnowledgeAsset.findAndCountAll({
-      where: { tenant_id: chatbotId },
+      where,
       limit,
       offset,
       order: [['created_at', 'DESC']],
-      attributes: { exclude: ['embedding'] }, // Don't fetch heavy vectors
+      attributes: { exclude: ['embedding'] },
     });
 
     return {

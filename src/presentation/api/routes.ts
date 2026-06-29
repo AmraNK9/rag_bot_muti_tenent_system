@@ -1041,9 +1041,11 @@ apiRouter.get('/chatbot-admin/smart-items', chatbotAdminAuthMiddleware, async (r
   try {
     const authReq = req as ChatbotAdminRequest;
     if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
-    const limit = Number(req.query.limit) || 20;
+    const limit = Number(req.query.limit) || 100;
     const offset = Number(req.query.offset) || 0;
-    const result = await smartItemService.getSmartItems(authReq.chatbotAdmin.chatbotId, limit, offset);
+    const search = req.query.search as string | undefined;
+    const itemType = req.query.type as 'product' | 'info' | undefined;
+    const result = await smartItemService.getSmartItems(authReq.chatbotAdmin.chatbotId, limit, offset, search, itemType);
     res.json({ success: true, items: result.items, total: result.total });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

@@ -6,6 +6,11 @@
   "emptyTitle": "No Smart Items yet",
   "emptyDesc": "Add products or FAQs so your AI can assist customers effectively",
   "addFirstBtn": "Add First Item",
+  "searchPlaceholder": "Search by name or content...",
+  "filterAll": "All",
+  "filterProduct": "Products",
+  "filterInfo": "Info / FAQ",
+  "noResults": "No items match your search",
   "type": {
     "product": "Product",
     "info": "Info"

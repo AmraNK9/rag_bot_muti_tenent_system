@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
@@ -14,6 +14,8 @@ function hashColor(str: string): string {
   return `hsl(${hue}, 65%, 45%)`;
 }
 
+type FilterType = 'all' | 'product' | 'info';
+
 export const SmartItemsTab: React.FC = () => {
   const { chatbot } = useChatbot();
   const { showToast } = useToast();
@@ -26,11 +28,27 @@ export const SmartItemsTab: React.FC = () => {
   const [editingItem, setEditingItem] = useState<SmartItem | undefined>(undefined);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
+  // Filter + Search state
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState(''); // debounced value sent to API
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search input — wait 400ms after user stops typing
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchQuery(val);
+    }, 400);
+  };
+
   const loadItems = async () => {
     if (!chatbot) return;
     setLoading(true);
     try {
-      const data = await getSmartItems(100, 0);
+      const typeParam = filterType === 'all' ? undefined : filterType;
+      const data = await getSmartItems(100, 0, searchQuery || undefined, typeParam);
       setItems(data.items || []);
     } catch (e) {
       console.error(e);
@@ -42,7 +60,7 @@ export const SmartItemsTab: React.FC = () => {
 
   useEffect(() => {
     if (chatbot) loadItems();
-  }, [chatbot]);
+  }, [chatbot, filterType, searchQuery]);
 
   const handleDelete = async (id: string | number, title: string) => {
     if (!confirm(t('deleteConfirm', { title }))) return;
@@ -68,6 +86,12 @@ export const SmartItemsTab: React.FC = () => {
     setShowModal(true);
   };
 
+  const TABS: { key: FilterType; label: string; icon: string }[] = [
+    { key: 'all', label: t('filterAll'), icon: '✦' },
+    { key: 'product', label: t('filterProduct'), icon: '📦' },
+    { key: 'info', label: t('filterInfo'), icon: '💬' },
+  ];
+
   return (
     <div className="tab-pane">
       {/* Header row */}
@@ -81,16 +105,103 @@ export const SmartItemsTab: React.FC = () => {
         </button>
       </div>
 
+      {/* ── Filter Bar: Tabs + Search ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 16,
+        flexWrap: 'wrap',
+      }}>
+        {/* Category Tabs */}
+        <div style={{
+          display: 'flex',
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}>
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilterType(tab.key)}
+              style={{
+                padding: '7px 14px',
+                border: 'none',
+                background: filterType === tab.key
+                  ? 'rgba(10, 132, 255, 0.18)'
+                  : 'transparent',
+                color: filterType === tab.key ? 'var(--primary)' : 'var(--text-muted)',
+                fontFamily: 'inherit',
+                fontSize: '0.82rem',
+                fontWeight: filterType === tab.key ? 700 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.18s ease',
+                borderRight: '1px solid var(--border)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div style={{ flex: 1, minWidth: 180, position: 'relative' }}>
+          <span style={{
+            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+            color: 'var(--text-muted)', fontSize: '0.85rem', pointerEvents: 'none',
+          }}>🔍</span>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={e => handleSearchChange(e.target.value)}
+            placeholder={t('searchPlaceholder')}
+            style={{
+              width: '100%',
+              paddingLeft: 32,
+              paddingRight: searchInput ? 32 : 12,
+              paddingTop: 7,
+              paddingBottom: 7,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text)',
+              fontFamily: 'inherit',
+              fontSize: '0.85rem',
+              boxSizing: 'border-box',
+            }}
+          />
+          {searchInput && (
+            <button
+              onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+              style={{
+                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', color: 'var(--text-muted)',
+                cursor: 'pointer', fontSize: '0.9rem', lineHeight: 1, padding: 2,
+              }}
+            >×</button>
+          )}
+        </div>
+      </div>
+
       {loading ? (
         <div className="loading-row"><div className="spinner" /> {tc('loading')}</div>
       ) : items.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">📦</div>
-          <h3>{t('emptyTitle')}</h3>
-          <p>{t('emptyDesc')}</p>
-          <button className="btn btn-primary" style={{ maxWidth: 220 }} onClick={openNewItemModal}>
-            ➕ {t('addFirstBtn')}
-          </button>
+          <div className="empty-icon">
+            {searchQuery || filterType !== 'all' ? '🔍' : '📦'}
+          </div>
+          <h3>{searchQuery || filterType !== 'all' ? t('noResults') : t('emptyTitle')}</h3>
+          {!searchQuery && filterType === 'all' && (
+            <>
+              <p>{t('emptyDesc')}</p>
+              <button className="btn btn-primary" style={{ maxWidth: 220 }} onClick={openNewItemModal}>
+                ➕ {t('addFirstBtn')}
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="section-card">
@@ -164,3 +275,7 @@ export const SmartItemsTab: React.FC = () => {
     </div>
   );
 };
+
+
+
+

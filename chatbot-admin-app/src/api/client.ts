@@ -57,8 +57,12 @@ export const replyToConversation = (senderId: string, message: string) =>
   api.post(`/chatbot-admin/conversations/${senderId}/reply`, { message }).then((r) => r.data);
 
 // ─── Smart Items (Knowledge Base) ────────────────────────────────────────────
-export const getSmartItems = (limit = 20, offset = 0) =>
-  api.get(`/chatbot-admin/smart-items?limit=${limit}&offset=${offset}&t=${Date.now()}`).then((r) => r.data);
+export const getSmartItems = (limit = 100, offset = 0, search?: string, type?: string) => {
+  const params: Record<string, any> = { limit, offset, t: Date.now() };
+  if (search) params.search = search;
+  if (type) params.type = type;
+  return api.get('/chatbot-admin/smart-items', { params }).then((r) => r.data);
+};
 
 export const createSmartItem = (data: any) =>
   api.post('/chatbot-admin/smart-items', data).then((r) => r.data);
