@@ -79,15 +79,20 @@ export class TelegramService {
   /**
    * Sends a text message to a specific Telegram chat using the bot token.
    */
-  async sendMessage(token: string, chatId: string | number, text: string): Promise<number> {
+  async sendMessage(token: string, chatId: string | number, text: string, replyMarkup?: any): Promise<number> {
     const url = `${this.apiBase}/bot${token}/sendMessage`;
+    const payload: any = {
+      chat_id: String(chatId),
+      text: text,
+    };
+    if (replyMarkup) {
+      payload.reply_markup = replyMarkup;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: String(chatId),
-        text: text,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -100,6 +105,74 @@ export class TelegramService {
       throw new Error(`Telegram sendMessage failed: ${data.description || 'Unknown error'}`);
     }
     return data.result.message_id;
+  }
+
+  /**
+   * Sends a photo to a specific Telegram chat.
+   */
+  async sendPhoto(token: string, chatId: string | number, photoBuffer: Buffer, filename: string, caption?: string, replyMarkup?: any): Promise<number> {
+    const url = `${this.apiBase}/bot${token}/sendPhoto`;
+    
+    // Convert Buffer to Uint8Array for compatibility with Blob
+    const blob = new Blob([new Uint8Array(photoBuffer)], { type: 'image/jpeg' });
+    const formData = new FormData();
+    formData.append('chat_id', String(chatId));
+    formData.append('photo', blob, filename);
+    if (caption) formData.append('caption', caption);
+    if (replyMarkup) formData.append('reply_markup', JSON.stringify(replyMarkup));
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Telegram sendPhoto failed with status ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json() as any;
+    if (!data.ok || !data.result) {
+      throw new Error(`Telegram sendPhoto failed: ${data.description || 'Unknown error'}`);
+    }
+    return data.result.message_id;
+  }
+
+  /**
+   * Edits the reply markup of an existing message.
+   */
+  async editMessageReplyMarkup(token: string, chatId: string | number, messageId: number, replyMarkup: any): Promise<boolean> {
+    const url = `${this.apiBase}/bot${token}/editMessageReplyMarkup`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: String(chatId),
+        message_id: messageId,
+        reply_markup: replyMarkup,
+      }),
+    });
+
+    const data = await response.json() as any;
+    return data.ok;
+  }
+
+  /**
+   * Answers a callback query to stop the loading spinner.
+   */
+  async answerCallbackQuery(token: string, callbackQueryId: string, text?: string): Promise<boolean> {
+    const url = `${this.apiBase}/bot${token}/answerCallbackQuery`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text,
+      }),
+    });
+
+    const data = await response.json() as any;
+    return data.ok;
   }
 
   /**

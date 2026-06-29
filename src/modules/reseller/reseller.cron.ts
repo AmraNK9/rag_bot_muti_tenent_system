@@ -19,8 +19,22 @@ export function startResellerCronJobs() {
       if (resellersToSuspend.length > 0) {
         console.log(`[Cron] Found ${resellersToSuspend.length} resellers with pending debt. Suspending selling privileges...`);
         
+        const { SystemBotService } = await import('../system-bot/system-bot.service');
+        const sysBot = new SystemBotService();
+
         for (const reseller of resellersToSuspend) {
-          await reseller.update({ can_sell: false });
+          await reseller.update({ 
+            can_sell: false,
+            can_collect_payments: false 
+          });
+
+          if (reseller.telegram_chat_id) {
+            try {
+              await sysBot.notifyResellerSuspended(reseller.telegram_chat_id, reseller.pending_debt);
+            } catch (err) {
+              console.error(`[Cron] Failed to notify reseller ${reseller.id} via Telegram:`, err);
+            }
+          }
         }
         
         console.log('[Cron] Daily reseller debt check completed successfully.');

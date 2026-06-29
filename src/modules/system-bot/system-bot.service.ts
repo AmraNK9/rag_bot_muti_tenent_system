@@ -15,11 +15,67 @@ export class SystemBotService {
     return SystemBotConfig.findOne({ where: { is_active: true } });
   }
 
+  private async handleCallbackQuery(callbackQuery: any, botToken: string): Promise<void> {
+    const data = callbackQuery.data; 
+    const chatId = callbackQuery.message?.chat?.id;
+    const messageId = callbackQuery.message?.message_id;
+    const callbackQueryId = callbackQuery.id;
+
+    if (!data || !chatId) return;
+
+    if (data.startsWith('approve_req_') || data.startsWith('reject_req_')) {
+      const isApprove = data.startsWith('approve_req_');
+      const requestId = Number(data.split('_')[2]);
+
+      const reseller = await Reseller.findOne({ where: { telegram_chat_id: String(chatId) } });
+      if (!reseller) {
+        await this.telegramService.answerCallbackQuery(botToken, callbackQueryId, 'Unauthorized: Reseller not found.');
+        return;
+      }
+
+      try {
+        const { ResellerService } = await import('../reseller/reseller.service');
+        const resellerService = new ResellerService();
+
+        if (isApprove) {
+          await resellerService.processPlanRequestApproval(requestId, reseller.id);
+        } else {
+          await resellerService.processPlanRequestRejection(requestId, reseller.id);
+        }
+
+        if (messageId) {
+          await this.telegramService.editMessageReplyMarkup(botToken, chatId, messageId, { inline_keyboard: [] });
+          const statusMsg = `✅ **Request #${requestId} has been ${isApprove ? 'APPROVED' : 'REJECTED'}.**`;
+          await this.sendMessageSafely(botToken, chatId, statusMsg);
+        }
+
+        await this.telegramService.answerCallbackQuery(botToken, callbackQueryId, `Successfully ${isApprove ? 'approved' : 'rejected'}`);
+
+      } catch (err: any) {
+        console.error('[SystemBotService] Callback Error:', err);
+        await this.telegramService.answerCallbackQuery(botToken, callbackQueryId, err.message || 'Error processing request.');
+        if (messageId) {
+          await this.telegramService.editMessageReplyMarkup(botToken, chatId, messageId, { inline_keyboard: [] });
+          await this.sendMessageSafely(botToken, chatId, `❌ **Failed to process Request #${requestId}:** ${err.message}`);
+        }
+      }
+    }
+  }
+
   /**
    * Processes incoming updates sent to the System Core Telegram Bot webhook.
    */
   async handleUpdate(update: any): Promise<void> {
-    if (!update || !update.message) return;
+    if (!update) return;
+
+    const config = await this.getConfig();
+    const botToken = config?.bot_token || process.env.SYSTEM_BOT_TOKEN || 'mock-system-bot-token';
+
+    if (update.callback_query) {
+      return this.handleCallbackQuery(update.callback_query, botToken);
+    }
+
+    if (!update.message) return;
 
     const message = update.message;
     const chatId = message.chat?.id;
@@ -27,9 +83,6 @@ export class SystemBotService {
     const username = message.from?.username || message.from?.first_name || '';
 
     if (!chatId || !text) return;
-
-    const config = await this.getConfig();
-    const botToken = config?.bot_token || process.env.SYSTEM_BOT_TOKEN || 'mock-system-bot-token';
 
     // 1. Check for reseller account linking deep-link: /start connect_<resellerId>
     if (text.startsWith('/start connect_')) {
@@ -148,18 +201,66 @@ export class SystemBotService {
   }
 
   /**
+   * Sends a real-time Telegram notification to a reseller when they are suspended due to unpaid debt.
+   */
+  async notifyResellerSuspended(resellerChatId: string | number, debtAmount: number): Promise<void> {
+    const config = await this.getConfig();
+    const botToken = config?.bot_token || process.env.SYSTEM_BOT_TOKEN || 'mock-system-bot-token';
+
+    const msg = `⚠️ **ACCOUNT SUSPENDED** ⚠️
+
+Your Reseller Account has been temporarily suspended because your pending debt (${debtAmount.toLocaleString()} MMK) crossed into the next billing day.
+Your selling and payment collection privileges are disabled. Please settle your debt with Central Office to restore your account.
+
+⚠️ **အကောင့်ပိတ်သိမ်းခြင်း (Suspended)** ⚠️
+
+လူကြီးမင်း၏ အကောင့်တွင် ပေးချေရန်ကျန်ရှိသော အကြွေးငွေ (${debtAmount.toLocaleString()} ကျပ်) မှာ နောက်တစ်ရက်သို့ ကူးသွားသောကြောင့် Reseller အကောင့်ကို ယာယီ ပိတ်သိမ်းထားပါသည်။
+Plan အသစ်ရောင်းချခွင့်နှင့် ငွေကောက်ခံခွင့်များကို ရပ်ဆိုင်းထားပါသည်။ အကောင့် ပြန်လည်အသုံးပြုနိုင်ရန်အတွက် Central Office သို့ အကြွေးငွေများ အမြန်ဆုံး ရှင်းလင်းပေးပါရန် အကြောင်းကြားအပ်ပါသည်။`;
+
+    await this.sendMessageSafely(botToken, resellerChatId, msg);
+  }
+
+  /**
    * Sends a real-time Telegram notification to a reseller when a plan upgrade request is created.
    */
   async notifyResellerUpgradeRequest(resellerChatId: string | number, requestData: {
+    requestId: number;
     businessName: string;
     planName: string;
     price: number;
+    screenshotUrl: string;
   }): Promise<void> {
     const config = await this.getConfig();
     const botToken = config?.bot_token || process.env.SYSTEM_BOT_TOKEN || 'mock-system-bot-token';
 
-    const msg = `🔔 **NEW PLAN UPGRADE REQUEST!**\n\n🏢 Business: ${requestData.businessName}\n💎 Plan: ${requestData.planName.toUpperCase()}\n💰 Amount: ${Number(requestData.price).toLocaleString()} MMK\n\nPlease log in to your Reseller Portal to review and approve this request.`;
-    await this.sendMessageSafely(botToken, resellerChatId, msg);
+    const msg = `🔔 **NEW PLAN UPGRADE REQUEST!**\n\n🏢 Business: ${requestData.businessName}\n💎 Plan: ${requestData.planName.toUpperCase()}\n💰 Amount: ${Number(requestData.price).toLocaleString()} MMK\n\nPlease review the attached receipt and approve or reject the request.`;
+    
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          { text: '✅ Approve', callback_data: `approve_req_${requestData.requestId}` },
+          { text: '❌ Reject', callback_data: `reject_req_${requestData.requestId}` }
+        ]
+      ]
+    };
+
+    try {
+      const path = await import('path');
+      const fs = await import('fs');
+      const filepath = path.join(__dirname, '../../../', requestData.screenshotUrl);
+      
+      if (fs.existsSync(filepath)) {
+        const photoBuffer = fs.readFileSync(filepath);
+        const filename = path.basename(filepath);
+        await this.telegramService.sendPhoto(botToken, resellerChatId, photoBuffer, filename, msg, replyMarkup);
+      } else {
+        await this.sendMessageSafely(botToken, resellerChatId, msg, replyMarkup);
+      }
+    } catch (err) {
+      console.error('[SystemBotService] Failed to send photo for upgrade request:', err);
+      // Fallback to text message
+      await this.sendMessageSafely(botToken, resellerChatId, msg, replyMarkup);
+    }
   }
 
   /**
@@ -220,13 +321,13 @@ export class SystemBotService {
     return 'mock_bot';
   }
 
-  private async sendMessageSafely(botToken: string, chatId: string | number, text: string): Promise<void> {
+  private async sendMessageSafely(botToken: string, chatId: string | number, text: string, replyMarkup?: any): Promise<void> {
     if (botToken === 'mock-system-bot-token' || process.env.NODE_ENV === 'test') {
       console.log(`[Mock System Bot] Sent to ${chatId}: ${text}`);
       return;
     }
     try {
-      await this.telegramService.sendMessage(botToken, chatId, text);
+      await this.telegramService.sendMessage(botToken, chatId, text, replyMarkup);
     } catch (err) {
       console.error(`[System Bot Error] Failed to send message to ${chatId}:`, err);
     }

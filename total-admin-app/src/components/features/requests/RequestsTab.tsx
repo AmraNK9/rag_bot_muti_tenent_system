@@ -5,14 +5,14 @@ import { getImgSrc, handleImgError } from '../../shared/ZoomModal';
 interface RequestsTabProps {
   requests: PlanRequest[];
   loadingRequests: boolean;
-  onOverrideApprove: (id: number) => Promise<void>;
+  onApprove: (id: number, hasReseller: boolean) => Promise<void>;
   setZoomImgUrl: (url: string | null) => void;
 }
 
 export const RequestsTab: React.FC<RequestsTabProps> = ({
   requests,
   loadingRequests,
-  onOverrideApprove,
+  onApprove,
   setZoomImgUrl,
 }) => {
   if (loadingRequests) {
@@ -85,13 +85,13 @@ export const RequestsTab: React.FC<RequestsTabProps> = ({
             onError={(e) => handleImgError(e, req.screenshot_url)}
           />
 
-          {req.status === 'pending' && (
+          {req.status === 'pending' && req.reseller_id === null && (
             <button
               className="btn btn-primary btn-sm"
               style={{ width: '100%' }}
-              onClick={() => onOverrideApprove(req.id)}
+              onClick={() => onApprove(req.id, false)}
             >
-              ⚡ Override Approve
+              ✅ Approve Request
             </button>
           )}
         </div>

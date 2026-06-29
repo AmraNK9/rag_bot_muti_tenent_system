@@ -152,17 +152,21 @@ export default function App() {
     setLogs([]);
   };
 
-  const handleOverrideApprove = async (id: number) => {
-    if (!confirm('OVERRIDE PAYMENT: Approve client plan request directly from Super Admin panel?')) return;
+  const handleApprove = async (id: number, hasReseller: boolean) => {
+    const confirmMsg = hasReseller 
+      ? 'OVERRIDE PAYMENT: Approve client plan request directly from Super Admin panel?'
+      : 'Approve client plan request?';
+      
+    if (!confirm(confirmMsg)) return;
     try {
       const res = await approveRequest(id);
       if (res.success) {
-        alert('Payment override approved and client upgraded successfully!');
+        alert(hasReseller ? 'Payment override approved and client upgraded successfully!' : 'Request approved and client upgraded successfully!');
         const reload = await getRequests();
         if (reload.success) setRequests(reload.requests || []);
       }
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Override approval failed.');
+      alert(err.response?.data?.error || 'Approval failed.');
     }
   };
 
@@ -238,7 +242,7 @@ export default function App() {
             <RequestsTab
               requests={requests}
               loadingRequests={loadingRequests}
-              onOverrideApprove={handleOverrideApprove}
+              onApprove={handleApprove}
               setZoomImgUrl={setZoomImgUrl}
             />
           )}
