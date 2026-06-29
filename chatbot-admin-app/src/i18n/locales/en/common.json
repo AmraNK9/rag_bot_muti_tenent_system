@@ -1,0 +1,35 @@
+{
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "add": "Add",
+  "close": "Close",
+  "hide": "Hide",
+  "show": "Show",
+  "loading": "Loading...",
+  "saving": "Saving...",
+  "noData": "No data yet",
+  "required": "This field is required",
+  "tryAgain": "Please try again",
+  "outOfStock": "Out of stock",
+  "inStock": "{{count}} in stock",
+  "nav": {
+    "chats": "Chats",
+    "smartItems": "Smart Items",
+    "prompt": "Prompt",
+    "billing": "Billing"
+  },
+  "layout": {
+    "botAdmin": "Bot Admin",
+    "emptyBotTitle": "Connect Your First Bot",
+    "emptyBotDesc": "Connect your first AI Chatbot and start automating customer replies 24/7.",
+    "createBotBtn": "➕ Create My First Bot"
+  },
+  "error": {
+    "saveFailed": "Failed to save",
+    "deleteFailed": "Delete failed",
+    "updateFailed": "Update failed",
+    "sendFailed": "Failed to send"
+  }
+}

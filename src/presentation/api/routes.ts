@@ -4,6 +4,7 @@ import { AuthService } from '../../modules/auth/auth.service';
 import { SubscriptionService } from '../../modules/subscription/subscription.service';
 import { BusinessService } from '../../modules/business/business.service';
 import { KnowledgeService } from '../../modules/knowledge/knowledge.service';
+import { SmartItemService } from '../../modules/knowledge/smart-item.service';
 import { ChatbotWebhookService } from '../../modules/chatbot/chatbot-webhook.service';
 import { DeepSeekService } from '../../infrastructure/llm/deepseek.service';
 import { VoyageEmbeddingService } from '../../infrastructure/embeddings/voyage.service';
@@ -32,6 +33,7 @@ const vectorStore = new PgVectorStoreService();
 const embeddingService = new VoyageEmbeddingService();
 const businessService = new BusinessService(vectorStore);
 const knowledgeService = new KnowledgeService(embeddingService, vectorStore);
+const smartItemService = new SmartItemService(embeddingService, vectorStore);
 const telegramService = new TelegramService();
 const chatbotWebhookService = new ChatbotWebhookService(telegramService, tunnelService);
 const chatbotAdminAuthService = new ChatbotAdminAuthService();
@@ -1030,6 +1032,62 @@ apiRouter.put('/knowledge/:chatbotId/chunks/:docId', authMiddleware, async (req:
     return res.json({ success: true, message: 'Chunk updated successfully.' });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── Smart Items (Product Management) ──────────────────────────────────────
+
+apiRouter.get('/chatbot-admin/smart-items', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as ChatbotAdminRequest;
+    if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
+    const limit = Number(req.query.limit) || 20;
+    const offset = Number(req.query.offset) || 0;
+    const result = await smartItemService.getSmartItems(authReq.chatbotAdmin.chatbotId, limit, offset);
+    res.json({ success: true, items: result.items, total: result.total });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+apiRouter.post('/chatbot-admin/smart-items', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as ChatbotAdminRequest;
+    if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
+    const { item_type, title, content, price, stock_count, auto_track_stock } = req.body;
+    if (!item_type || !title || !content) {
+      return res.status(400).json({ success: false, error: 'item_type, title, and content are required' });
+    }
+    const item = await smartItemService.createSmartItem(authReq.chatbotAdmin.chatbotId, {
+      item_type, title, content, price, stock_count, auto_track_stock
+    });
+    res.json({ success: true, item });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+apiRouter.put('/chatbot-admin/smart-items/:id', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as ChatbotAdminRequest;
+    if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
+    const itemId = Number(req.params.id);
+    const item = await smartItemService.updateSmartItem(authReq.chatbotAdmin.chatbotId, itemId, req.body);
+    res.json({ success: true, item });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+apiRouter.delete('/chatbot-admin/smart-items/:id', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as ChatbotAdminRequest;
+    if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
+    const itemId = Number(req.params.id);
+    await smartItemService.deleteSmartItem(authReq.chatbotAdmin.chatbotId, itemId);
+    res.json({ success: true, message: 'Deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

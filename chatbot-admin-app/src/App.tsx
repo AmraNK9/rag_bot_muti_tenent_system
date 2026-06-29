@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ChatbotProvider } from './contexts/ChatbotContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { LandingOnboarding } from './components/auth/LandingOnboarding';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { MainLayout } from './components/layout/MainLayout';
@@ -34,8 +35,10 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ToastProvider>
   );
 }

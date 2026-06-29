@@ -1,0 +1,35 @@
+{
+  "save": "သိမ်းဆည်း",
+  "cancel": "မလုပ်တော့",
+  "delete": "ဖျက်",
+  "edit": "ပြင်",
+  "add": "ထည့်",
+  "close": "ပိတ်",
+  "hide": "ဖျောက်",
+  "show": "ပြ",
+  "loading": "ဆောင်ရွက်နေသည်...",
+  "saving": "သိမ်းနေသည်...",
+  "noData": "ဒေတာမရှိသေးပါ",
+  "required": "ဖြည့်ရန် လိုအပ်သည်",
+  "tryAgain": "နောက်မှ ထပ်ကြိုးစားပါ",
+  "outOfStock": "ပစ္စည်းမရှိ",
+  "inStock": "{{count}} ခု ကျန်သည်",
+  "nav": {
+    "chats": "စကားဝိုင်းများ",
+    "smartItems": "Smart Items",
+    "prompt": "Prompt",
+    "billing": "ငွေပေးချေမှု"
+  },
+  "layout": {
+    "botAdmin": "Bot Admin",
+    "emptyBotTitle": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပါ",
+    "emptyBotDesc": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပြီး Customer တွေကို ၂၄နာရီ အလိုအလျောက် ဖြေဆိုနိုင်ပါပြီ။",
+    "createBotBtn": "➕ ပထမဆုံး Bot ဖန်တီးမည်"
+  },
+  "error": {
+    "saveFailed": "သိမ်းဆည်းမရပါ",
+    "deleteFailed": "ဖျက်မရပါ",
+    "updateFailed": "ပြင်ဆင်မရပါ",
+    "sendFailed": "ပေးပို့မရပါ"
+  }
+}

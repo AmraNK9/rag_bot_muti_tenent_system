@@ -1,0 +1,18 @@
+{
+  "createTitle": "🤖 Connect Your Bot",
+  "botName": "Bot Name",
+  "botNamePlaceholder": "e.g. My Shop Assistant",
+  "platform": "Platform",
+  "facebookComingSoon": "Facebook (Coming Soon)",
+  "botToken": "Bot Token",
+  "howToGet": "How to get? →",
+  "tokenPlaceholder": "1234567890:ABCdef...",
+  "primaryRole": "Primary Role",
+  "roleSales": "🛒 Sales & Product Inquiry",
+  "roleFaq": "❓ General FAQ",
+  "roleSupport": "🎧 Customer Support",
+  "roleCustom": "✏️ Custom (Define later)",
+  "cancel": "Cancel",
+  "connectBot": "🔗 Connect Bot",
+  "connecting": "Connecting..."
+}

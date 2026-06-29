@@ -46,6 +46,18 @@ export interface KnowledgeChunk {
   metadata?: { chatbot_id?: number | string; source?: string };
 }
 
+export interface SmartItem {
+  id: number | string;
+  item_type: 'product' | 'info';
+  title: string;
+  content: string;
+  price: number | null;
+  stock_count: number | null;
+  auto_track_stock: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface BusinessDetails {
   id: number;
   name: string;

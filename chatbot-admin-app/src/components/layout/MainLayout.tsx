@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChatbot } from '../../contexts/ChatbotContext';
 import { SidebarDrawer } from './SidebarDrawer';
 import { ChatsTab } from '../features/chats/ChatsTab';
-import { KnowledgeTab } from '../features/knowledge/KnowledgeTab';
+import { SmartItemsTab } from '../features/smart-items/SmartItemsTab';
 import { SystemPromptTab } from '../features/prompt/SystemPromptTab';
 import { BillingTab } from '../features/billing/BillingTab';
 import { CreateBotModal } from '../features/chatbot/CreateBotModal';
@@ -11,6 +12,7 @@ import { CreateBotModal } from '../features/chatbot/CreateBotModal';
 type TabId = 'chats' | 'knowledge' | 'prompt' | 'billing';
 
 export const MainLayout: React.FC = () => {
+  const { t: tc } = useTranslation('common');
   const { profile } = useAuth();
   const { chatbot, credits } = useChatbot();
 
@@ -20,9 +22,9 @@ export const MainLayout: React.FC = () => {
 
   // Exclude billing from bottom tab bar
   const tabs = [
-    { id: 'chats' as TabId, label: 'Chats', icon: '💬' },
-    ...(profile?.canManageKnowledge ? [{ id: 'knowledge' as TabId, label: 'Knowledge', icon: '📚' }] : []),
-    ...(profile?.canManageSystemPrompt ? [{ id: 'prompt' as TabId, label: 'Prompt', icon: '⚙️' }] : []),
+    { id: 'chats' as TabId, label: tc('nav.chats', 'Chats'), icon: '💬' },
+    ...(profile?.canManageKnowledge ? [{ id: 'knowledge' as TabId, label: tc('nav.smartItems', 'Smart Items'), icon: '📚' }] : []),
+    ...(profile?.canManageSystemPrompt ? [{ id: 'prompt' as TabId, label: tc('nav.prompt', 'Prompt'), icon: '⚙️' }] : []),
   ];
 
   return (
@@ -31,7 +33,7 @@ export const MainLayout: React.FC = () => {
       <nav className="top-nav">
         <div className="nav-brand">
           <span className="brand-icon">🤖</span>
-          <span className="brand-name">{chatbot ? chatbot.name : 'Bot Admin'}</span>
+          <span className="brand-name">{chatbot ? chatbot.name : tc('layout.botAdmin', 'Bot Admin')}</span>
           <div 
             className="nav-credits clickable-credits" 
             onClick={() => setActiveTab('billing')}
@@ -59,16 +61,16 @@ export const MainLayout: React.FC = () => {
         ) : !chatbot ? (
           <div className="empty-state" style={{ height: '100%' }}>
             <div className="empty-icon">🔌</div>
-            <h3>Connect Your First Bot</h3>
-            <p>ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပြီး Customer တွေကို ၂၄နာရီ အလိုအလျောက် ဖြေဆိုနိုင်ပါပြီ။</p>
+            <h3>{tc('layout.emptyBotTitle')}</h3>
+            <p>{tc('layout.emptyBotDesc')}</p>
             <button className="btn btn-primary" style={{ maxWidth: 240 }} onClick={() => setShowCreateBotModal(true)}>
-              ➕ Create My First Bot
+              {tc('layout.createBotBtn')}
             </button>
           </div>
         ) : (
           <>
             {activeTab === 'chats' && <ChatsTab />}
-            {activeTab === 'knowledge' && profile?.canManageKnowledge && <KnowledgeTab />}
+            {activeTab === 'knowledge' && profile?.canManageKnowledge && <SmartItemsTab />}
             {activeTab === 'prompt' && profile?.canManageSystemPrompt && <SystemPromptTab />}
           </>
         )}

@@ -1,10 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
+import { useToast } from '../../../contexts/ToastContext';
 import type { Conversation, Message } from '../../../types';
 import { getConversations, getMessages, replyToConversation } from '../../../api/client';
 
+// Generate a unique hue per sender_id for visual variety in avatars
+function hashAvatarColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 55%, 30%)`;
+}
+
 export const ChatsTab: React.FC = () => {
   const { chatbot, socket } = useChatbot();
+  const { showToast } = useToast();
+  const { t } = useTranslation('chats');
+  const { t: tc } = useTranslation('common');
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(false);
@@ -108,7 +121,7 @@ export const ChatsTab: React.FC = () => {
         loadConversations(true);
       }
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Failed to send');
+      showToast('error', tc('error.sendFailed'), e?.response?.data?.error || tc('tryAgain'));
       setReplyText(text);
     } finally {
       setSendingReply(false);
@@ -121,10 +134,10 @@ export const ChatsTab: React.FC = () => {
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     const today = new Date();
-    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === today.toDateString()) return t('today');
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    if (d.toDateString() === yesterday.toDateString()) return t('yesterday');
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
@@ -133,16 +146,16 @@ export const ChatsTab: React.FC = () => {
       {/* Conversation list */}
       <div className="conv-list-view">
         <div className="conv-list-header">
-          <h2>Conversations</h2>
+          <h2>{t('title')}</h2>
         </div>
 
         {loadingConvs ? (
-          <div className="loading-row"><div className="spinner" /> Loading...</div>
+          <div className="loading-row"><div className="spinner" /> {tc('loading')}</div>
         ) : conversations.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">💬</div>
-            <h3>No conversations yet</h3>
-            <p>When users message your bot, they will appear here.</p>
+            <h3>{t('emptyTitle')}</h3>
+            <p>{t('emptyDesc')}</p>
           </div>
         ) : (
           conversations.map(c => {
@@ -154,20 +167,26 @@ export const ChatsTab: React.FC = () => {
                 onClick={() => openChat(c.sender_id)}
                 style={isSystem ? { borderLeft: '4px solid var(--primary)', background: 'var(--bg-surface-2)' } : undefined}
               >
-                <div className="conv-avatar" style={isSystem ? { background: 'rgba(139, 92, 246, 0.15)', color: 'var(--primary)' } : undefined}>
-                  {isSystem ? '🛡️' : '👤'}
+                <div
+                  className="conv-avatar"
+                  style={isSystem
+                    ? { background: 'rgba(139, 92, 246, 0.15)', color: 'var(--primary)' }
+                    : { background: hashAvatarColor(c.sender_id) }
+                  }
+                >
+                  {isSystem ? '🛡️' : c.sender_id.charAt(0).toUpperCase()}
                 </div>
                 <div className="conv-info">
                   <div className="conv-name" style={isSystem ? { fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' } : undefined}>
                     {isSystem ? (
                       <>
-                        System Notifications
-                        <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>📌 PINNED</span>
+                        {t('systemTitle')}
+                        <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>📌 {t('pinned')}</span>
                       </>
-                    ) : `User ${c.sender_id}`}
+                    ) : `${t('userPrefix')} ${c.sender_id}`}
                   </div>
                   <div className="conv-preview">
-                    {isSystem ? 'Platform messages' : `${c.message_count} messages`}
+                    {isSystem ? t('platformMessages') : t('messagesCount', { count: c.message_count })}
                   </div>
                 </div>
                 <div className="conv-right">
@@ -189,9 +208,9 @@ export const ChatsTab: React.FC = () => {
             </button>
             <div className="chat-header-info">
               <div className="chat-header-name">
-                {activeSender === 'system' ? '🛡️ System Notifications' : `User ${activeSender}`}
+                {activeSender === 'system' ? `🛡️ ${t('systemTitle')}` : `${t('userPrefix')} ${activeSender}`}
               </div>
-              <div className="chat-header-status">● Active</div>
+              <div className="chat-header-status">● {t('active')}</div>
             </div>
           </div>
 
@@ -226,7 +245,7 @@ export const ChatsTab: React.FC = () => {
                           boxShadow: 'none'
                         }}>
                           <div style={{ fontWeight: 600, marginBottom: '2px' }}>
-                            {isApproved ? '🛡️ System Notification' : '⚠️ System Alert'}
+                            {isApproved ? t('systemNotification') : t('systemAlert')}
                           </div>
                           <div>{m.message}</div>
                           <div style={{ fontSize: '0.68rem', opacity: 0.7, marginTop: '4px' }}>{formatTime(m.sent_date)}</div>
@@ -252,7 +271,7 @@ export const ChatsTab: React.FC = () => {
 
           {activeSender === 'system' ? (
             <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
-              🛡️ This is a read-only system notifications channel.
+              {t('systemReadOnly')}
             </div>
           ) : (
             <div className="chat-input-area">
@@ -260,7 +279,7 @@ export const ChatsTab: React.FC = () => {
                 ref={inputRef}
                 className="chat-input-field"
                 type="text"
-                placeholder="Reply as admin..."
+                placeholder={t('replyPlaceholder')}
                 value={replyText}
                 onChange={e => setReplyText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSend()}

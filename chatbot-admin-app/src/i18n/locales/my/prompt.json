@@ -1,0 +1,15 @@
+{
+  "title": "System Prompt",
+  "subtitle": "AI Bot ၏ Character နှင့် Behavior ကို ဤနေရာမှ သတ်မှတ်ပါ",
+  "currentPrompt": "လက်ရှိ System Prompt",
+  "previewWarning": "⚠️ System Prompt ပြင်ဆင်ခြင်းသည် AI ၏ အဖြေများကို တိုက်ရိုက် သက်ရောက်မှုရှိပါသည်။",
+  "editMode": "Edit Mode",
+  "previewMode": "Preview (Read-only)",
+  "promptPlaceholder": "ဥပမာ: သင်သည် ဖော်ရွေသော customer service agent ဖြစ်သည်။ အမြဲတမ်း ယဉ်ကျေးစွာ ဖြေကြားပါ။",
+  "saveChanges": "ပြင်ဆင်မှု သိမ်းမည်",
+  "toast": {
+    "savedTitle": "System prompt သိမ်းပြီးပါပြီ",
+    "savedMsg": "သင်၏ AI Bot သည် အသစ်ပြင်ဆင်ထားသော prompt ကို စတင်အသုံးပြုပါမည်။",
+    "errorTitle": "ပြင်ဆင်မရပါ"
+  }
+}

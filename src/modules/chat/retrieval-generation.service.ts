@@ -267,9 +267,8 @@ export interface SearchResultWithScores extends VectorSearchResult {
 
     // B. Score calculation
     const scoredResults: SearchResultWithScores[] = vectorCandidates.map(candidate => {
-      // ChromaDB returns cosine distance (0 = identical, 1 = orthogonal).
-      // Convert to similarity: similarity = 1 - distance
-      const similarity = 1 - candidate.score;
+      // PgVectorStoreService already returns cosine similarity (1 - distance).
+      const similarity = candidate.score;
 
       let wordMatchScore = 0;
       let finalScore = similarity; // Default: pure vector similarity

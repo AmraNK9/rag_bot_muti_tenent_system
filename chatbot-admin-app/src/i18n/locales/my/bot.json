@@ -1,0 +1,18 @@
+{
+  "createTitle": "🤖 Bot ချိတ်ဆက်ရန်",
+  "botName": "Bot အမည်",
+  "botNamePlaceholder": "ဥပမာ: My Shop Assistant",
+  "platform": "Platform",
+  "facebookComingSoon": "Facebook (မကြာမီလာမည်)",
+  "botToken": "Bot Token",
+  "howToGet": "ဘယ်လိုယူရမလဲ? →",
+  "tokenPlaceholder": "1234567890:ABCdef...",
+  "primaryRole": "အဓိက အခန်းကဏ္ဍ",
+  "roleSales": "🛒 အရောင်းနှင့် ပစ္စည်းစုံစမ်းမှု",
+  "roleFaq": "❓ အထွေထွေ မေးခွန်းများ",
+  "roleSupport": "🎧 Customer Support",
+  "roleCustom": "✏️ Custom (နောက်မှ သတ်မှတ်မည်)",
+  "cancel": "မလုပ်တော့ပါ",
+  "connectBot": "🔗 Bot ချိတ်ဆက်မည်",
+  "connecting": "ချိတ်ဆက်နေသည်..."
+}

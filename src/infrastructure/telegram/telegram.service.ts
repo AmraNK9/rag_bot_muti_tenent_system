@@ -103,12 +103,25 @@ export class TelegramService {
   }
 
   /**
-   * Retrieves bot information (including username) from Telegram.
+   * Retrieves bot information (including username) from Telegram with retry logic for network timeouts.
    */
   async getMe(token: string): Promise<{ ok: boolean; result?: { id: number; username: string; first_name: string } }> {
     const url = `${this.apiBase}/bot${token}/getMe`;
-    const response = await fetch(url);
-    const data = await response.json() as any;
-    return data;
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        attempts++;
+        const response = await fetch(url);
+        const data = await response.json() as any;
+        return data;
+      } catch (err) {
+        if (attempts >= 3) {
+          console.error(`[TelegramService] getMe failed after ${attempts} attempts:`, err);
+          return { ok: false };
+        }
+        await new Promise((res) => setTimeout(res, 1000));
+      }
+    }
+    return { ok: false };
   }
 }

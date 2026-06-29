@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChatbot } from '../../contexts/ChatbotContext';
+import { useToast } from '../../contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
 import { updateChatbot, getSystemBotInfo } from '../../api/client';
 
 interface SidebarDrawerProps {
@@ -12,6 +14,9 @@ interface SidebarDrawerProps {
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onSelectBilling }) => {
   const { profile, logout } = useAuth();
   const { chatbot, credits, businessPlanInfo, setChatbot } = useChatbot();
+  const { showToast } = useToast();
+  const { t, i18n } = useTranslation('auth');
+  const { t: tc } = useTranslation('common');
 
   const [editName, setEditName] = useState(chatbot?.name || '');
   const [editDesc, setEditDesc] = useState(chatbot?.description || '');
@@ -44,10 +49,10 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
       if (data.success && data.chatbot) {
         setChatbot(data.chatbot);
         setShowEdit(false);
-        alert('Saved!');
+        showToast('success', t('drawer.toast.botUpdatedTitle'), t('drawer.toast.botUpdatedMsg'));
       }
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Failed to update');
+      showToast('error', t('drawer.toast.updateFailedTitle'), e?.response?.data?.error || tc('tryAgain'));
     } finally {
       setSaving(false);
     }
@@ -63,14 +68,14 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
       />
       <div className={`drawer ${drawerOpen ? 'open' : ''}`}>
         <div className="drawer-header">
-          <h3>Profile & Settings</h3>
+          <h3>{t('drawer.title')}</h3>
           <button className="drawer-close" onClick={() => setDrawerOpen(false)}>✕</button>
         </div>
 
         <div className="drawer-content">
           {/* Credits */}
           <div className="credits-row">
-            <span className="credits-label">⚡ Message Credits</span>
+            <span className="credits-label">{t('drawer.credits')}</span>
             <span className="credits-value">{credits}</span>
           </div>
 
@@ -218,8 +223,35 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
         </div>
 
         <div className="drawer-footer">
+          {/* Language switcher */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+            {(['my', 'en'] as const).map(lang => (
+              <button
+                key={lang}
+                onClick={() => {
+                  i18n.changeLanguage(lang);
+                  localStorage.setItem('chatbot_admin_lang', lang);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 6px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: `1px solid ${i18n.language === lang ? 'var(--primary)' : 'var(--border)'}`,
+                  background: i18n.language === lang ? 'rgba(10,132,255,0.12)' : 'transparent',
+                  color: i18n.language === lang ? 'var(--primary)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {lang === 'my' ? '🇲🇲 မြန်မာ' : '🇬🇧 English'}
+              </button>
+            ))}
+          </div>
           <button className="btn btn-danger" onClick={logout} style={{ fontSize: '0.9rem' }}>
-            Logout
+            {t('drawer.logout')}
           </button>
         </div>
       </div>

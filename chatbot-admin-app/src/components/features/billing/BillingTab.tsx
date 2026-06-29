@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import type { Plan } from '../../../types';
 import { getPlans, getPaymentMethods, submitUpgrade, getSubscriptionHistory } from '../../../api/client';
 
 export const BillingTab: React.FC = () => {
   const { loadProfileData } = useChatbot();
+  const { t } = useTranslation('billing');
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -90,14 +92,14 @@ export const BillingTab: React.FC = () => {
   return (
     <div className="tab-pane">
       <div className="tab-pane-header">
-        <h2>Billing</h2>
-        <p>Message Credits ဝယ်ယူပြီး Bot ကို ဆက်လက်အသုံးပြုပါ</p>
+        <h2>{t('title')}</h2>
+        <p>{t('subtitle')}</p>
       </div>
 
       {/* Success message */}
       {upgradeMsg === 'success' && (
         <div style={{ margin: '0 14px 14px' }} className="alert-box alert-success">
-          ✅ Payment submitted! Admin approval ရသည်နှင့် Credits ထည့်ပေးပါမည်။
+          {t('successMsg')}
         </div>
       )}
       {upgradeMsg && upgradeMsg !== 'success' && (
@@ -107,7 +109,7 @@ export const BillingTab: React.FC = () => {
       {/* Plans */}
       <div style={{ padding: '0 14px 12px' }}>
         <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 10 }}>
-          Select a Package
+          {t('selectPackage')}
         </div>
       </div>
       <div className="plans-grid">
@@ -120,9 +122,9 @@ export const BillingTab: React.FC = () => {
             <h3>{p.name}</h3>
             <div className="price">{Number(p.price).toLocaleString()} Ks</div>
             <ul className="plan-features">
-              <li>{p.query_limit} Messages</li>
-              <li>{p.duration_days} Days</li>
-              <li>{p.max_chat_history} History</li>
+              <li>{p.query_limit} {t('messages')}</li>
+              <li>{p.duration_days} {t('days')}</li>
+              <li>{p.max_chat_history} {t('historyLimit')}</li>
             </ul>
           </div>
         ))}
@@ -132,15 +134,15 @@ export const BillingTab: React.FC = () => {
       {selectedPlan && (
         <div className="payment-box">
           <div style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: 12, color: 'var(--text-muted)' }}>
-            PAYMENT DETAILS — {selectedPlan.name.toUpperCase()}
+            {t('paymentDetails', { planName: selectedPlan.name.toUpperCase() })}
           </div>
 
           {loadingKpay ? (
-            <div className="loading-row"><div className="spinner" /> Fetching payment info...</div>
+            <div className="loading-row"><div className="spinner" /> {t('fetchingInfo')}</div>
           ) : kpayDetails ? (
             <>
               <div className="kpay-info-box">
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 6 }}>Transfer to KPay:</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 6 }}>{t('transferTo')}</div>
                 <div className="kpay-number">{kpayDetails.kpay_no}</div>
                 <div className="kpay-name">{kpayDetails.kpay_name}</div>
                 {kpayDetails.note && (
@@ -151,7 +153,7 @@ export const BillingTab: React.FC = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: 12 }}>
-                <label>Upload Screenshot</label>
+                <label>{t('uploadScreenshot')}</label>
                 <div>
                   <label htmlFor="receipt-file" style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -160,7 +162,7 @@ export const BillingTab: React.FC = () => {
                     cursor: 'pointer', fontSize: '0.87rem', color: 'var(--text-muted)',
                     transition: 'border-color 0.2s'
                   }}>
-                    📷 {receiptFilename || 'Choose payment screenshot'}
+                    📷 {receiptFilename || t('chooseFile')}
                   </label>
                   <input
                     id="receipt-file"
@@ -187,11 +189,11 @@ export const BillingTab: React.FC = () => {
                 onClick={handleSubmit}
                 disabled={submitting || !receiptBase64}
               >
-                {submitting ? <><div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Submitting...</> : '✅ Submit Payment'}
+                {submitting ? <><div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> {t('submitting')}</> : t('submitPayment')}
               </button>
             </>
           ) : (
-            <div className="alert-box alert-error">Payment info not available</div>
+            <div className="alert-box alert-error">{t('notAvailable')}</div>
           )}
         </div>
       )}
@@ -199,11 +201,11 @@ export const BillingTab: React.FC = () => {
       {/* Billing History Section */}
       <div style={{ marginTop: 24, padding: '0 14px 14px' }}>
         <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 12 }}>
-          📜 Billing & Payment History
+          {t('historyTitle')}
         </div>
 
         {loadingHistory ? (
-          <div className="loading-row"><div className="spinner" /> Loading history...</div>
+          <div className="loading-row"><div className="spinner" /> {t('loadingHistory')}</div>
         ) : history.length === 0 ? (
           <div style={{
             padding: '24px 16px',
@@ -214,7 +216,7 @@ export const BillingTab: React.FC = () => {
             color: 'var(--text-muted)',
             fontSize: '0.86rem'
           }}>
-            No payment history records found.
+            {t('noHistory')}
           </div>
         ) : (
           <div style={{
@@ -226,10 +228,10 @@ export const BillingTab: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255, 255, 255, 0.02)' }}>
-                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Date</th>
-                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Package</th>
-                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>Amount</th>
-                  <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>{t('colDate')}</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>{t('colPackage')}</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600 }}>{t('colAmount')}</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'center' }}>{t('colStatus')}</th>
                 </tr>
               </thead>
               <tbody>

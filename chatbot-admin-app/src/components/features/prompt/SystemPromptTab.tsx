@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
+import { useToast } from '../../../contexts/ToastContext';
 import { getSystemPrompt, updateSystemPrompt } from '../../../api/client';
 
 export const SystemPromptTab: React.FC = () => {
-  const { chatbot } = useChatbot();
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [activePrompt, setActivePrompt] = useState('');
+  const { chatbot, loadProfileData } = useChatbot();
+  const { showToast } = useToast();
+  const { t } = useTranslation('prompt');
+  const { t: tc } = useTranslation('common');
+  const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [editMode, setEditMode] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
       const data = await getSystemPrompt();
-      setCustomPrompt(data.customSystemPrompt || '');
-      setActivePrompt(data.activePrompt || '');
+      setPrompt(data.customSystemPrompt || '');
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -25,71 +29,86 @@ export const SystemPromptTab: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateSystemPrompt(customPrompt);
-      alert('✅ System prompt updated!');
-      load();
+      const data = await updateSystemPrompt(prompt);
+      if (data) {
+        setHasChanges(false);
+        setEditMode(false);
+        showToast('success', t('toast.savedTitle'), t('toast.savedMsg'));
+        loadProfileData();
+      }
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Update failed');
-    } finally { setSaving(false); }
+      showToast('error', t('toast.errorTitle'), e?.response?.data?.error || tc('error.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="tab-pane">
       <div className="tab-pane-header">
-        <h2>System Prompt</h2>
-        <p>AI Bot ၏ Character နှင့် Behavior ကို ဤနေရာမှ သတ်မှတ်ပါ</p>
+        <h2>{t('title')}</h2>
+        <p>{t('subtitle')}</p>
       </div>
 
-      <div className="section-card">
-        <div className="section-label">Custom Prompt</div>
-        <div className="section-card-inner">
-          {loading ? (
-            <div className="loading-row"><div className="spinner" /></div>
-          ) : (
-            <>
-              <div className="form-group" style={{ marginBottom: 12 }}>
-                <textarea
-                  rows={8}
-                  placeholder={`e.g. You are a helpful sales assistant for [Shop Name].\nAlways respond in Burmese.\nBe friendly and concise.\nDo not discuss unrelated topics.`}
-                  value={customPrompt}
-                  onChange={e => setCustomPrompt(e.target.value)}
-                  style={{ fontFamily: 'inherit', fontSize: '0.88rem', lineHeight: 1.6, resize: 'vertical' }}
-                />
-              </div>
-
-              <button
-                className="btn btn-primary"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? <><div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Saving...</> : '💾 Save Prompt'}
-              </button>
-            </>
-          )}
+      <div className="prompt-container" style={{ padding: '0 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>{t('currentPrompt')}</h3>
         </div>
-      </div>
 
-      {/* Preview toggle */}
-      {activePrompt && (
-        <div style={{ padding: '12px 14px 0' }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            style={{ width: '100%' }}
-            onClick={() => setShowPreview(v => !v)}
-          >
-            {showPreview ? '▲ Hide Active Prompt' : '▼ View Active Prompt'}
-          </button>
+        {editMode && (
+          <div className="alert-box alert-error" style={{ fontSize: '0.82rem', marginBottom: '12px', padding: '10px 12px' }}>
+            {t('previewWarning')}
+          </div>
+        )}
 
-          {showPreview && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
-                Currently Active
-              </div>
-              <div className="prompt-preview">{activePrompt}</div>
+        <div className="form-group">
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <button 
+              className={`btn ${editMode ? 'btn-primary' : 'btn-secondary'}`} 
+              style={{ flex: 1, padding: '8px' }}
+              onClick={() => setEditMode(true)}
+            >
+              ✏️ {t('editMode')}
+            </button>
+            <button 
+              className={`btn ${!editMode ? 'btn-primary' : 'btn-secondary'}`} 
+              style={{ flex: 1, padding: '8px' }}
+              onClick={() => setEditMode(false)}
+            >
+              👁️ {t('previewMode')}
+            </button>
+          </div>
+
+          {editMode ? (
+            <textarea
+              className="prompt-textarea"
+              style={{ height: '240px', fontSize: '0.9rem', lineHeight: '1.6', width: '100%' }}
+              value={prompt}
+              onChange={e => {
+                setPrompt(e.target.value);
+                setHasChanges(true);
+              }}
+              placeholder={t('promptPlaceholder')}
+              disabled={loading || saving}
+            />
+          ) : (
+            <div className="prompt-preview" style={{ height: '240px', overflowY: 'auto', background: '#f9f9f9', padding: '12px', borderRadius: '4px' }}>
+              {prompt || t('noPrompt')}
             </div>
           )}
         </div>
-      )}
+
+        {editMode && (
+          <button
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            style={{ width: '100%', marginTop: '12px' }}
+          >
+            {saving ? <>{tc('saving')}...</> : t('savePrompt')}
+          </button>
+        )}
+      </div>
     </div>
   );
 };

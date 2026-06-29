@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useChatbot } from '../../../contexts/ChatbotContext';
+import { useToast } from '../../../contexts/ToastContext';
 import type { KnowledgeChunk } from '../../../types';
 import { getKnowledgeChunks, ingestDocument, deleteChunk, updateChunk } from '../../../api/client';
 
 export const KnowledgeTab: React.FC = () => {
   const { chatbot } = useChatbot();
+  const { showToast } = useToast();
 
   const [chunks, setChunks] = useState<KnowledgeChunk[]>([]);
   const [loadingChunks, setLoadingChunks] = useState(false);
@@ -34,11 +36,11 @@ export const KnowledgeTab: React.FC = () => {
       if (data.success) {
         setIngestText('');
         setShowIngestForm(false);
-        alert(`✅ ${data.chunksAdded} chunks added!`);
+        showToast('success', `${data.chunksAdded} chunks added!`, 'Knowledge ingested successfully.');
         loadKnowledge();
       }
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Ingest failed');
+      showToast('error', 'Ingest failed', e?.response?.data?.error || 'Please try again.');
     } finally { setIngesting(false); }
   };
 
@@ -47,7 +49,7 @@ export const KnowledgeTab: React.FC = () => {
     try {
       await deleteChunk(id);
       setChunks(prev => prev.filter(c => c.id !== id));
-    } catch (e) { alert('Delete failed'); }
+    } catch (e) { showToast('error', 'Delete failed', 'Please try again.'); }
   };
 
   const startEdit = (c: KnowledgeChunk) => {
@@ -63,7 +65,7 @@ export const KnowledgeTab: React.FC = () => {
       setEditingChunk(null);
       loadKnowledge();
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Update failed');
+      showToast('error', 'Update failed', e?.response?.data?.error || 'Please try again.');
     } finally { setSaving(false); }
   };
 

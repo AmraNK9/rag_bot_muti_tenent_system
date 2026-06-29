@@ -1,0 +1,17 @@
+{
+  "title": "စကားဝိုင်းများ",
+  "emptyTitle": "စကားဝိုင်း မရှိသေးပါ",
+  "emptyDesc": "Customer များ Bot ကို စာပို့လာသောအခါ ဤနေရာတွင် ပေါ်လာမည်ဖြစ်သည်။",
+  "systemTitle": "စနစ် အသိပေးချက်များ",
+  "pinned": "PINNED",
+  "userPrefix": "User",
+  "platformMessages": "Platform အသိပေးချက်များ",
+  "messagesCount": "{{count}} စောင်",
+  "today": "ယနေ့",
+  "yesterday": "မနေ့က",
+  "active": "Active",
+  "systemNotification": "🛡️ စနစ် အသိပေးချက်",
+  "systemAlert": "⚠️ စနစ် သတိပေးချက်",
+  "systemReadOnly": "🛡️ ဤချန်နယ်သည် စနစ်မှ အသိပေးချက်များကို ဖတ်ရန်သာဖြစ်သည်။",
+  "replyPlaceholder": "Admin အနေဖြင့် စာပြန်ရန်..."
+}

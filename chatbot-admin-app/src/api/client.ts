@@ -56,7 +56,20 @@ export const getMessages = (senderId: string, limit = 50, offset = 0) =>
 export const replyToConversation = (senderId: string, message: string) =>
   api.post(`/chatbot-admin/conversations/${senderId}/reply`, { message }).then((r) => r.data);
 
-// ─── Knowledge Base ────────────────────────────────────────────────────────
+// ─── Smart Items (Knowledge Base) ────────────────────────────────────────────
+export const getSmartItems = (limit = 20, offset = 0) =>
+  api.get(`/chatbot-admin/smart-items?limit=${limit}&offset=${offset}&t=${Date.now()}`).then((r) => r.data);
+
+export const createSmartItem = (data: any) =>
+  api.post('/chatbot-admin/smart-items', data).then((r) => r.data);
+
+export const deleteSmartItem = (id: string | number) =>
+  api.delete(`/chatbot-admin/smart-items/${id}`).then((r) => r.data);
+
+export const updateSmartItem = (id: string | number, data: any) =>
+  api.put(`/chatbot-admin/smart-items/${id}`, data).then((r) => r.data);
+
+// Legacy Knowledge Base (For backward compatibility if needed)
 export const getKnowledgeChunks = (limit = 20, offset = 0) =>
   api.get(`/chatbot-admin/knowledge?limit=${limit}&offset=${offset}&t=${Date.now()}`).then((r) => r.data);
 

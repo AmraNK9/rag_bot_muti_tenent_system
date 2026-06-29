@@ -233,6 +233,24 @@ export class SystemBotFaq extends Model<InferAttributes<SystemBotFaq>, InferCrea
   declare created_at: CreationOptional<Date>;
 }
 
+// ─── KnowledgeAsset Model ────────────────────────────────────────────────────
+export class KnowledgeAsset extends Model<InferAttributes<KnowledgeAsset>, InferCreationAttributes<KnowledgeAsset>> {
+  declare id: CreationOptional<number>;
+  declare tenant_id: ForeignKey<ChatBot['id']>;
+  declare item_type: 'product' | 'info';
+  declare title: string;
+  declare content: string;
+  declare embedding: CreationOptional<any>;
+  declare price: CreationOptional<number | null>;
+  declare stock_count: CreationOptional<number | null>;
+  declare auto_track_stock: CreationOptional<boolean>;
+  declare created_at: CreationOptional<Date>;
+  declare updated_at: CreationOptional<Date>;
+
+  // Relationship definitions
+  declare chatbot?: ChatBot;
+}
+
 // ─── Model Initialization ────────────────────────────────────────────────────
 export function initModels(sequelize: Sequelize) {
   Business.init(
@@ -1020,6 +1038,66 @@ export function initModels(sequelize: Sequelize) {
       timestamps: false,
     }
   );
+
+  KnowledgeAsset.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      tenant_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      item_type: {
+        type: DataTypes.ENUM('product', 'info'),
+        allowNull: false,
+      },
+      title: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      content: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      embedding: {
+        type: `VECTOR(${process.env.VECTOR_DIMENSION || 1024})`, // Voyage AI uses 1024
+        allowNull: true,
+      },
+      price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+      },
+      stock_count: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      auto_track_stock: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'knowledge_assets',
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    }
+  );
+
+  ChatBot.hasMany(KnowledgeAsset, { foreignKey: 'tenant_id', as: 'knowledge_assets' });
+  KnowledgeAsset.belongsTo(ChatBot, { foreignKey: 'tenant_id', as: 'chatbot' });
 
   ResellerTopUp.belongsTo(Reseller, { foreignKey: 'reseller_id', as: 'reseller' });
 

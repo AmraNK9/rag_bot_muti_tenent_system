@@ -45,12 +45,9 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
           </button>
         </div>
 
-        <div className="drawer-profile">
-          <div className="drawer-profile-icon">
-            {stats?.name?.charAt(0).toUpperCase() || 'R'}
-          </div>
-          <h3 style={{ margin: 0 }}>{stats?.name || 'Reseller'}</h3>
-          <p style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+        <div className="drawer-profile" style={{ textAlign: 'left', padding: '16px', borderBottom: '1px solid var(--border)' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{stats?.name || 'Reseller'}</h3>
+          <p style={{ fontSize: '0.8rem', marginTop: '4px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
             {stats?.can_collect_payments ? 'Postpaid Collector' : 'Prepaid Agent'}
           </p>
         </div>

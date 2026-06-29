@@ -292,11 +292,13 @@ p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
 @media (min-width: 601px) { .drawer-overlay { position: absolute; border-radius: 32px; } }
 
 .drawer {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 280px;
+  position: absolute; top: 0; bottom: 0; left: 0; width: 310px;
   background: var(--bg-card);
   z-index: 2001; padding: 24px; display: flex; flex-direction: column;
   box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
   animation: slideInLeft 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 @keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }

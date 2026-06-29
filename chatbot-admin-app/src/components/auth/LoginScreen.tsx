@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { login as apiLogin, registerStandalone } from '../../api/client';
 
 export const LoginScreen: React.FC = () => {
+  const { t } = useTranslation('auth');
+  const { t: tc } = useTranslation('common');
   const { login } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
@@ -42,10 +45,10 @@ export const LoginScreen: React.FC = () => {
       if (data.success && data.token) {
         login(data.token);
       } else {
-        setError(data.error || (isLogin ? 'Login failed' : 'Registration failed'));
+        setError(data.error || (isLogin ? t('login.loginFailed', 'Login failed') : t('login.registerFailed', 'Registration failed')));
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || err.message || 'Something went wrong');
+      setError(err?.response?.data?.error || err.message || t('login.errorGeneric', 'Something went wrong'));
     } finally {
       setLoading(false);
     }
@@ -55,17 +58,17 @@ export const LoginScreen: React.FC = () => {
     <div className="auth-screen">
       <div className="auth-hero">
         <div className="auth-logo-wrap">🤖</div>
-        <h1>Chatbot Admin</h1>
-        <p>AI Chatbot ကို ၅ မိနစ်အတွင်း ချိတ်ဆက်ပြီး Customer ဖြေကြားမှုကို အလိုအလျောက် ပြုလုပ်ပါ</p>
+        <h1>{t('login.heroTitle', 'Chatbot Admin')}</h1>
+        <p>{t('login.heroDesc', 'AI Chatbot ကို ၅ မိနစ်အတွင်း ချိတ်ဆက်ပြီး Customer ဖြေကြားမှုကို အလိုအလျောက် ပြုလုပ်ပါ')}</p>
       </div>
 
       <div className="auth-body">
         <div className="auth-tabs">
           <button className={`auth-tab ${isLogin ? 'active' : ''}`} onClick={() => switchTab(true)}>
-            Sign In
+            {t('login.tabLogin')}
           </button>
           <button className={`auth-tab ${!isLogin ? 'active' : ''}`} onClick={() => switchTab(false)}>
-            Register
+            {t('login.tabRegister')}
           </button>
         </div>
 
@@ -74,10 +77,10 @@ export const LoginScreen: React.FC = () => {
         <form onSubmit={handleSubmit}>
           {!isLogin && (
             <div className="form-group">
-              <label>Full Name</label>
+              <label>{t('login.name')}</label>
               <input
                 type="text"
-                placeholder="Your name"
+                placeholder={t('login.namePlaceholder', 'Your name')}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
@@ -87,7 +90,7 @@ export const LoginScreen: React.FC = () => {
           )}
 
           <div className="form-group">
-            <label>Email Address</label>
+            <label>{t('login.email')}</label>
             <input
               type="email"
               placeholder="name@example.com"
@@ -99,7 +102,7 @@ export const LoginScreen: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <label>{t('login.password')}</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -120,17 +123,17 @@ export const LoginScreen: React.FC = () => {
                   fontSize: '0.85rem', padding: 4, fontFamily: 'inherit'
                 }}
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? t('login.hide', 'Hide') : t('login.show', 'Show')}
               </button>
             </div>
           </div>
 
           {!isLogin && (
             <div className="form-group">
-              <label>Referral Code <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span></label>
+              <label>{t('login.referralCode')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span></label>
               <input
                 type="text"
-                placeholder="Enter referral code"
+                placeholder={t('login.refPlaceholder', 'Enter referral code')}
                 value={referralCode}
                 onChange={e => setReferralCode(e.target.value)}
               />
@@ -138,7 +141,7 @@ export const LoginScreen: React.FC = () => {
           )}
 
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: 4 }}>
-            {loading ? <><div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> Processing...</> : isLogin ? 'Sign In' : 'Create Account'}
+            {loading ? <><div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> {tc('loading')}</> : isLogin ? t('login.loginBtn') : t('login.registerBtn')}
           </button>
         </form>
       </div>

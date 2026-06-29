@@ -1,0 +1,17 @@
+{
+  "title": "Conversations",
+  "emptyTitle": "No conversations yet",
+  "emptyDesc": "When users message your bot, they will appear here.",
+  "systemTitle": "System Notifications",
+  "pinned": "PINNED",
+  "userPrefix": "User",
+  "platformMessages": "Platform messages",
+  "messagesCount": "{{count}} messages",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "active": "Active",
+  "systemNotification": "🛡️ System Notification",
+  "systemAlert": "⚠️ System Alert",
+  "systemReadOnly": "🛡️ This is a read-only system notifications channel.",
+  "replyPlaceholder": "Reply as admin..."
+}
