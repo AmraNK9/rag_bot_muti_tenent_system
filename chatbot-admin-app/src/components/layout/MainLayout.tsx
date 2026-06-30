@@ -76,9 +76,21 @@ export const MainLayout: React.FC = () => {
           </div>
         )}
 
-        {chatbot && activeTab === 'chats' && <ChatsTab />}
-        {chatbot && activeTab === 'knowledge' && profile?.canManageKnowledge && <SmartItemsTab />}
-        {activeTab === 'billing' && <BillingTab />}
+        {chatbot && (
+          <>
+            <div style={{ display: activeTab === 'chats' ? 'block' : 'none', height: '100%' }}>
+              <ChatsTab />
+            </div>
+            {profile?.canManageKnowledge && (
+              <div style={{ display: activeTab === 'knowledge' ? 'block' : 'none', height: '100%' }}>
+                <SmartItemsTab />
+              </div>
+            )}
+          </>
+        )}
+        <div style={{ display: activeTab === 'billing' ? 'block' : 'none', height: '100%' }}>
+          <BillingTab />
+        </div>
       </main>
 
       {/* BOTTOM NAV */}
