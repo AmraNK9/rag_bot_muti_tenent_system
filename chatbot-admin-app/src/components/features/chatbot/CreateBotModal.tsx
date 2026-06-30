@@ -46,6 +46,20 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
+  // P1: token field highlight after "Got it!"
+  const [tokenHighlight, setTokenHighlight] = useState(false);
+  const [tokenFocused, setTokenFocused] = useState(false);
+  const tokenRef = React.useRef<HTMLInputElement>(null);
+
+  const handleHelpComplete = () => {
+    setShowHelp(false);
+    // Small delay so modal close animation finishes first
+    setTimeout(() => {
+      setTokenHighlight(true);
+      tokenRef.current?.focus();
+      setTimeout(() => setTokenHighlight(false), 3500);
+    }, 180);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,12 +81,19 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
   return (
     <>
       <div className="modal-overlay">
-        <div className="modal">
+        <div className={`modal ${showHelp ? 'modal-fullscreen' : ''}`}>
           {/* Drag handle */}
           <div className="modal-handle" />
 
-          {/* Header */}
-          <div className="modal-header">
+          {showHelp ? (
+            <TokenHelpModal
+              onBack={() => setShowHelp(false)}
+              onComplete={handleHelpComplete}
+            />
+          ) : (
+            <>
+              {/* Header */}
+              <div className="modal-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div
                 style={{
@@ -293,7 +314,27 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                   </button>
                 </div>
                 <div style={{ position: 'relative' }}>
+                  {/* P1: paste-here hint label when highlight is active */}
+                  {tokenHighlight && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: -26,
+                        left: 0,
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        animation: 'tokenHintPulse 0.8s ease infinite alternate',
+                      }}
+                    >
+                      {t('tokenHelp.tokenFieldHighlightHint')}
+                    </div>
+                  )}
                   <input
+                    ref={tokenRef}
                     type={showToken ? 'text' : 'password'}
                     placeholder={t('tokenPlaceholder')}
                     value={token}
@@ -302,18 +343,25 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                     style={{
                       width: '100%',
                       background: 'var(--bg-surface-2)',
-                      border: '1px solid var(--border)',
+                      border: tokenHighlight
+                        ? '1.5px solid var(--primary)'
+                        : tokenFocused
+                        ? '1px solid rgba(10,132,255,0.5)'
+                        : '1px solid var(--border)',
+                      boxShadow: tokenHighlight
+                        ? '0 0 0 4px rgba(10,132,255,0.18)'
+                        : 'none',
                       borderRadius: 'var(--radius-sm)',
                       padding: '13px 54px 13px 16px',
                       color: 'var(--text-main)',
                       fontFamily: 'var(--font)',
                       fontSize: '0.9rem',
                       outline: 'none',
-                      transition: 'border-color 0.2s',
+                      transition: 'border-color 0.25s, box-shadow 0.4s',
                       letterSpacing: showToken ? 'normal' : '0.1em',
                     }}
-                    onFocus={(e) => (e.target.style.borderColor = 'rgba(10,132,255,0.5)')}
-                    onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
+                    onFocus={() => setTokenFocused(true)}
+                    onBlur={() => setTokenFocused(false)}
                   />
                   <button
                     type="button"
@@ -369,15 +417,15 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                       type="button"
                       onClick={() => setRole(r.value)}
                       style={{
+                        width: '100%',           /* fill grid cell fully */
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
+                        flexDirection: 'column', /* vertical: icon → label → desc */
+                        alignItems: 'flex-start',
+                        gap: 6,
                         padding: '12px 12px',
                         borderRadius: 'var(--radius-sm)',
                         border: `1.5px solid ${
-                          role === r.value
-                            ? 'var(--primary)'
-                            : 'var(--border)'
+                          role === r.value ? 'var(--primary)' : 'var(--border)'
                         }`,
                         background:
                           role === r.value
@@ -387,20 +435,19 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                         transition: 'all 0.2s ease',
                         textAlign: 'left',
                         fontFamily: 'var(--font)',
+                        boxSizing: 'border-box',
                       }}
                     >
-                      <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>{r.icon}</span>
-                      <div style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>{r.icon}</span>
+                      <div style={{ width: '100%', minWidth: 0 }}>
                         <div
                           style={{
                             fontSize: '0.82rem',
                             fontWeight: 700,
-                            color:
-                              role === r.value
-                                ? 'var(--primary)'
-                                : 'var(--text-main)',
+                            color: role === r.value ? 'var(--primary)' : 'var(--text-main)',
                             transition: 'color 0.2s',
-                            marginBottom: 1,
+                            marginBottom: 2,
+                            wordBreak: 'break-word',   /* prevent label overflow */
                           }}
                         >
                           {t(r.labelKey)}
@@ -409,9 +456,8 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                           style={{
                             fontSize: '0.67rem',
                             color: 'var(--text-muted)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
+                            lineHeight: 1.4,
+                            wordBreak: 'break-word',   /* allow wrapping */
                           }}
                         >
                           {t(r.descKey)}
@@ -454,10 +500,17 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
               </div>
             </form>
           </div>
+          </>
+        )}
         </div>
       </div>
-
-      {showHelp && <TokenHelpModal onClose={() => setShowHelp(false)} />}
+      {/* P3: keyframe for token field highlight pulse */}
+      <style>{`
+        @keyframes tokenHintPulse {
+          from { opacity: 0.7; transform: translateX(0); }
+          to   { opacity: 1;   transform: translateX(3px); }
+        }
+      `}</style>
     </>
   );
 };

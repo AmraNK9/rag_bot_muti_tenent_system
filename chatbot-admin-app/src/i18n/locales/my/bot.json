@@ -24,24 +24,34 @@
     "modalTitle": "Bot Token ရယူနည်း",
     "modalSubtitle": "BotFather ဖြင့် အဆင့် ၃ ဆင့်သာ",
     "stepOf": "အဆင့် {{current}} / {{total}}",
-    "close": "ပိတ်မည်",
+    "close": "မလိုဘူး",
     "back": "← နောက်သို့",
     "next": "ရှေ့ဆက်မည် →",
     "done": "✅ နားလည်ပါပြီ!",
+
     "step1Label": "BotFather",
     "step1Title": "BotFather ဖွင့်ပါ",
     "step1_1": "<b>Telegram</b> ကို ဖုန်း သို့မဟုတ် ကွန်ပျူတာတွင် ဖွင့်ပါ။",
     "step1_2": "<b>@BotFather</b> ကို ရှာပါ — <blue>✔️ အပြာရောင် verified tick</blue> ရှိမရှိ သေချာစစ်ပါ။",
     "step1_3": "<b>/start</b> ကို နှိပ်ပါ။",
+    "step1DeepLink": "Telegram တွင် BotFather တိုက်ရိုက်ဖွင့်မည် →",
+
     "step2Label": "ဖန်တီးရန်",
     "step2Title": "Bot ဖန်တီးပါ",
     "step2_1": "BotFather ထံ <b>/newbot</b> command ပို့ပါ။",
-    "step2_2": "<b>Display name</b> သတ်မှတ်ပါ (ဥပမာ - \"My Shop Bot\")။",
-    "step2_3": "<code>bot</code> ဖြင့် ဆုံးသော <b>username</b> တစ်ခုရွေးပါ (ဥပမာ - myshop_bot)။",
+    "step2_2": "<b>Display name</b> သတ်မှတ်ပါ — chat တွင် ပြသသော အမည်ဖြစ်သည်။",
+    "step2_3": "<code>bot</code> ဖြင့် ဆုံးသော <b>username</b> တစ်ခုရွေးပါ — bot ၏ handle ဖြစ်သည်။",
+    "step2ExampleTitle": "ဥပမာ",
+    "step2ExampleDisplay": "Display name (မြင်ရသောအမည်)",
+    "step2ExampleUsername": "Username (handle)",
+
     "step3Label": "Token ကူးယူ",
     "step3Title": "Token ကူးယူပါ",
     "step3_1": "BotFather မှ <b>HTTP API Token</b> ပါသော မက်ဆေ့ချ် ပေးပို့မည်။",
     "step3_2": "ပုံစံမှာ ဤသို့ ဖြစ်သည် — <code>1234567890:ABCdefGhI_jklMNO</code>",
-    "step3_3": "Token ကို <b>ကူးယူ</b>ပြီး <b>Bot Token</b> field ထဲ ထည့်ပါ။"
+    "step3_3": "Token ကို <b>ကူးယူ</b>ပြီး <b>Bot Token</b> field ထဲ ထည့်ပါ။",
+    "step3PasteNote": "\"နားလည်ပါပြီ!\" နှိပ်ပြီးနောက် Bot Token field တွင် အလိုအလျောက် highlight ဖော်ပြပေးမည်ဖြစ်သောကြောင့် paste လုပ်ပေးရန်သာ လိုပါသည်။",
+
+    "tokenFieldHighlightHint": "← ဒီမှာ token paste လုပ်ပါ"
   }
 }

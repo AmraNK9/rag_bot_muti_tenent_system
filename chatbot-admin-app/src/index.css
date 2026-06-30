@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Myanmar:wght@400;700&display=swap');
 
 /* ═══════════════════════════════════════════════════════════
    CSS VARIABLES — Premium Native Mobile Dark Theme
@@ -33,7 +33,7 @@
   --bg-accent: #2c2c2e;
   --bg-header: #000000;
 
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font: 'Inter', 'Noto Sans Myanmar', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --nav-h: 56px;
   --bottom-h: 72px;
   --radius-xs: 8px;
@@ -1092,8 +1092,24 @@ body {
   max-height: 92vh;
   overflow-y: auto;
   animation: slideUp 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+.modal.modal-fullscreen {
+  max-height: 100vh;
+  height: 100vh;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+.modal.modal-fullscreen .modal-handle {
+  display: none; /* Hide drag handle in fullscreen mode */
+}
+.modal.modal-fullscreen .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
 .modal-handle {
   width: 36px;
   height: 4px;
