@@ -1904,6 +1904,13 @@ apiRouter.post('/total-admin/requests/:id/approve', adminSecretAuth, async (req:
 
     // 4.5. Create system chat notification & broadcast
     try {
+      SocketService.io.to(`business_${business.id}`).emit('plan_upgraded', {
+        plan_name: planRequest.plan_name,
+        credits_added: newCredits,
+        status: 'approved',
+        message: `Plan upgraded to ${planRequest.plan_name.toUpperCase()} by Admin`,
+      });
+
       const chatbot = await ChatBot.findOne({ where: { business_id: business.id } });
       if (chatbot) {
         const savedMsg = await Messages.create({
@@ -1935,6 +1942,12 @@ apiRouter.post('/total-admin/requests/:id/reject', adminSecretAuth, async (req: 
 
     // Create system chat notification & broadcast
     try {
+      SocketService.io.to(`business_${planRequest.business_id}`).emit('plan_rejected', {
+        plan_name: planRequest.plan_name,
+        status: 'rejected',
+        message: `Plan upgrade request for ${planRequest.plan_name.toUpperCase()} was rejected by Admin.`,
+      });
+
       const chatbot = await ChatBot.findOne({ where: { business_id: planRequest.business_id } });
       if (chatbot) {
         const savedMsg = await Messages.create({

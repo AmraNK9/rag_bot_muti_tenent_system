@@ -92,6 +92,14 @@ export class ResellerService {
 
     // 4.5. Create system chat notification & broadcast
     try {
+      // Emit to business room for global real-time update
+      SocketService.io.to(`business_${business.id}`).emit('plan_upgraded', {
+        plan_name: planRequest.plan_name,
+        credits_added: newCredits,
+        status: 'approved',
+        message: `Plan upgraded to ${planRequest.plan_name.toUpperCase()}`,
+      });
+
       const chatbot = await ChatBot.findOne({ where: { business_id: business.id } });
       if (chatbot) {
         const savedMsg = await Messages.create({
@@ -117,6 +125,12 @@ export class ResellerService {
     
     // Create system chat notification & broadcast
     try {
+      SocketService.io.to(`business_${planRequest.business_id}`).emit('plan_rejected', {
+        plan_name: planRequest.plan_name,
+        status: 'rejected',
+        message: `Plan upgrade request for ${planRequest.plan_name.toUpperCase()} was rejected.`,
+      });
+
       const chatbot = await ChatBot.findOne({ where: { business_id: planRequest.business_id } });
       if (chatbot) {
         const savedMsg = await Messages.create({
