@@ -1,5 +1,5 @@
 import { PlanRequest, Business, Reseller, Plan, ChatBot, Messages } from '../../infrastructure/db/models';
-import { calculateCommissions } from '../../presentation/api/routes';
+import { calculateCommissions } from '../subscription/commission.utils';
 import { SocketService } from '../../infrastructure/socket/socket.service';
 
 export class ResellerService {

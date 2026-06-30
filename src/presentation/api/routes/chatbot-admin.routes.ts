@@ -1,0 +1,465 @@
+import { Router, Request, Response } from 'express';
+import { authMiddleware, AuthenticatedRequest } from '../../middleware/auth.middleware';
+import { chatbotAdminAuthMiddleware, ChatbotAdminRequest } from '../../middleware/chatbot-admin-auth.middleware';
+import { resellerAuthMiddleware, ResellerRequest } from '../../middleware/reseller-auth.middleware';
+import { adminSecretAuth } from '../../middleware/admin-secret-auth.middleware';
+import { ChatBot, Messages, ChatbotAdmin, Business, Reseller, PlanRequest, ChatbotActivity, ResellerTopUp, Plan, SystemSetting, AuditLog, P2PTopupTransaction, SystemBotConfig, SystemBotFaq } from '../../../infrastructure/db/models';
+import { QueryTypes } from 'sequelize';
+import { SequelizeService } from '../../../infrastructure/db/sequelize.service';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
+import { SystemPromptFactory } from '../../../infrastructure/prompt/prompt.factory';
+import { SocketService } from '../../../infrastructure/socket/socket.service';
+import { calculateCommissions } from '../../../modules/subscription/commission.utils';
+import { PaymentRoutingService } from '../../../modules/subscription/payment-routing.service';
+import { TelegramService } from '../../../infrastructure/telegram/telegram.service';
+import { authService, subscriptionService, businessService, knowledgeService, smartItemService, telegramService, chatbotWebhookService, chatbotAdminAuthService, systemBotService, vectorStore, embeddingService, tunnelService } from '../container';
+
+const router = Router();
+
+async function verifyChatbotOwnership(chatbotId: number, businessId: number): Promise<ChatBot | null> {
+  return ChatBot.findOne({ where: { id: chatbotId, business_id: businessId } });
+}
+
+// ─── 24. POST /chatbot-admin/register — Standalone signup ────────────────────────
+router.post('/chatbot-admin/register', async (req: Request, res: Response) => {
+  try {
+    const { name, email, password, referralCode } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: "name", "email", or "password".' });
+    }
+
+    let referredByResellerId: number | null = null;
+    if (referralCode) {
+      const reseller = await Reseller.findOne({ where: { id: Number(referralCode) } });
+      if (reseller) {
+        referredByResellerId = reseller.id;
+      }
+    }
+
+    const result = await chatbotAdminAuthService.registerStandalone({
+      name,
+      email,
+      password,
+      referredByResellerId,
+    });
+
+    return res.json({
+      success: true,
+      token: result.token,
+      admin: { id: result.admin.id, name: result.admin.name, email: result.admin.email },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 25. POST /chatbot-admin/login — Login ─────────────────────────────────────
+router.post('/chatbot-admin/login', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Missing email or password.' });
+    }
+
+    console.log(`[LOGIN API] Attempting login for email: ${email}`);
+
+    const result = await chatbotAdminAuthService.login(email, password);
+    
+    console.log(`[LOGIN API] Success for: ${email}`);
+    return res.json({
+      success: true,
+      token: result.token,
+      admin: { id: result.admin.id, name: result.admin.name, email: result.admin.email },
+    });
+  } catch (error) {
+    return res.status(401).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 26. GET /chatbot-admin/profile — Profile & credits ──────────────────────────
+router.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const admin = await ChatbotAdmin.findByPk(adminReq.chatbotAdmin.adminId);
+    if (!admin) return res.status(404).json({ success: false, error: 'Admin not found.' });
+
+    let chatbot: ChatBot | null = null;
+    let credits = 0;
+
+    console.log(`[Profile API] Hit by adminId: ${admin.id}, email: ${admin.email}, chatbot_id in DB: ${admin.chatbot_id}`);
+
+    if (admin.chatbot_id) {
+      chatbot = await ChatBot.findByPk(admin.chatbot_id);
+    }
+
+    const business = chatbot
+      ? await Business.findByPk(chatbot.business_id)
+      : await Business.findOne({ where: { name: `Standalone_${admin.email}` } });
+
+    // Auto-heal logic: If admin has no chatbot_id but their standalone business has a chatbot
+    if (!chatbot && business) {
+      const possibleBot = await ChatBot.findOne({ where: { business_id: business.id } });
+      if (possibleBot) {
+        chatbot = possibleBot;
+        await admin.update({ chatbot_id: possibleBot.id });
+      }
+    }
+
+    if (business) {
+      credits = business.active_messages_count;
+      console.log(`[Profile API] Business found: ${business.id}, credits: ${credits}`);
+    } else {
+      console.log(`[Profile API] Business NOT found for ${admin.email}`);
+    }
+
+    console.log(`[Profile API] Returning chatbot:`, chatbot ? chatbot.id : 'null', `credits:`, credits);
+
+    return res.json({
+      success: true,
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        isStandalone: admin.is_standalone,
+        canManageKnowledge: admin.can_manage_knowledge,
+        canManageSystemPrompt: admin.can_manage_system_prompt,
+      },
+      chatbot: chatbot ? {
+        id: chatbot.id,
+        name: chatbot.name,
+        description: chatbot.description,
+        type: chatbot.type,
+        bot_role: chatbot.bot_role,
+        custom_system_prompt: chatbot.custom_system_prompt,
+      } : null,
+      credits,
+      business: business ? {
+        id: business.id,
+        name: business.name,
+        plan: business.plan,
+        subscriptionPlan: business.subscription_plan,
+        subscriptionEndDate: business.subscription_end_date,
+        topupId: business.topup_id,
+        telegram_chat_id: business.telegram_chat_id,
+        telegram_username: business.telegram_username,
+      } : null,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 26a. PUT /chatbot-admin/profile/telegram — Update business telegram profile ───
+router.put('/chatbot-admin/profile/telegram', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const admin = await ChatbotAdmin.findByPk(adminReq.chatbotAdmin.adminId);
+    if (!admin) return res.status(404).json({ success: false, error: 'Admin not found.' });
+
+    let chatbot: ChatBot | null = null;
+    if (admin.chatbot_id) chatbot = await ChatBot.findByPk(admin.chatbot_id);
+
+    const business = chatbot
+      ? await Business.findByPk(chatbot.business_id)
+      : await Business.findOne({ where: { name: `Standalone_${admin.email}` } });
+
+    if (!business) return res.status(404).json({ success: false, error: 'Business not found.' });
+
+    const { telegram_chat_id, telegram_username } = req.body;
+    await business.update({
+      telegram_chat_id: telegram_chat_id !== undefined ? telegram_chat_id : business.telegram_chat_id,
+      telegram_username: telegram_username !== undefined ? telegram_username : business.telegram_username,
+    });
+
+    return res.json({ success: true, business });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 27. PUT /chatbot-admin/chatbot — Edit chatbot metadata (standalone only) ───────
+router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    if (!adminReq.chatbotAdmin.isStandalone) {
+      return res.status(403).json({ success: false, error: 'Only standalone chatbot admins can customize chatbot metadata.' });
+    }
+
+    const { name, description, bot_token } = req.body;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+    const chatbot = await ChatBot.findByPk(chatbotId);
+    if (!chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    const updates: any = {};
+    if (name) updates.name = name;
+    if (description !== undefined) updates.description = description;
+
+    // Handle bot token update
+    if (bot_token && bot_token !== chatbot.token) {
+      const isTokenValid = await telegramService.validateBotToken(bot_token);
+      if (!isTokenValid) {
+        return res.status(400).json({ success: false, error: 'Invalid Telegram Bot Token. Please check your token and try again.' });
+      }
+
+      // Try to delete old webhook if it exists
+      try {
+        if (chatbot.token && chatbot.token !== 'mock-token' && chatbot.token !== 'mock-telegram-token') {
+          await telegramService.deleteWebhook(chatbot.token);
+        }
+      } catch (err) {
+        console.error('[Webhook] Failed to delete old webhook:', err);
+      }
+
+      updates.token = bot_token;
+    }
+
+    await chatbot.update(updates);
+
+    // If token was updated, try to set the new webhook automatically
+    if (updates.token) {
+      try {
+        await chatbotWebhookService.registerWebhook(chatbot.business_id, chatbot.id);
+      } catch (err) {
+        console.error('[Webhook] Failed to register new webhook during update:', err);
+      }
+    }
+
+    return res.json({ success: true, chatbot });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 28. GET /chatbot-admin/conversations — Chat list ───────────────────────────
+router.get('/chatbot-admin/conversations', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.json({ success: true, conversations: [] });
+
+    const sequelize = SequelizeService.getClient();
+    const conversations = await sequelize.query(
+      `SELECT sender_id, COUNT(*) AS message_count, MAX(sent_date) AS last_message_at
+       FROM messages
+       WHERE chatbot_id = :chatbotId
+       GROUP BY sender_id
+       ORDER BY last_message_at DESC`,
+      {
+        replacements: { chatbotId },
+        type: QueryTypes.SELECT,
+      }
+    ) as Array<{ sender_id: string; message_count: string; last_message_at: Date }>;
+
+    return res.json({ success: true, conversations });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 29. GET /chatbot-admin/conversations/:senderId — Chat history ────────────────
+router.get('/chatbot-admin/conversations/:senderId', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+    const senderId = req.params.senderId;
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const offset = Number(req.query.offset) || 0;
+
+    const messages = await Messages.findAndCountAll({
+      where: { chatbot_id: chatbotId, sender_id: senderId },
+      order: [['sent_date', 'ASC']],
+      limit,
+      offset,
+    });
+
+    return res.json({ success: true, messages: messages.rows, total: messages.count, limit, offset });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 30. POST /chatbot-admin/conversations/:senderId/reply — Send reply ───────────
+router.post('/chatbot-admin/conversations/:senderId/reply', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+    const senderId = String(req.params.senderId);
+    const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ success: false, error: 'Missing required field: "message".' });
+    }
+
+    const chatbot = await ChatBot.findByPk(chatbotId);
+    if (!chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    // Check & deduct credit
+    const hasCredits = await subscriptionService.checkCredits(chatbot.business_id);
+    if (!hasCredits) {
+      return res.status(403).json({ success: false, error: 'Credits exhausted.' });
+    }
+    await subscriptionService.deductCredit(chatbot.business_id);
+
+    // Send via Telegram
+    const msgId = await telegramService.sendMessage(chatbot.token, senderId, message);
+
+    // Save message to DB
+    const savedMsg = await Messages.create({
+      chatbot_id: chatbotId,
+      sender_id: senderId,
+      message: message,
+      sender_type: 'bot',
+    });
+
+    // Broadcast new message via Socket.io
+    try {
+      SocketService.io.to(chatbotId.toString()).emit('new_message', savedMsg.toJSON());
+    } catch (err) {
+      console.error('Socket emit error (admin reply):', err);
+    }
+
+    return res.json({ success: true, message: savedMsg });
+  } catch (error) {
+    console.error('[Error in chatbot-admin reply API]:', error);
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 31. GET /chatbot-admin/knowledge — View knowledge chunks ────────────────────
+router.get('/chatbot-admin/knowledge', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    if (!adminReq.chatbotAdmin.canManageKnowledge) {
+      return res.status(403).json({ success: false, error: 'Access denied: missing knowledge base management permission.' });
+    }
+
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+    const chatbot = await ChatBot.findByPk(chatbotId);
+    if (!chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const offset = Number(req.query.offset) || 0;
+
+    const collectionName = `business_${chatbot.business_id}`;
+    const { chunks } = await vectorStore.listDocuments(collectionName, 10000, 0);
+
+    // Filter to only chunks for this specific chatbot
+    const chatbotChunks = chunks.filter(c => String(c.metadata?.chatbot_id) === String(chatbotId));
+    const paged = chatbotChunks.slice(offset, offset + limit);
+
+    return res.json({ success: true, chunks: paged, total: chatbotChunks.length, limit, offset });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 32. POST /chatbot-admin/knowledge/ingest — Ingest knowledge ─────────────────
+router.post('/chatbot-admin/knowledge/ingest', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    if (!adminReq.chatbotAdmin.canManageKnowledge) {
+      return res.status(403).json({ success: false, error: 'Access denied: missing knowledge base management permission.' });
+    }
+
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+    const { documentText, maxChunkSize, overlap } = req.body;
+    if (!documentText) return res.status(400).json({ success: false, error: 'Missing required field: "documentText".' });
+
+    const chatbot = await ChatBot.findByPk(chatbotId);
+    if (!chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    const result = await knowledgeService.ingestDocument({
+      chatbotId: chatbotId,
+      businessId: chatbot.business_id,
+      documentText,
+      maxChunkSize: maxChunkSize ? Number(maxChunkSize) : undefined,
+      overlap: overlap ? Number(overlap) : undefined,
+    });
+
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 33. DELETE /chatbot-admin/knowledge/chunks/:docId — Delete chunk ──────────────
+router.delete('/chatbot-admin/knowledge/chunks/:docId', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    if (!adminReq.chatbotAdmin.canManageKnowledge) {
+      return res.status(403).json({ success: false, error: 'Access denied: missing knowledge base management permission.' });
+    }
+
+    const docId = decodeURIComponent(String(req.params.docId));
+    const deleted = await vectorStore.deleteDocument(docId);
+    if (!deleted) return res.status(404).json({ success: false, error: `Chunk "${docId}" not found.` });
+
+    return res.json({ success: true, message: 'Chunk deleted.' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 35. PUT /chatbot-admin/system-prompt — Update system prompt ──────────────────
+router.put('/chatbot-admin/system-prompt', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    if (!adminReq.chatbotAdmin.canManageSystemPrompt) {
+      return res.status(403).json({ success: false, error: 'Access denied: missing system prompt management permission.' });
+    }
+
+    const { customSystemPrompt } = req.body;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+
+    const chatbot = await ChatBot.findByPk(chatbotId);
+    if (!chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    await chatbot.update({ custom_system_prompt: customSystemPrompt || null });
+    return res.json({ success: true, customSystemPrompt: chatbot.custom_system_prompt });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 34. GET /chatbot-admin/system-prompt — View system prompt ────────────────────
+router.get('/chatbot-admin/system-prompt', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    if (!adminReq.chatbotAdmin.canManageSystemPrompt) {
+      return res.status(403).json({ success: false, error: 'Access denied: missing system prompt management permission.' });
+    }
+
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+
+    const chatbot = await ChatBot.findByPk(chatbotId);
+    if (!chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    const activeStrategy = chatbot.bot_role || 'sales';
+    const factory = new SystemPromptFactory();
+    const business = await Business.findByPk(chatbot.business_id);
+    const context = {
+      businessName: business ? business.name : 'Platform',
+      businessDetailInfo: business ? business.detail_info : '',
+      botName: chatbot.name,
+      botType: chatbot.type
+    };
+    const activePrompt = factory.getPrompt(activeStrategy, context);
+
+    return res.json({ success: true, customSystemPrompt: chatbot.custom_system_prompt, activePrompt });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+
+export { router };
