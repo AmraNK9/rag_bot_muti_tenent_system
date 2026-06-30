@@ -1,69 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChatbot } from '../../contexts/ChatbotContext';
-import { useToast } from '../../contexts/ToastContext';
-import { updateChatbot, getSystemBotInfo } from '../../api/client';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Send, CreditCard, Pencil, Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon, Monitor, Settings, Zap, LogOut, ChevronRight } from 'lucide-react';
 
 interface SidebarDrawerProps {
   drawerOpen: boolean;
   setDrawerOpen: (open: boolean) => void;
-  onSelectBilling: () => void;
+  onOpenSettings: () => void;
 }
 
-export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onSelectBilling }) => {
+export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onOpenSettings }) => {
   const { profile, logout } = useAuth();
-  const { chatbot, credits, businessPlanInfo, setChatbot } = useChatbot();
-  const { showToast } = useToast();
+  const { chatbot, credits, businessPlanInfo } = useChatbot();
   const { theme, setTheme } = useTheme();
   const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
 
-  const [editName, setEditName] = useState(chatbot?.name || '');
-  const [editDesc, setEditDesc] = useState(chatbot?.description || '');
-  const [editToken, setEditToken] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [botUsername, setBotUsername] = useState('mock_bot');
+  const isTelegramConnected = businessPlanInfo?.telegram_chat_id != null;
+  const planLimit: number = businessPlanInfo?.plan_query_limit ?? 0;
+  const creditPct = planLimit > 0 ? Math.max(0, Math.min(100, (credits / planLimit) * 100)) : 0;
+  const creditLow = planLimit > 0 && credits < planLimit * 0.2;
 
-  useEffect(() => {
-    getSystemBotInfo()
-      .then((res) => {
-        if (res.success && res.username) {
-          setBotUsername(res.username);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  React.useEffect(() => {
-    if (chatbot) {
-      setEditName(chatbot.name);
-      setEditDesc(chatbot.description || '');
-      setEditToken('');
-    }
-  }, [chatbot]);
-
-  const handleSave = async () => {
-    if (!editName.trim()) return;
-    setSaving(true);
-    try {
-      const data = await updateChatbot(editName, editDesc, editToken || undefined);
-      if (data.success && data.chatbot) {
-        setChatbot(data.chatbot);
-        setShowEdit(false);
-        showToast('success', t('drawer.toast.botUpdatedTitle'), t('drawer.toast.botUpdatedMsg'));
-      }
-    } catch (e: any) {
-      showToast('error', t('drawer.toast.updateFailedTitle'), e?.response?.data?.error || tc('tryAgain'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const isTelegramConnected = !!businessPlanInfo?.telegram_chat_id;
+  // Avatar: first letter of name
+  const avatarLetter = (profile?.name || 'U').charAt(0).toUpperCase();
 
   return (
     <>
@@ -72,234 +33,238 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
         onClick={() => setDrawerOpen(false)}
       />
       <div className={`drawer ${drawerOpen ? 'open' : ''}`}>
+        {/* ── Header ── */}
         <div className="drawer-header">
           <h3>{t('drawer.title')}</h3>
           <button className="drawer-close" onClick={() => setDrawerOpen(false)}>✕</button>
         </div>
 
         <div className="drawer-content">
-          {/* Credits */}
-          <div className="credits-row">
-            <span className="credits-label">{t('drawer.credits')}</span>
-            <span className="credits-value">{credits}</span>
+
+          {/* ── User Identity Card ── */}
+          <div style={{
+            margin: '0 16px 16px',
+            padding: '16px',
+            background: 'var(--bg-surface-2)',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            {/* Avatar circle */}
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, var(--primary), #5e5ce6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.2rem',
+              fontWeight: 700,
+              color: '#fff',
+              flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(10,132,255,0.35)',
+            }}>
+              {avatarLetter}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {profile?.name}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {profile?.email}
+              </div>
+            </div>
           </div>
 
-          {/* Topup ID */}
+          {/* ── Credits Progress Pill ── */}
+          <div style={{ margin: '0 16px 16px' }}>
+            <div style={{
+              padding: '12px 14px',
+              background: 'var(--bg-surface-2)',
+              borderRadius: 'var(--radius)',
+              border: `1px solid ${creditLow ? 'rgba(255,59,48,0.4)' : 'var(--border)'}`,
+            }}>
+              {/* Label row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  <Zap size={13} fill="currentColor" color={creditLow ? 'var(--red)' : 'var(--primary)'} />
+                  {tc('settings.availableCredits')}
+                </div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: creditLow ? 'var(--red)' : 'var(--primary)' }}>
+                  {credits.toLocaleString()}
+                  {planLimit > 0 && (
+                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {' '}/ {planLimit.toLocaleString()}
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              {planLimit > 0 && (
+                <div style={{ height: 5, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${creditPct}%`,
+                    borderRadius: 4,
+                    background: creditLow
+                      ? 'linear-gradient(90deg, #ff3b30, #ff9500)'
+                      : 'linear-gradient(90deg, var(--primary), #5e5ce6)',
+                    transition: 'width 0.5s ease',
+                  }} />
+                </div>
+              )}
+
+              {creditLow && (
+                <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: 'var(--red)', lineHeight: 1.4 }}>
+                  ⚠️ Credits နည်းနေပါပြီ — ဖြည့်ပေးပါ
+                </p>
+              )}
+            </div>
+
+            {/* Upgrade Plan button only */}
+            <div style={{ marginTop: 8 }}>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.82rem', padding: '10px' }}
+                onClick={() => { setDrawerOpen(false); onOpenSettings(); }}
+              >
+                <Zap size={14} fill="currentColor" /> {tc('drawer.upgradeBtn')}
+              </button>
+            </div>
+          </div>
+
+          {/* ── Top-up ID ── */}
           {businessPlanInfo?.topupId && (
-            <div className="topup-pill" style={{ margin: '10px 16px' }}>
+            <div className="topup-pill" style={{ margin: '0 16px 16px' }}>
               <div className="topup-pill-label">Top-up ID (Reseller ကိုပေး)</div>
               <div className="topup-pill-value">{businessPlanInfo.topupId}</div>
             </div>
           )}
 
-          {/* Profile Info */}
-          <div className="drawer-section-title">Admin Profile</div>
-          <div className="drawer-item">
-            <span className="drawer-item-label">Name</span>
-            <span className="drawer-item-val">{profile?.name}</span>
-          </div>
-          <div className="drawer-item">
-            <span className="drawer-item-label">Email</span>
-            <span className="drawer-item-val">{profile?.email}</span>
-          </div>
-
-          {/* Telegram Notifications Section */}
-          <div className="drawer-section-title" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <BellRing size={16} /> Telegram Alerts
-          </div>
-          <div style={{ padding: '0 16px 10px' }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.3' }}>
-              Receive instant alerts for low credits, staff handoff requests, and plan approvals.
-            </p>
-            <div style={{
-              padding: '10px 12px',
-              borderRadius: 'var(--radius)',
-              background: isTelegramConnected ? 'rgba(50, 215, 75, 0.1)' : 'var(--bg-surface-2)',
-              border: isTelegramConnected ? '1px solid rgba(50, 215, 75, 0.3)' : '1px solid var(--border)',
-              marginBottom: '10px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isTelegramConnected ? 'var(--green)' : 'var(--text-muted)' }}>
-                  {isTelegramConnected ? '🟢 Connected' : '⚪ Not Connected'}
+          {/* ── Account & Settings Gateway ── */}
+          <div style={{ padding: '0 16px 8px' }}>
+            <button
+              className="btn btn-secondary"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '13px 16px',
+                background: 'var(--bg-surface-2)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+              }}
+              onClick={() => {
+                setDrawerOpen(false);
+                onOpenSettings();
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, color: 'var(--text-main)' }}>
+                <span style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 28, height: 28, borderRadius: 8,
+                  background: 'rgba(10, 132, 255, 0.12)', color: 'var(--primary)',
+                }}>
+                  <Settings size={15} />
                 </span>
-                {isTelegramConnected && businessPlanInfo?.telegram_username && (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    @{businessPlanInfo.telegram_username}
-                  </span>
+                {tc('settings.title')}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {!isTelegramConnected && (
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--red)', display: 'block' }} />
                 )}
+                <ChevronRight size={16} color="var(--text-muted)" />
               </div>
-            </div>
-            {businessPlanInfo?.id && (
-              <a
-                href={`https://t.me/${botUsername}?start=connect_business_${businessPlanInfo.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-primary btn-sm"
-                style={{
-                  width: '100%',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <Send size={16} /> {isTelegramConnected ? 'Reconnect Telegram Bot' : 'One-Click Connect Telegram'}
-              </a>
-            )}
+            </button>
           </div>
 
-          {/* Billing Section */}
-          <div className="drawer-section-title" style={{ marginTop: 8 }}>Billing & Account</div>
-          <div 
-            className="drawer-item" 
-            onClick={() => {
-              onSelectBilling();
-              setDrawerOpen(false);
-            }}
-            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background-color 0.2s' }}
-          >
-            <span className="drawer-item-label" style={{ color: 'var(--text-main)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <CreditCard size={18} /> Billing & Subscriptions
-            </span>
-            <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>❯</span>
-          </div>
-
-          {/* Bot settings */}
-          {chatbot && (
-            <>
-              <div className="drawer-section-title" style={{ marginTop: 8 }}>Bot Configuration</div>
-              {!showEdit ? (
-                <>
-                  <div className="drawer-item">
-                    <span className="drawer-item-label">Bot Name</span>
-                    <span className="drawer-item-val">{chatbot.name}</span>
-                  </div>
-                  <div className="drawer-item">
-                    <span className="drawer-item-label">Type</span>
-                    <span className="drawer-item-val" style={{ textTransform: 'capitalize' }}>{chatbot.type}</span>
-                  </div>
-                  <div className="drawer-item">
-                    <span className="drawer-item-label">Role</span>
-                    <span className="drawer-item-val" style={{ textTransform: 'capitalize' }}>{chatbot.bot_role}</span>
-                  </div>
-                  <div style={{ padding: '12px 16px' }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                      onClick={() => setShowEdit(true)}
-                    >
-                      <Pencil size={14} /> Edit Bot Details
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Bot Name</label>
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      placeholder="Bot name..."
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Description</label>
-                    <textarea
-                      rows={2}
-                      value={editDesc}
-                      onChange={e => setEditDesc(e.target.value)}
-                      placeholder="Optional description..."
-                      style={{ resize: 'none' }}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Bot Token</label>
-                    <input
-                      type="password"
-                      value={editToken}
-                      onChange={e => setEditToken(e.target.value)}
-                      placeholder="Leave blank to keep existing token..."
-                    />
-                    <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                      Update only if you generated a new token from BotFather.
-                    </small>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => setShowEdit(false)} disabled={saving}>
-                      Cancel
-                    </button>
-                    <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving} style={{ flex: 1 }}>
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
         </div>
 
+        {/* ── Footer: Theme + Language + Logout ── */}
         <div className="drawer-footer">
-          {/* Theme switcher */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {/* Segmented Control: Theme */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-page)',
+            padding: 3,
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 8,
+            border: '1px solid var(--border)'
+          }}>
             {(['light', 'system', 'dark'] as const).map(mode => (
               <button
                 key={mode}
                 onClick={() => setTheme(mode)}
                 style={{
                   flex: 1,
-                  padding: '8px 6px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: `1px solid ${theme === mode ? 'var(--primary)' : 'var(--border)'}`,
-                  background: theme === mode ? 'var(--primary-bg)' : 'transparent',
+                  padding: '6px 4px',
+                  borderRadius: 'calc(var(--radius-sm) - 2px)',
+                  border: 'none',
+                  background: theme === mode ? 'var(--bg-surface)' : 'transparent',
                   color: theme === mode ? 'var(--primary)' : 'var(--text-muted)',
                   cursor: 'pointer',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
                   fontFamily: 'inherit',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '4px'
+                  gap: 6,
+                  boxShadow: theme === mode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                 }}
               >
-                {mode === 'light' ? <><Sun size={14} /> Light</> : mode === 'dark' ? <><Moon size={14} /> Dark</> : <><Monitor size={14} /> Auto</>}
+                {mode === 'light' ? <Sun size={13} /> : mode === 'dark' ? <Moon size={13} /> : <Monitor size={13} />}
+                <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>
+                  {mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'Auto'}
+                </span>
               </button>
             ))}
           </div>
 
-          {/* Language switcher */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {/* Segmented Control: Language */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-page)',
+            padding: 3,
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 12,
+            border: '1px solid var(--border)'
+          }}>
             {(['my', 'en'] as const).map(lang => (
               <button
                 key={lang}
-                onClick={() => {
-                  i18n.changeLanguage(lang);
-                  localStorage.setItem('chatbot_admin_lang', lang);
-                }}
+                onClick={() => { i18n.changeLanguage(lang); localStorage.setItem('chatbot_admin_lang', lang); }}
                 style={{
                   flex: 1,
-                  padding: '8px 6px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: `1px solid ${i18n.language === lang ? 'var(--primary)' : 'var(--border)'}`,
-                  background: i18n.language === lang ? 'var(--primary-bg)' : 'transparent',
+                  padding: '6px 4px',
+                  borderRadius: 'calc(var(--radius-sm) - 2px)',
+                  border: 'none',
+                  background: i18n.language === lang ? 'var(--bg-surface)' : 'transparent',
                   color: i18n.language === lang ? 'var(--primary)' : 'var(--text-muted)',
                   cursor: 'pointer',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
                   fontFamily: 'inherit',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  boxShadow: i18n.language === lang ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                 }}
               >
-                {lang === 'my' ? '🇲🇲 မြန်မာ' : '🇬🇧 English'}
+                <span>{lang === 'my' ? '🇲🇲' : '🇬🇧'}</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>
+                  {lang === 'my' ? 'မြန်မာ' : 'English'}
+                </span>
               </button>
             ))}
           </div>
-          <button className="btn btn-danger" onClick={logout} style={{ fontSize: '0.9rem' }}>
-            {t('drawer.logout')}
+
+          <button className="btn btn-danger" onClick={logout} style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <LogOut size={16} /> {t('drawer.logout')}
           </button>
         </div>
       </div>

@@ -136,16 +136,26 @@ router.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: Req
         custom_system_prompt: chatbot.custom_system_prompt,
       } : null,
       credits,
-      business: business ? {
-        id: business.id,
-        name: business.name,
-        plan: business.plan,
-        subscriptionPlan: business.subscription_plan,
-        subscriptionEndDate: business.subscription_end_date,
-        topupId: business.topup_id,
-        telegram_chat_id: business.telegram_chat_id,
-        telegram_username: business.telegram_username,
-      } : null,
+      business: business ? await (async () => {
+        let plan_name = business.subscription_plan || 'Free';
+        let plan_query_limit: number | null = null;
+        if (business.subscription_plan) {
+          const plan = await Plan.findOne({ where: { name: business.subscription_plan } });
+          if (plan) { plan_name = plan.name; plan_query_limit = plan.query_limit; }
+        }
+        return {
+          id: business.id,
+          name: business.name,
+          plan: business.plan,
+          plan_name,
+          plan_query_limit,
+          subscriptionPlan: business.subscription_plan,
+          subscriptionEndDate: business.subscription_end_date,
+          topupId: business.topup_id,
+          telegram_chat_id: business.telegram_chat_id,
+          telegram_username: business.telegram_username,
+        };
+      })() : null,
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
