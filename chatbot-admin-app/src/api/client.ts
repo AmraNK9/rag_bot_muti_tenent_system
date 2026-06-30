@@ -53,6 +53,10 @@ export const getConversations = () => api.get(`/chatbot-admin/conversations?t=${
 export const getMessages = (senderId: string, limit = 50, offset = 0) =>
   api.get(`/chatbot-admin/conversations/${senderId}?limit=${limit}&offset=${offset}&t=${Date.now()}`).then((r) => r.data);
 
+// Delta sync: fetch only messages newer than `sinceId`
+export const getMessagesSince = (senderId: string, sinceId: number) =>
+  api.get(`/chatbot-admin/conversations/${senderId}?since=${sinceId}&limit=200&t=${Date.now()}`).then((r) => r.data);
+
 export const replyToConversation = (senderId: string, message: string) =>
   api.post(`/chatbot-admin/conversations/${senderId}/reply`, { message }).then((r) => r.data);
 

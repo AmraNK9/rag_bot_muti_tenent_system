@@ -293,9 +293,18 @@ router.get('/chatbot-admin/conversations/:senderId', chatbotAdminAuthMiddleware,
 
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Number(req.query.offset) || 0;
+    const since = Number(req.query.since) || 0;
+
+    // Delta sync mode: when `since` is provided, return only messages newer than that ID
+    // This is used by the frontend cache to avoid re-fetching all messages
+    const whereClause: any = { chatbot_id: chatbotId, sender_id: senderId };
+    if (since > 0) {
+      const { Op } = await import('sequelize');
+      whereClause.id = { [Op.gt]: since };
+    }
 
     const messages = await Messages.findAndCountAll({
-      where: { chatbot_id: chatbotId, sender_id: senderId },
+      where: whereClause,
       order: [['sent_date', 'DESC']],
       limit,
       offset,

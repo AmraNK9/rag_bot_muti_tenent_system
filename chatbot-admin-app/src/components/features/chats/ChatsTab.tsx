@@ -3,7 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
 import type { Conversation, Message } from '../../../types';
-import { getConversations, getMessages, replyToConversation } from '../../../api/client';
+import { getConversations, getMessages, getMessagesSince, replyToConversation } from '../../../api/client';
+import {
+  getCachedMessages,
+  getMaxCachedId,
+  getCachedCount,
+  cacheMessages,
+  cacheSingleMessage,
+  getOlderCachedMessages,
+} from '../../../services/messageCache';
 
 // Generate a unique hue per sender_id for visual variety in avatars
 function hashAvatarColor(id: string): string {
@@ -34,18 +42,36 @@ export const ChatsTab: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
+  const CONV_CACHE_KEY = 'chatbot_conversations_cache';
+
+  const sortConversations = (list: Conversation[]) =>
+    [...list].sort((a, b) => {
+      if (a.sender_id === 'system') return -1;
+      if (b.sender_id === 'system') return 1;
+      return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+    });
+
   const loadConversations = useCallback(async (silent = false) => {
-    if (!silent) setLoadingConvs(true);
+    // Step 1: Show cached conversations instantly
+    if (!silent) {
+      try {
+        const cached = localStorage.getItem(CONV_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached) as Conversation[];
+          setConversations(sortConversations(parsed));
+        }
+      } catch {}
+      setLoadingConvs(true);
+    }
+
+    // Step 2: Background API sync
     try {
       const data = await getConversations();
       const rawList: Conversation[] = data.conversations || [];
-      // Pin 'system' conversation to the top, sort others by latest message time DESC
-      const sorted = [...rawList].sort((a, b) => {
-        if (a.sender_id === 'system') return -1;
-        if (b.sender_id === 'system') return 1;
-        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
-      });
+      const sorted = sortConversations(rawList);
       setConversations(sorted);
+      // Update cache for next app open
+      localStorage.setItem(CONV_CACHE_KEY, JSON.stringify(rawList));
     } catch (e) {
       console.error(e);
     } finally {
@@ -53,24 +79,80 @@ export const ChatsTab: React.FC = () => {
     }
   }, []);
 
+  // Track which chats have been background-synced during this connected session
+  const syncedSendersRef = useRef<Set<string>>(new Set());
+
+  /**
+   * Cache-First message loading with Smart Silent Sync
+   *
+   * - Cache exists → display instantly (0 latency)
+   * - Then, do a SILENT background delta sync *only once* per active connection
+   * - If user exits and re-enters chat while connected, API is NOT called again
+   */
   const loadMessages = useCallback(async (senderId: string) => {
     setLoadingMsgs(true);
     try {
-      const data = await getMessages(senderId, 50, 0);
-      const rawMsgs = data.messages || [];
-      // Backend returns DESC order, reverse it to show chronologically
-      setMessages([...rawMsgs].reverse());
-      setTotalMessages(data.total || 0);
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 80);
-      // Silently reload the conversation list to clear the unread badge immediately
-      loadConversations(true);
+      const cached = await getCachedMessages(senderId, 50);
+      const cachedTotal = await getCachedCount(senderId);
+
+      if (cached.length > 0) {
+        // Cache hit — instant display (zero latency)
+        setMessages(cached);
+        setTotalMessages(Math.max(cachedTotal, cached.length));
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
+
+        // Smart Silent Sync: only sync if we haven't synced this chat yet in this session
+        if (!syncedSendersRef.current.has(senderId)) {
+          const maxId = await getMaxCachedId(senderId);
+          try {
+            const deltaData = await getMessagesSince(senderId, maxId);
+            const newMsgs: Message[] = deltaData.messages || [];
+            if (newMsgs.length > 0) {
+              await cacheMessages(newMsgs);
+              const sorted = [...newMsgs].reverse();
+              setMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id));
+                const unique = sorted.filter(m => !existingIds.has(m.id));
+                return [...prev, ...unique];
+              });
+              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+            }
+            // Mark as synced for this session so we don't call API again if user re-enters
+            if (socket?.connected) {
+              syncedSendersRef.current.add(senderId);
+            }
+          } catch (syncErr) {
+            console.warn('[SilentSync] Background sync failed:', syncErr);
+          }
+        }
+      } else {
+        // Cache miss — first-ever open, full fetch from API
+        const data = await getMessages(senderId, 50, 0);
+        const rawMsgs: Message[] = data.messages || [];
+        setMessages([...rawMsgs].reverse());
+        setTotalMessages(data.total || 0);
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 80);
+        await cacheMessages(rawMsgs);
+        if (socket?.connected) {
+          syncedSendersRef.current.add(senderId);
+        }
+      }
+
+      // Locally clear unread badge (no API call)
+      setConversations(prev =>
+        prev.map(c => c.sender_id === senderId ? { ...c, unread_count: 0 } : c)
+      );
     } catch (e) {
       console.error(e);
     } finally {
       setLoadingMsgs(false);
     }
-  }, [loadConversations]);
+  }, [socket]);
 
+  /**
+   * Infinite scroll up — load older messages
+   * Try cache first, then fall back to API
+   */
   const loadMoreMessages = async () => {
     if (!activeSender || loadingMore || messages.length >= totalMessages) return;
     setLoadingMore(true);
@@ -78,12 +160,19 @@ export const ChatsTab: React.FC = () => {
     const previousScrollHeight = container ? container.scrollHeight : 0;
 
     try {
-      const data = await getMessages(activeSender, 50, messages.length);
-      const olderMessages = (data.messages || []).reverse();
-      setMessages((prev) => [...olderMessages, ...prev]);
-      setTotalMessages(data.total || 0);
+      const oldestDisplayedId = messages.length > 0 ? messages[0].id : Infinity;
+      const olderCached = await getOlderCachedMessages(activeSender, oldestDisplayedId, 50);
 
-      // Keep scroll position relative to the loaded content
+      if (olderCached.length > 0) {
+        setMessages(prev => [...olderCached, ...prev]);
+      } else {
+        const data = await getMessages(activeSender, 50, messages.length);
+        const olderMessages = (data.messages || []).reverse();
+        setMessages(prev => [...olderMessages, ...prev]);
+        setTotalMessages(data.total || 0);
+        await cacheMessages(data.messages || []);
+      }
+
       if (container) {
         setTimeout(() => {
           container.scrollTop = container.scrollHeight - previousScrollHeight;
@@ -107,19 +196,43 @@ export const ChatsTab: React.FC = () => {
     if (chatbot) loadConversations();
   }, [chatbot, loadConversations]);
 
-  // Listen to incoming messages in real-time via Socket.io
+  // WebSocket: real-time messages + app-level reconnect sync
   useEffect(() => {
     if (!socket) return;
 
+    // Real-time message handler
     const handleNewMessage = (msg: any) => {
-      // 1. Refresh conversations list silently (to update previews, badges, and sorting)
-      loadConversations(true);
+      // 1. Cache immediately
+      cacheSingleMessage(msg).catch(err => console.warn('[Cache] Failed to cache socket message:', err));
 
-      // 2. If the message belongs to the active conversation, append it in real-time
+      // 2. Update conversation list locally (preview + badge + sort)
+      setConversations(prev => {
+        const exists = prev.find(c => c.sender_id === msg.sender_id);
+        if (exists) {
+          const updated = prev.map(c =>
+            c.sender_id === msg.sender_id
+              ? {
+                  ...c,
+                  last_message: msg.message,
+                  last_sender_type: msg.sender_type,
+                  last_message_at: msg.sent_date,
+                  // If this chat is currently open, don't increment unread
+                  unread_count: activeSender === msg.sender_id ? 0 : Number(c.unread_count || 0) + 1,
+                }
+              : c
+          );
+          const sorted = sortConversations(updated);
+          // Persist to localStorage for next app open
+          try { localStorage.setItem(CONV_CACHE_KEY, JSON.stringify(sorted)); } catch {}
+          return sorted;
+        }
+        return prev;
+      });
+
+      // 3. If the message belongs to the active conversation, append in real-time
       if (activeSender && String(msg.sender_id) === String(activeSender)) {
-        setMessages((prev) => {
-          // Avoid appending duplicate messages
-          if (prev.some((m) => m.id === msg.id)) return prev;
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
           const newMsgs = [...prev, msg];
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
           return newMsgs;
@@ -127,9 +240,46 @@ export const ChatsTab: React.FC = () => {
       }
     };
 
+    // App-level reconnect sync: when WebSocket reconnects after a disconnect,
+    // delta-sync all cached conversations to fill any gaps
+    const handleReconnect = async () => {
+      console.log('[Socket] Reconnected — running app-level delta sync');
+      
+      // Clear the synced memory so next chat entry forces a gap-fill sync
+      syncedSendersRef.current.clear();
+      
+      loadConversations(true);
+
+      // Sync messages for the active conversation if any
+      if (activeSender) {
+        try {
+          const maxId = await getMaxCachedId(activeSender);
+          if (maxId > 0) {
+            const deltaData = await getMessagesSince(activeSender, maxId);
+            const newMsgs: Message[] = deltaData.messages || [];
+            if (newMsgs.length > 0) {
+              await cacheMessages(newMsgs);
+              const sorted = [...newMsgs].reverse();
+              setMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id));
+                const unique = sorted.filter(m => !existingIds.has(m.id));
+                return [...prev, ...unique];
+              });
+              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+            }
+          }
+        } catch (err) {
+          console.warn('[DeltaSync] Reconnect sync failed:', err);
+        }
+      }
+    };
+
     socket.on('new_message', handleNewMessage);
+    socket.io.on('reconnect', handleReconnect);
+
     return () => {
       socket.off('new_message', handleNewMessage);
+      socket.io.off('reconnect', handleReconnect);
     };
   }, [socket, activeSender, loadConversations]);
 
