@@ -100,7 +100,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  background: 'rgba(10,132,255,0.15)',
+                  background: 'var(--primary-bg)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -294,7 +294,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                     type="button"
                     onClick={() => setShowHelp(true)}
                     style={{
-                      background: 'rgba(10,132,255,0.12)',
+                      background: 'var(--primary-bg)',
                       border: '1px solid rgba(10,132,255,0.25)',
                       borderRadius: 20,
                       color: 'var(--primary)',
@@ -429,7 +429,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                         }`,
                         background:
                           role === r.value
-                            ? 'rgba(10,132,255,0.12)'
+                            ? 'var(--primary-bg)'
                             : 'var(--bg-surface-2)',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',

@@ -4,6 +4,52 @@
    CSS VARIABLES — Premium Native Mobile Dark Theme
    ═══════════════════════════════════════════════════════════ */
 :root {
+  /* LIGHT MODE (Default) */
+  --bg-page: #f2f2f7;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f2f2f7;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+
+  --border: rgba(0, 0, 0, 0.10);
+  --border-light: rgba(0, 0, 0, 0.05);
+  --border-color: rgba(0, 0, 0, 0.10);
+
+  --text-main: #000000;
+  --text-muted: #8e8e93;
+  --text-color: #000000;
+
+  --primary: #0a84ff;
+  --primary-hover: #007aff;
+  --primary-bg: rgba(10, 132, 255, 0.15);
+  --blue: #0a84ff;
+  --text-link: #0a84ff;
+
+  --green: #34c759;
+  --red: #ff3b30;
+  --yellow: #ffcc00;
+  --orange: #ff9500;
+
+  --bubble-user: #0a84ff;
+  --bubble-bot: #e5e5ea;
+  --bg-accent: #e5e5ea;
+  --bg-header: #ffffff;
+
+  --font: 'Inter', 'Noto Sans Myanmar', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --nav-h: 56px;
+  --bottom-h: 72px;
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-lg: 22px;
+  --device-frame: #f2f2f7;
+  --device-shadow: 
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 30px 80px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="dark"] {
+  /* DARK MODE */
   --bg-page: #000000;
   --bg-surface: #1c1c1e;
   --bg-surface-2: #2c2c2e;
@@ -33,14 +79,11 @@
   --bg-accent: #2c2c2e;
   --bg-header: #000000;
 
-  --font: 'Inter', 'Noto Sans Myanmar', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --nav-h: 56px;
-  --bottom-h: 72px;
-  --radius-xs: 8px;
-  --radius-sm: 12px;
-  --radius: 16px;
-  --radius-lg: 22px;
-  --radius-xl: 28px;
+  --device-frame: #1a1a1a;
+  --device-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 30px 80px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -61,7 +104,7 @@ html {
 
 body {
   font-family: var(--font);
-  background-color: #09090b;
+  background-color: var(--bg-page);
   color: var(--text-main);
   height: 100%;
   overflow: hidden;
@@ -95,11 +138,8 @@ body {
     height: 90vh;
     max-height: 900px;
     border-radius: 44px;
-    border: 8px solid #1a1a1a;
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.06),
-      0 30px 80px rgba(0, 0, 0, 0.8),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border: 8px solid var(--device-frame);
+    box-shadow: var(--device-shadow);
   }
 }
 
@@ -1645,6 +1685,7 @@ body {
   flex-direction: column;
   height: 100%;
   align-items: center;
+  color: #ffffff;
   justify-content: space-between;
   padding: 60px 28px 48px;
   text-align: center;

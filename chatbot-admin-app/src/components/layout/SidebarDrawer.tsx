@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChatbot } from '../../contexts/ChatbotContext';
 import { useToast } from '../../contexts/ToastContext';
-import { useTranslation } from 'react-i18next';
 import { updateChatbot, getSystemBotInfo } from '../../api/client';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarDrawerProps {
   drawerOpen: boolean;
@@ -15,6 +16,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
   const { profile, logout } = useAuth();
   const { chatbot, credits, businessPlanInfo, setChatbot } = useChatbot();
   const { showToast } = useToast();
+  const { theme, setTheme } = useTheme();
   const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
 
@@ -237,6 +239,32 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
         </div>
 
         <div className="drawer-footer">
+          {/* Theme switcher */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+            {(['light', 'system', 'dark'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setTheme(mode)}
+                style={{
+                  flex: 1,
+                  padding: '8px 6px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: `1px solid ${theme === mode ? 'var(--primary)' : 'var(--border)'}`,
+                  background: theme === mode ? 'var(--primary-bg)' : 'transparent',
+                  color: theme === mode ? 'var(--primary)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.2s ease',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {mode === 'light' ? '☀️ Light' : mode === 'dark' ? '🌙 Dark' : '⚙️ Auto'}
+              </button>
+            ))}
+          </div>
+
           {/* Language switcher */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
             {(['my', 'en'] as const).map(lang => (
@@ -251,7 +279,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
                   padding: '8px 6px',
                   borderRadius: 'var(--radius-sm)',
                   border: `1px solid ${i18n.language === lang ? 'var(--primary)' : 'var(--border)'}`,
-                  background: i18n.language === lang ? 'rgba(10,132,255,0.12)' : 'transparent',
+                  background: i18n.language === lang ? 'var(--primary-bg)' : 'transparent',
                   color: i18n.language === lang ? 'var(--primary)' : 'var(--text-muted)',
                   cursor: 'pointer',
                   fontSize: '0.78rem',
