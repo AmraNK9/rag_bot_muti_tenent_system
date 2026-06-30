@@ -170,6 +170,25 @@ export default function App() {
     }
   };
 
+  const handleReject = async (id: number, hasReseller: boolean) => {
+    const confirmMsg = hasReseller 
+      ? 'OVERRIDE PAYMENT: Reject client plan request directly from Super Admin panel?'
+      : 'Reject client plan request?';
+      
+    if (!confirm(confirmMsg)) return;
+    try {
+      const { rejectRequest } = await import('./api/client');
+      const res = await rejectRequest(id);
+      if (res.success) {
+        alert(hasReseller ? 'Payment override rejected successfully!' : 'Request rejected successfully!');
+        const reload = await getRequests();
+        if (reload.success) setRequests(reload.requests || []);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Rejection failed.');
+    }
+  };
+
   const handleApproveTopUp = async (id: number) => {
     if (!confirm('Approve this reseller top-up request and credit their wallet balance?')) return;
     try {
@@ -243,6 +262,7 @@ export default function App() {
               requests={requests}
               loadingRequests={loadingRequests}
               onApprove={handleApprove}
+              onReject={handleReject}
               setZoomImgUrl={setZoomImgUrl}
             />
           )}

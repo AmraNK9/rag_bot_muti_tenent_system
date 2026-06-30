@@ -1924,6 +1924,37 @@ apiRouter.post('/total-admin/requests/:id/approve', adminSecretAuth, async (req:
   }
 });
 
+// ─── 51a. POST /total-admin/requests/:id/reject — Override reject ─────────────
+apiRouter.post('/total-admin/requests/:id/reject', adminSecretAuth, async (req: Request, res: Response) => {
+  try {
+    const requestId = Number(req.params.id);
+    const planRequest = await PlanRequest.findOne({ where: { id: requestId, status: 'pending' } });
+    if (!planRequest) return res.status(404).json({ success: false, error: 'Pending request not found.' });
+
+    await planRequest.update({ status: 'rejected' });
+
+    // Create system chat notification & broadcast
+    try {
+      const chatbot = await ChatBot.findOne({ where: { business_id: planRequest.business_id } });
+      if (chatbot) {
+        const savedMsg = await Messages.create({
+          chatbot_id: chatbot.id,
+          sender_id: 'system',
+          message: `Your Plan Upgrade Request for "${planRequest.plan_name.toUpperCase()}" has been Rejected by the Admin. Please verify your payment details and submit again.`,
+          sender_type: 'user',
+        });
+        SocketService.io.to(chatbot.id.toString()).emit('new_message', savedMsg.toJSON());
+      }
+    } catch (err) {
+      console.error('[System Notification Error] Failed to create or emit system message:', err);
+    }
+
+    return res.json({ success: true, message: 'Request rejected via admin override.' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
 // ─── 52. GET /total-admin/topups — Get all reseller top-ups ──────────────────────
 apiRouter.get('/total-admin/topups', adminSecretAuth, async (req: Request, res: Response) => {
   try {

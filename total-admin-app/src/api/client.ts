@@ -60,6 +60,9 @@ export const getRequests = () =>
 export const approveRequest = (id: number) =>
   api.post(`/total-admin/requests/${id}/approve`).then((r) => r.data);
 
+export const rejectRequest = (id: number) =>
+  api.post(`/total-admin/requests/${id}/reject`).then((r) => r.data);
+
 export const getResellerTopUps = () =>
   api.get('/total-admin/topups').then((r) => r.data);
 

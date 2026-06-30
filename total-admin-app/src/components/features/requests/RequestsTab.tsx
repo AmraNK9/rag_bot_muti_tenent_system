@@ -6,6 +6,7 @@ interface RequestsTabProps {
   requests: PlanRequest[];
   loadingRequests: boolean;
   onApprove: (id: number, hasReseller: boolean) => Promise<void>;
+  onReject: (id: number, hasReseller: boolean) => Promise<void>;
   setZoomImgUrl: (url: string | null) => void;
 }
 
@@ -13,6 +14,7 @@ export const RequestsTab: React.FC<RequestsTabProps> = ({
   requests,
   loadingRequests,
   onApprove,
+  onReject,
   setZoomImgUrl,
 }) => {
   if (loadingRequests) {
@@ -86,13 +88,22 @@ export const RequestsTab: React.FC<RequestsTabProps> = ({
           />
 
           {req.status === 'pending' && req.reseller_id === null && (
-            <button
-              className="btn btn-primary btn-sm"
-              style={{ width: '100%' }}
-              onClick={() => onApprove(req.id, false)}
-            >
-              ✅ Approve Request
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ flex: 1 }}
+                onClick={() => onApprove(req.id, false)}
+              >
+                ✅ Approve
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ flex: 1 }}
+                onClick={() => onReject(req.id, false)}
+              >
+                ❌ Reject
+              </button>
+            </div>
           )}
         </div>
       ))}
