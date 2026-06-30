@@ -5,6 +5,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import type { SmartItem } from '../../../types';
 import { getSmartItems, deleteSmartItem } from '../../../api/client';
 import { SmartItemFormModal } from './SmartItemFormModal';
+import { LayoutGrid, Package, MessageSquare, Plus, Search, CircleDollarSign, Pencil, Trash2 } from 'lucide-react';
 
 // Unique accent colour per item id for visual variety
 function hashColor(str: string): string {
@@ -86,10 +87,10 @@ export const SmartItemsTab: React.FC = () => {
     setShowModal(true);
   };
 
-  const TABS: { key: FilterType; label: string; icon: string }[] = [
-    { key: 'all', label: t('filterAll'), icon: '✦' },
-    { key: 'product', label: t('filterProduct'), icon: '📦' },
-    { key: 'info', label: t('filterInfo'), icon: '💬' },
+  const TABS: { key: FilterType; label: string; icon: React.ReactNode } = [
+    { key: 'all', label: t('filterAll'), icon: <LayoutGrid size={14} /> },
+    { key: 'product', label: t('filterProduct'), icon: <Package size={14} /> },
+    { key: 'info', label: t('filterInfo'), icon: <MessageSquare size={14} /> },
   ];
 
   return (
@@ -100,8 +101,8 @@ export const SmartItemsTab: React.FC = () => {
           <h2>{t('title')}</h2>
           <p>{t('subtitle')}</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={openNewItemModal}>
-          ＋ {t('addBtn')}
+        <button className="btn btn-primary btn-sm" onClick={openNewItemModal} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Plus size={16} /> {t('addBtn')}
         </button>
       </div>
 
@@ -140,6 +141,9 @@ export const SmartItemsTab: React.FC = () => {
                 transition: 'all 0.18s ease',
                 borderRight: '1px solid var(--border)',
                 whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
               }}
             >
               {tab.icon} {tab.label}
@@ -151,8 +155,8 @@ export const SmartItemsTab: React.FC = () => {
         <div style={{ flex: 1, minWidth: 180, position: 'relative' }}>
           <span style={{
             position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            color: 'var(--text-muted)', fontSize: '0.85rem', pointerEvents: 'none',
-          }}>🔍</span>
+            color: 'var(--text-muted)', pointerEvents: 'none', display: 'flex', alignItems: 'center'
+          }}><Search size={16} /></span>
           <input
             type="text"
             value={searchInput}
@@ -190,15 +194,15 @@ export const SmartItemsTab: React.FC = () => {
         <div className="loading-row"><div className="spinner" /> {tc('loading')}</div>
       ) : items.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">
-            {searchQuery || filterType !== 'all' ? '🔍' : '📦'}
+          <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 16, color: 'var(--text-muted)' }}>
+            {searchQuery || filterType !== 'all' ? <Search size={48} /> : <Package size={48} />}
           </div>
           <h3>{searchQuery || filterType !== 'all' ? t('noResults') : t('emptyTitle')}</h3>
           {!searchQuery && filterType === 'all' && (
             <>
               <p>{t('emptyDesc')}</p>
-              <button className="btn btn-primary" style={{ maxWidth: 220 }} onClick={openNewItemModal}>
-                ➕ {t('addFirstBtn')}
+              <button className="btn btn-primary" style={{ maxWidth: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={openNewItemModal}>
+                <Plus size={16} /> {t('addFirstBtn')}
               </button>
             </>
           )}
@@ -221,16 +225,19 @@ export const SmartItemsTab: React.FC = () => {
                 <div className="smart-item-info">
                   <span className="smart-item-title">{item.title}</span>
                   <div className="smart-item-meta">
-                    <span className={`badge ${isProduct ? 'badge-blue' : 'badge-gray'}`}>
-                      {isProduct ? `📦 ${t('type.product')}` : `💬 ${t('type.info')}`}
+                    <span className={`badge ${isProduct ? 'badge-blue' : 'badge-gray'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {isProduct ? <Package size={12} /> : <MessageSquare size={12} />} {isProduct ? t('type.product') : t('type.info')}
                     </span>
                     {isProduct && item.price != null && (
-                      <span className="smart-item-meta-val">💰 {item.price}</span>
+                      <span className="smart-item-meta-val" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <CircleDollarSign size={12} color="var(--text-muted)" /> {item.price}
+                      </span>
                     )}
                     {isProduct && item.stock_count != null && (
-                      <span className="smart-item-meta-val">
+                      <span className="smart-item-meta-val" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Package size={12} color={item.stock_count === 0 ? 'var(--red)' : 'var(--text-muted)'} />
                         <span style={{ color: item.stock_count === 0 ? 'var(--red)' : 'var(--text-muted)' }}>
-                          📦 {item.stock_count === 0
+                          {item.stock_count === 0
                             ? tc('outOfStock')
                             : tc('inStock', { count: item.stock_count })}
                         </span>
@@ -248,16 +255,16 @@ export const SmartItemsTab: React.FC = () => {
                   <button
                     className="btn btn-secondary btn-sm"
                     onClick={() => handleEdit(item)}
-                    style={{ padding: '6px 11px' }}
+                    style={{ padding: '6px 11px', display: 'flex', alignItems: 'center' }}
                     title={tc('edit')}
-                  >✏️</button>
+                  ><Pencil size={14} /></button>
                   <button
                     className="btn btn-danger btn-sm"
                     onClick={() => handleDelete(item.id, item.title)}
                     disabled={deletingId === item.id}
-                    style={{ padding: '6px 11px' }}
+                    style={{ padding: '6px 11px', display: 'flex', alignItems: 'center' }}
                     title={tc('delete')}
-                  >{deletingId === item.id ? '…' : '🗑️'}</button>
+                  >{deletingId === item.id ? '…' : <Trash2 size={14} />}</button>
                 </div>
               </div>
             );

@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { updateChatbot, getSystemBotInfo } from '../../api/client';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { BellRing, Send, CreditCard, Pencil, Sun, Moon, Monitor } from 'lucide-react';
 
 interface SidebarDrawerProps {
   drawerOpen: boolean;
@@ -103,7 +104,9 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
           </div>
 
           {/* Telegram Notifications Section */}
-          <div className="drawer-section-title" style={{ marginTop: 8 }}>🔔 Telegram Alerts</div>
+          <div className="drawer-section-title" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <BellRing size={16} /> Telegram Alerts
+          </div>
           <div style={{ padding: '0 16px 10px' }}>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: '1.3' }}>
               Receive instant alerts for low credits, staff handoff requests, and plan approvals.
@@ -142,7 +145,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
                   boxSizing: 'border-box'
                 }}
               >
-                🚀 {isTelegramConnected ? 'Reconnect Telegram Bot' : 'One-Click Connect Telegram'}
+                <Send size={16} /> {isTelegramConnected ? 'Reconnect Telegram Bot' : 'One-Click Connect Telegram'}
               </a>
             )}
           </div>
@@ -157,8 +160,8 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
             }}
             style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background-color 0.2s' }}
           >
-            <span className="drawer-item-label" style={{ color: 'var(--text-main)', fontWeight: 500 }}>
-              💳 Billing & Subscriptions
+            <span className="drawer-item-label" style={{ color: 'var(--text-main)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CreditCard size={18} /> Billing & Subscriptions
             </span>
             <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>❯</span>
           </div>
@@ -184,10 +187,10 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
                   <div style={{ padding: '12px 16px' }}>
                     <button
                       className="btn btn-secondary btn-sm"
-                      style={{ width: '100%' }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                       onClick={() => setShowEdit(true)}
                     >
-                      ✏️ Edit Bot Details
+                      <Pencil size={14} /> Edit Bot Details
                     </button>
                   </div>
                 </>
@@ -257,10 +260,13 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
                   fontWeight: 600,
                   fontFamily: 'inherit',
                   transition: 'all 0.2s ease',
-                  textTransform: 'capitalize',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px'
                 }}
               >
-                {mode === 'light' ? '☀️ Light' : mode === 'dark' ? '🌙 Dark' : '⚙️ Auto'}
+                {mode === 'light' ? <><Sun size={14} /> Light</> : mode === 'dark' ? <><Moon size={14} /> Dark</> : <><Monitor size={14} /> Auto</>}
               </button>
             ))}
           </div>

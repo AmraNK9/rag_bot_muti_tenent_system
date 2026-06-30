@@ -8,6 +8,7 @@ import { SmartItemsTab } from '../features/smart-items/SmartItemsTab';
 import { SystemPromptTab } from '../features/prompt/SystemPromptTab';
 import { BillingTab } from '../features/billing/BillingTab';
 import { CreateBotModal } from '../features/chatbot/CreateBotModal';
+import { Bot, Zap, Menu, MessageSquare, BookOpen, SlidersHorizontal, Unplug } from 'lucide-react';
 
 type TabId = 'chats' | 'knowledge' | 'prompt' | 'billing';
 
@@ -22,9 +23,9 @@ export const MainLayout: React.FC = () => {
 
   // Exclude billing from bottom tab bar
   const tabs = [
-    { id: 'chats' as TabId, label: tc('nav.chats', 'Chats'), icon: '💬' },
-    ...(profile?.canManageKnowledge ? [{ id: 'knowledge' as TabId, label: tc('nav.smartItems', 'Smart Items'), icon: '📚' }] : []),
-    ...(profile?.canManageSystemPrompt ? [{ id: 'prompt' as TabId, label: tc('nav.prompt', 'Prompt'), icon: '⚙️' }] : []),
+    { id: 'chats' as TabId, label: tc('nav.chats', 'Chats'), icon: <MessageSquare size={20} /> },
+    ...(profile?.canManageKnowledge ? [{ id: 'knowledge' as TabId, label: tc('nav.smartItems', 'Smart Items'), icon: <BookOpen size={20} /> }] : []),
+    ...(profile?.canManageSystemPrompt ? [{ id: 'prompt' as TabId, label: tc('nav.prompt', 'Prompt'), icon: <SlidersHorizontal size={20} /> }] : []),
   ];
 
   return (
@@ -32,19 +33,20 @@ export const MainLayout: React.FC = () => {
       {/* TOP BAR */}
       <nav className="top-nav">
         <div className="nav-brand">
-          <span className="brand-icon">🤖</span>
+          <span className="brand-icon" style={{ display: 'flex', alignItems: 'center' }}><Bot size={22} color="var(--primary)" /></span>
           <span className="brand-name">{chatbot ? chatbot.name : tc('layout.botAdmin', 'Bot Admin')}</span>
           <div 
             className="nav-credits clickable-credits" 
             onClick={() => setActiveTab('billing')}
             title="View Billing & Buy Credits"
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
           >
-            ⚡ {credits}
+            <Zap size={14} fill="currentColor" /> {credits}
           </div>
         </div>
 
-        <div className="nav-profile" onClick={() => setDrawerOpen(true)}>
-          <div className="profile-avatar">{profile?.name?.charAt(0).toUpperCase() || 'U'}</div>
+        <div className="nav-profile" onClick={() => setDrawerOpen(true)} style={{ background: 'transparent', border: 'none', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <Menu size={24} color="var(--text-main)" />
         </div>
       </nav>
 
@@ -60,7 +62,7 @@ export const MainLayout: React.FC = () => {
           <BillingTab />
         ) : !chatbot ? (
           <div className="empty-state" style={{ height: '100%' }}>
-            <div className="empty-icon">🔌</div>
+            <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Unplug size={48} color="var(--text-muted)" /></div>
             <h3>{tc('layout.emptyBotTitle')}</h3>
             <p>{tc('layout.emptyBotDesc')}</p>
             <button className="btn btn-primary" style={{ maxWidth: 240 }} onClick={() => setShowCreateBotModal(true)}>

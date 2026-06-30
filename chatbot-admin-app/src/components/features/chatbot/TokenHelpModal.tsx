@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
+import { Bot, Sparkles, Key, Smartphone, Search, Play, Keyboard, Tag, Link, Mail, Clipboard, CheckCircle } from 'lucide-react';
 
 /* ─── P3: Step-change fade+slide animation injected once ─── */
 const STEP_ANIM_STYLE = `
@@ -22,7 +23,7 @@ interface TokenHelpContentProps {
 const STEPS = [
   {
     id: 1,
-    icon: '🤖',
+    icon: <Bot size={22} color="currentColor" />,
     color: '#0a84ff',
     labelKey: 'tokenHelp.step1Label',
     titleKey: 'tokenHelp.step1Title',
@@ -30,21 +31,21 @@ const STEPS = [
     deepLinkKey: 'tokenHelp.step1DeepLink',
     image: '/help/step1.png',
     instructions: [
-      { emoji: '📱', i18nKey: 'tokenHelp.step1_1', components: { b: <strong /> } },
+      { icon: <Smartphone size={16} />, i18nKey: 'tokenHelp.step1_1', components: { b: <strong /> } },
       {
-        emoji: '🔍',
+        icon: <Search size={16} />,
         i18nKey: 'tokenHelp.step1_2',
         components: {
           b: <strong />,
           blue: <span style={{ color: '#0a84ff' }} />,
         },
       },
-      { emoji: '▶️', i18nKey: 'tokenHelp.step1_3', components: { b: <strong /> } },
+      { icon: <Play size={16} />, i18nKey: 'tokenHelp.step1_3', components: { b: <strong /> } },
     ],
   },
   {
     id: 2,
-    icon: '✨',
+    icon: <Sparkles size={22} color="currentColor" />,
     color: '#32d74b',
     labelKey: 'tokenHelp.step2Label',
     titleKey: 'tokenHelp.step2Title',
@@ -52,10 +53,10 @@ const STEPS = [
     deepLinkKey: null,
     image: '/help/step2.png',
     instructions: [
-      { emoji: '⌨️', i18nKey: 'tokenHelp.step2_1', components: { b: <strong /> } },
-      { emoji: '🏷️', i18nKey: 'tokenHelp.step2_2', components: { b: <strong /> } },
+      { icon: <Keyboard size={16} />, i18nKey: 'tokenHelp.step2_1', components: { b: <strong /> } },
+      { icon: <Tag size={16} />, i18nKey: 'tokenHelp.step2_2', components: { b: <strong /> } },
       {
-        emoji: '🔗',
+        icon: <Link size={16} />,
         i18nKey: 'tokenHelp.step2_3',
         components: {
           b: <strong />,
@@ -76,7 +77,7 @@ const STEPS = [
   },
   {
     id: 3,
-    icon: '🔑',
+    icon: <Key size={22} color="currentColor" />,
     color: '#ffd60a',
     labelKey: 'tokenHelp.step3Label',
     titleKey: 'tokenHelp.step3Title',
@@ -84,9 +85,9 @@ const STEPS = [
     deepLinkKey: null,
     image: '/help/step3.png',
     instructions: [
-      { emoji: '📨', i18nKey: 'tokenHelp.step3_1', components: { b: <strong /> } },
+      { icon: <Mail size={16} />, i18nKey: 'tokenHelp.step3_1', components: { b: <strong /> } },
       {
-        emoji: '📋',
+        icon: <Clipboard size={16} />,
         i18nKey: 'tokenHelp.step3_2',
         components: {
           b: <strong />,
@@ -104,7 +105,7 @@ const STEPS = [
           ),
         },
       },
-      { emoji: '✅', i18nKey: 'tokenHelp.step3_3', components: { b: <strong /> } },
+      { icon: <CheckCircle size={16} />, i18nKey: 'tokenHelp.step3_3', components: { b: <strong /> } },
     ],
   },
 ] as const;
@@ -293,18 +294,16 @@ export const TokenHelpModal: React.FC<TokenHelpContentProps> = ({ onBack, onComp
             >
               <div
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: 'rgba(255,255,255,0.06)',
+                  flexShrink: 0,
+                  width: 24,
+                  height: 24,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1rem',
-                  flexShrink: 0,
+                  color: 'var(--text-muted)'
                 }}
               >
-                {item.emoji}
+                {item.icon}
               </div>
               <p
                 style={{

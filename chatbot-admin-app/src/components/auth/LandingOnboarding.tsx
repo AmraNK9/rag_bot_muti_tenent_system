@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { BrainCircuit, Zap, Gem } from 'lucide-react';
 
 interface LandingOnboardingProps {
   onComplete: () => void;
@@ -7,21 +8,21 @@ interface LandingOnboardingProps {
 
 const slides = [
   {
-    emoji: '🧠',
+    icon: <BrainCircuit size={48} color="white" strokeWidth={1.5} />,
     titleKey: 'landing.slide1Title',
     descKey: 'landing.slide1Desc',
     gradient: 'linear-gradient(160deg, #060d1f 0%, #000000 70%)',
     accentColor: '#0a84ff',
   },
   {
-    emoji: '⚡',
+    icon: <Zap size={48} color="white" strokeWidth={1.5} />,
     titleKey: 'landing.slide2Title',
     descKey: 'landing.slide2Desc',
     gradient: 'linear-gradient(160deg, #0d1a0f 0%, #000000 70%)',
     accentColor: '#32d74b',
   },
   {
-    emoji: '💎',
+    icon: <Gem size={48} color="white" strokeWidth={1.5} />,
     titleKey: 'landing.slide3Title',
     descKey: 'landing.slide3Desc',
     gradient: 'linear-gradient(160deg, #1a0d1a 0%, #000000 70%)',
@@ -130,7 +131,7 @@ export const LandingOnboarding: React.FC<LandingOnboardingProps> = ({ onComplete
           className="landing-emoji-wrap"
           style={{ '--accent': slide.accentColor } as React.CSSProperties}
         >
-          <div className="landing-emoji">{slide.emoji}</div>
+          <div className="landing-emoji">{slide.icon}</div>
         </div>
         <h1 className="landing-title">{t(slide.titleKey)}</h1>
         <p className="landing-desc">{t(slide.descKey)}</p>

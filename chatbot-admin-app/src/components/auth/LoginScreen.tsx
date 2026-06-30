@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { login as apiLogin, registerStandalone } from '../../api/client';
+import { Bot } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
   const { t } = useTranslation('auth');
@@ -57,7 +58,7 @@ export const LoginScreen: React.FC = () => {
   return (
     <div className="auth-screen">
       <div className="auth-hero">
-        <div className="auth-logo-wrap">🤖</div>
+        <div className="auth-logo-wrap"><Bot size={36} color="white" /></div>
         <h1>{t('login.heroTitle', 'Chatbot Admin')}</h1>
         <p>{t('login.heroDesc', 'AI Chatbot ကို ၅ မိနစ်အတွင်း ချိတ်ဆက်ပြီး Customer ဖြေကြားမှုကို အလိုအလျောက် ပြုလုပ်ပါ')}</p>
       </div>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { getSystemPrompt, updateSystemPrompt } from '../../../api/client';
+import { Pencil, Eye } from 'lucide-react';
 
 export const SystemPromptTab: React.FC = () => {
   const { chatbot, loadProfileData } = useChatbot();
@@ -65,17 +66,17 @@ export const SystemPromptTab: React.FC = () => {
           <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
             <button 
               className={`btn ${editMode ? 'btn-primary' : 'btn-secondary'}`} 
-              style={{ flex: 1, padding: '8px' }}
+              style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               onClick={() => setEditMode(true)}
             >
-              ✏️ {t('editMode')}
+              <Pencil size={14} /> {t('editMode')}
             </button>
             <button 
               className={`btn ${!editMode ? 'btn-primary' : 'btn-secondary'}`} 
-              style={{ flex: 1, padding: '8px' }}
+              style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               onClick={() => setEditMode(false)}
             >
-              👁️ {t('previewMode')}
+              <Eye size={14} /> {t('previewMode')}
             </button>
           </div>
 

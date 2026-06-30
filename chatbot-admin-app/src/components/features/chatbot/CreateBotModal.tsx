@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { createChatbot } from '../../../api/client';
 import { TokenHelpModal } from './TokenHelpModal';
+import { Bot, Briefcase, MessageCircleQuestion, Wrench, Zap, Info } from 'lucide-react';
 
 interface CreateBotModalProps {
   onClose: () => void;
@@ -27,10 +28,10 @@ const PLATFORM_OPTIONS = [
 ];
 
 const ROLE_OPTIONS = [
-  { value: 'sales' as const, icon: '💼', labelKey: 'roleSales', descKey: 'roleSalesDesc' },
-  { value: 'faq' as const, icon: '💬', labelKey: 'roleFaq', descKey: 'roleFaqDesc' },
-  { value: 'support' as const, icon: '🛠️', labelKey: 'roleSupport', descKey: 'roleSupportDesc' },
-  { value: 'custom' as const, icon: '⚡', labelKey: 'roleCustom', descKey: 'roleCustomDesc' },
+  { value: 'sales' as const, icon: <Briefcase size={22} />, labelKey: 'roleSales', descKey: 'roleSalesDesc' },
+  { value: 'faq' as const, icon: <MessageCircleQuestion size={22} />, labelKey: 'roleFaq', descKey: 'roleFaqDesc' },
+  { value: 'support' as const, icon: <Wrench size={22} />, labelKey: 'roleSupport', descKey: 'roleSupportDesc' },
+  { value: 'custom' as const, icon: <Zap size={22} />, labelKey: 'roleCustom', descKey: 'roleCustomDesc' },
 ];
 
 export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
@@ -104,11 +105,9 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.1rem',
-                  flexShrink: 0,
                 }}
               >
-                🤖
+                <Bot size={20} color="var(--primary)" />
               </div>
               <h2>{t('createTitle')}</h2>
             </div>
@@ -298,10 +297,10 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                       border: '1px solid rgba(10,132,255,0.25)',
                       borderRadius: 20,
                       color: 'var(--primary)',
-                      fontSize: '0.72rem',
                       cursor: 'pointer',
                       fontFamily: 'var(--font)',
-                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
                       padding: '3px 10px',
                       letterSpacing: '0.1px',
                       display: 'flex',
@@ -310,7 +309,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                       transition: 'all 0.15s',
                     }}
                   >
-                    🔑 {t('howToGet')}
+                    <Info size={14} /> {t('howToGet')}
                   </button>
                 </div>
                 <div style={{ position: 'relative' }}>
