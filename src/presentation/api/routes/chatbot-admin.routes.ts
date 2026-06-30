@@ -253,16 +253,23 @@ router.get('/chatbot-admin/conversations', chatbotAdminAuthMiddleware, async (re
 
     const sequelize = SequelizeService.getClient();
     const conversations = await sequelize.query(
-      `SELECT sender_id, COUNT(*) AS message_count, MAX(sent_date) AS last_message_at
-       FROM messages
-       WHERE chatbot_id = :chatbotId
-       GROUP BY sender_id
-       ORDER BY last_message_at DESC`,
+      `SELECT m.sender_id, count_tbl.message_count, count_tbl.unread_count, m.sent_date AS last_message_at, m.message AS last_message, m.sender_type AS last_sender_type
+       FROM messages m
+       INNER JOIN (
+         SELECT sender_id,
+                MAX(id) AS max_id,
+                COUNT(*) AS message_count,
+                SUM(CASE WHEN sender_type = 'user' AND is_read = false THEN 1 ELSE 0 END) AS unread_count
+         FROM messages
+         WHERE chatbot_id = :chatbotId
+         GROUP BY sender_id
+       ) count_tbl ON m.id = count_tbl.max_id
+       ORDER BY m.id DESC`,
       {
         replacements: { chatbotId },
         type: QueryTypes.SELECT,
       }
-    ) as Array<{ sender_id: string; message_count: string; last_message_at: Date }>;
+    ) as Array<{ sender_id: string; message_count: string; unread_count: number; last_message_at: Date; last_message: string; last_sender_type: string }>;
 
     return res.json({ success: true, conversations });
   } catch (error) {
@@ -277,12 +284,19 @@ router.get('/chatbot-admin/conversations/:senderId', chatbotAdminAuthMiddleware,
     const chatbotId = adminReq.chatbotAdmin.chatbotId;
     if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
     const senderId = req.params.senderId;
+
+    // Mark user messages as read automatically when history is requested
+    await Messages.update(
+      { is_read: true },
+      { where: { chatbot_id: chatbotId, sender_id: senderId, sender_type: 'user', is_read: false } }
+    );
+
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Number(req.query.offset) || 0;
 
     const messages = await Messages.findAndCountAll({
       where: { chatbot_id: chatbotId, sender_id: senderId },
-      order: [['sent_date', 'ASC']],
+      order: [['sent_date', 'DESC']],
       limit,
       offset,
     });

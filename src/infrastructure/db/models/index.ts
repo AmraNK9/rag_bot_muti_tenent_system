@@ -125,6 +125,7 @@ export class Messages extends Model<InferAttributes<Messages>, InferCreationAttr
   declare message: string;
   declare sender_type: CreationOptional<'user' | 'bot'>;
   declare sent_date: CreationOptional<Date>;
+  declare is_read: CreationOptional<boolean>;
 }
 
 // ─── SummerizeMessages Model ─────────────────────────────────────────────────
@@ -473,6 +474,11 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.DATE,
         allowNull: false,
         defaultValue: DataTypes.NOW,
+      },
+      is_read: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
     },
     {

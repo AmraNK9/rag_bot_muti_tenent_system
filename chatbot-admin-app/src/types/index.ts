@@ -30,6 +30,8 @@ export interface Conversation {
   sender_id: string;
   message_count: string;
   last_message_at: string;
+  last_message?: string;
+  last_sender_type?: 'user' | 'bot';
 }
 
 export interface Message {

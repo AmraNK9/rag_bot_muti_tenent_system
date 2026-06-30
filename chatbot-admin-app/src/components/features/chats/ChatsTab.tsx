@@ -29,16 +29,21 @@ export const ChatsTab: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Pagination / Infinite scroll states
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
+
   const loadConversations = useCallback(async (silent = false) => {
     if (!silent) setLoadingConvs(true);
     try {
       const data = await getConversations();
       const rawList: Conversation[] = data.conversations || [];
-      // Pin 'system' conversation to the top
+      // Pin 'system' conversation to the top, sort others by latest message time DESC
       const sorted = [...rawList].sort((a, b) => {
         if (a.sender_id === 'system') return -1;
         if (b.sender_id === 'system') return 1;
-        return 0;
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
       });
       setConversations(sorted);
     } catch (e) {
@@ -51,15 +56,52 @@ export const ChatsTab: React.FC = () => {
   const loadMessages = useCallback(async (senderId: string) => {
     setLoadingMsgs(true);
     try {
-      const data = await getMessages(senderId, 100, 0);
-      setMessages(data.messages || []);
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+      const data = await getMessages(senderId, 50, 0);
+      const rawMsgs = data.messages || [];
+      // Backend returns DESC order, reverse it to show chronologically
+      setMessages([...rawMsgs].reverse());
+      setTotalMessages(data.total || 0);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 80);
+      // Silently reload the conversation list to clear the unread badge immediately
+      loadConversations(true);
     } catch (e) {
       console.error(e);
     } finally {
       setLoadingMsgs(false);
     }
-  }, []);
+  }, [loadConversations]);
+
+  const loadMoreMessages = async () => {
+    if (!activeSender || loadingMore || messages.length >= totalMessages) return;
+    setLoadingMore(true);
+    const container = chatMessagesRef.current;
+    const previousScrollHeight = container ? container.scrollHeight : 0;
+
+    try {
+      const data = await getMessages(activeSender, 50, messages.length);
+      const olderMessages = (data.messages || []).reverse();
+      setMessages((prev) => [...olderMessages, ...prev]);
+      setTotalMessages(data.total || 0);
+
+      // Keep scroll position relative to the loaded content
+      if (container) {
+        setTimeout(() => {
+          container.scrollTop = container.scrollHeight - previousScrollHeight;
+        }, 30);
+      }
+    } catch (e) {
+      console.error('Failed to load older messages:', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const handleScroll = () => {
+    const container = chatMessagesRef.current;
+    if (container && container.scrollTop === 0 && messages.length < totalMessages && !loadingMore && !loadingMsgs) {
+      loadMoreMessages();
+    }
+  };
 
   useEffect(() => {
     if (chatbot) loadConversations();
@@ -100,6 +142,8 @@ export const ChatsTab: React.FC = () => {
     setActiveSender(null);
     setMessages([]);
     setReplyText('');
+    setTotalMessages(0);
+    setLoadingMore(false);
   };
 
   const handleSend = async () => {
@@ -185,13 +229,22 @@ export const ChatsTab: React.FC = () => {
                       </>
                     ) : `${t('userPrefix')} ${c.sender_id}`}
                   </div>
-                  <div className="conv-preview">
-                    {isSystem ? t('platformMessages') : t('messagesCount', { count: c.message_count })}
+                  <div className="conv-preview" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                    {isSystem ? (
+                      c.last_message || t('platformMessages')
+                    ) : (
+                      <>
+                        {c.last_sender_type === 'bot' ? <span style={{ opacity: 0.7 }}>{t('you')}: </span> : null}
+                        {c.last_message || t('messagesCount', { count: c.message_count })}
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="conv-right">
                   <span className="conv-time">{formatDate(c.last_message_at)}</span>
-                  {!isSystem && <span className="conv-badge">{c.message_count}</span>}
+                  {!isSystem && Number(c.unread_count) > 0 && (
+                    <span className="conv-badge" style={{ background: 'var(--red)' }}>{c.unread_count}</span>
+                  )}
                 </div>
               </div>
             );
@@ -214,7 +267,13 @@ export const ChatsTab: React.FC = () => {
             </div>
           </div>
 
-          <div className="chat-messages">
+          <div className="chat-messages" ref={chatMessagesRef} onScroll={handleScroll}>
+            {loadingMore && (
+              <div className="loading-row" style={{ padding: '8px 0', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+                <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2, marginRight: 0 }} />
+                {tc('loading')}
+              </div>
+            )}
             {loadingMsgs ? (
               <div className="loading-row"><div className="spinner" /></div>
             ) : (

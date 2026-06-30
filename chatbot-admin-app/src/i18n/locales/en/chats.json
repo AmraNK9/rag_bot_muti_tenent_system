@@ -13,5 +13,6 @@
   "systemNotification": "🛡️ System Notification",
   "systemAlert": "⚠️ System Alert",
   "systemReadOnly": "🛡️ This is a read-only system notifications channel.",
-  "replyPlaceholder": "Reply as admin..."
+  "replyPlaceholder": "Reply as admin...",
+  "you": "You"
 }

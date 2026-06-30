@@ -13,5 +13,6 @@
   "systemNotification": "🛡️ စနစ် အသိပေးချက်",
   "systemAlert": "⚠️ စနစ် သတိပေးချက်",
   "systemReadOnly": "🛡️ ဤချန်နယ်သည် စနစ်မှ အသိပေးချက်များကို ဖတ်ရန်သာဖြစ်သည်။",
-  "replyPlaceholder": "Admin အနေဖြင့် စာပြန်ရန်..."
+  "replyPlaceholder": "Admin အနေဖြင့် စာပြန်ရန်...",
+  "you": "သင်"
 }
