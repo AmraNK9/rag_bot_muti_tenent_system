@@ -20,6 +20,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
 
   const [editName, setEditName] = useState(chatbot?.name || '');
   const [editDesc, setEditDesc] = useState(chatbot?.description || '');
+  const [editToken, setEditToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [botUsername, setBotUsername] = useState('mock_bot');
@@ -38,6 +39,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
     if (chatbot) {
       setEditName(chatbot.name);
       setEditDesc(chatbot.description || '');
+      setEditToken('');
     }
   }, [chatbot]);
 
@@ -45,7 +47,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
     if (!editName.trim()) return;
     setSaving(true);
     try {
-      const data = await updateChatbot(editName, editDesc);
+      const data = await updateChatbot(editName, editDesc, editToken || undefined);
       if (data.success && data.chatbot) {
         setChatbot(data.chatbot);
         setShowEdit(false);
@@ -207,6 +209,18 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
                       placeholder="Optional description..."
                       style={{ resize: 'none' }}
                     />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Bot Token</label>
+                    <input
+                      type="password"
+                      value={editToken}
+                      onChange={e => setEditToken(e.target.value)}
+                      placeholder="Leave blank to keep existing token..."
+                    />
+                    <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                      Update only if you generated a new token from BotFather.
+                    </small>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => setShowEdit(false)} disabled={saving}>

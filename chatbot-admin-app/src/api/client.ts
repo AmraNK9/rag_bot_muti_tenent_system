@@ -44,8 +44,8 @@ export const registerStandalone = (params: {
 // ─── Profile & Metadata ────────────────────────────────────────────────────
 export const getProfile = () => api.get(`/chatbot-admin/profile?t=${Date.now()}`).then((r) => r.data);
 
-export const updateChatbot = (name: string, description: string) =>
-  api.put('/chatbot-admin/chatbot', { name, description }).then((r) => r.data);
+export const updateChatbot = (name: string, description: string, bot_token?: string) =>
+  api.put('/chatbot-admin/chatbot', { name, description, bot_token }).then((r) => r.data);
 
 // ─── Conversations ─────────────────────────────────────────────────────────
 export const getConversations = () => api.get(`/chatbot-admin/conversations?t=${Date.now()}`).then((r) => r.data);

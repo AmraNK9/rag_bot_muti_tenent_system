@@ -754,7 +754,7 @@ apiRouter.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: 
       return res.status(403).json({ success: false, error: 'Only standalone chatbot admins can customize chatbot metadata.' });
     }
 
-    const { name, description } = req.body;
+    const { name, description, bot_token } = req.body;
     const chatbotId = adminReq.chatbotAdmin.chatbotId;
     if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
     const chatbot = await ChatBot.findByPk(chatbotId);
@@ -764,7 +764,36 @@ apiRouter.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: 
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
 
+    // Handle bot token update
+    if (bot_token && bot_token !== chatbot.token) {
+      const isTokenValid = await telegramService.validateBotToken(bot_token);
+      if (!isTokenValid) {
+        return res.status(400).json({ success: false, error: 'Invalid Telegram Bot Token. Please check your token and try again.' });
+      }
+
+      // Try to delete old webhook if it exists
+      try {
+        if (chatbot.token && chatbot.token !== 'mock-token' && chatbot.token !== 'mock-telegram-token') {
+          await telegramService.deleteWebhook(chatbot.token);
+        }
+      } catch (err) {
+        console.error('[Webhook] Failed to delete old webhook:', err);
+      }
+
+      updates.token = bot_token;
+    }
+
     await chatbot.update(updates);
+
+    // If token was updated, try to set the new webhook automatically
+    if (updates.token) {
+      try {
+        await chatbotWebhookService.registerWebhook(chatbot.business_id, chatbot.id);
+      } catch (err) {
+        console.error('[Webhook] Failed to register new webhook during update:', err);
+      }
+    }
+
     return res.json({ success: true, chatbot });
   } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
@@ -1154,6 +1183,13 @@ apiRouter.post('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req:
 
     const business = await Business.findOne({ where: { name: `Standalone_${admin.email}` } });
     if (!business) return res.status(404).json({ success: false, error: 'Standalone business account not found.' });
+
+    // Validate Bot Token
+    const telegramService = new TelegramService();
+    const isTokenValid = await telegramService.validateBotToken(token);
+    if (!isTokenValid) {
+      return res.status(400).json({ success: false, error: 'Invalid Telegram Bot Token. Please check your token and try again.' });
+    }
 
     // Create the chatbot
     const chatbot = await ChatBot.create({

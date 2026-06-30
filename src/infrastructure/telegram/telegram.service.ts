@@ -8,6 +8,23 @@ export class TelegramService {
   private readonly apiBase = 'https://api.telegram.org';
 
   /**
+   * Validates a Telegram Bot token by calling the getMe endpoint.
+   *
+   * @param token - Telegram Bot token
+   * @returns true if valid, false otherwise
+   */
+  async validateBotToken(token: string): Promise<boolean> {
+    try {
+      const url = `${this.apiBase}/bot${token}/getMe`;
+      const response = await fetch(url);
+      const data = await response.json() as { ok: boolean };
+      return data.ok === true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
    * Registers a webhook URL with Telegram for the given bot token.
    * Telegram will POST all incoming updates to this URL.
    *
