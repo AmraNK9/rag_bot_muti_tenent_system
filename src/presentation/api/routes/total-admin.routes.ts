@@ -544,6 +544,7 @@ router.get('/chatbot-admin/smart-items', chatbotAdminAuthMiddleware, async (req:
 router.post('/chatbot-admin/smart-items', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as ChatbotAdminRequest;
+    if (!authReq.chatbotAdmin.canManageKnowledge) return res.status(403).json({ success: false, error: 'Access denied: missing knowledge base management permission.' });
     if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
     const { item_type, title, content, price, stock_count, auto_track_stock } = req.body;
     if (!item_type || !title || !content) {
@@ -561,7 +562,8 @@ router.post('/chatbot-admin/smart-items', chatbotAdminAuthMiddleware, async (req
 router.put('/chatbot-admin/smart-items/:id', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as ChatbotAdminRequest;
-    if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
+    if (!authReq.chatbotAdmin.canManageKnowledge) return res.status(403).json({ success: false, error: 'Access denied: missing knowledge base management permission.' });
+    if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: 403, error: 'No chatbot assigned' });
     const itemId = Number(req.params.id);
     const item = await smartItemService.updateSmartItem(authReq.chatbotAdmin.chatbotId, itemId, req.body);
     res.json({ success: true, item });
@@ -573,6 +575,7 @@ router.put('/chatbot-admin/smart-items/:id', chatbotAdminAuthMiddleware, async (
 router.delete('/chatbot-admin/smart-items/:id', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const authReq = req as ChatbotAdminRequest;
+    if (!authReq.chatbotAdmin.canManageKnowledge) return res.status(403).json({ success: false, error: 'Access denied: missing knowledge base management permission.' });
     if (!authReq.chatbotAdmin.chatbotId) return res.status(403).json({ success: false, error: 'No chatbot assigned' });
     const itemId = Number(req.params.id);
     await smartItemService.deleteSmartItem(authReq.chatbotAdmin.chatbotId, itemId);
@@ -715,6 +718,9 @@ router.get('/subscription/payment-methods', async (req: Request, res: Response) 
 router.post('/subscription/upgrade', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const adminReq = req as ChatbotAdminRequest;
+    if (!adminReq.chatbotAdmin.isStandalone) {
+      return res.status(403).json({ success: false, error: 'Only standalone admins can manage billing and subscriptions.' });
+    }
     const { planName, screenshotBase64, resellerId } = req.body;
 
     if (!planName || !screenshotBase64) {

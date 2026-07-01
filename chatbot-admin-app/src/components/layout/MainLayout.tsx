@@ -38,10 +38,10 @@ export const MainLayout: React.FC = () => {
           <span className="brand-icon" style={{ display: 'flex', alignItems: 'center' }}><Bot size={22} color="var(--primary)" /></span>
           <span className="brand-name">{chatbot ? chatbot.name : tc('layout.botAdmin', 'Bot Admin')}</span>
           <div 
-            className="nav-credits clickable-credits" 
-            onClick={() => setActiveTab('billing')}
-            title="View Billing & Buy Credits"
-            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+            className={`nav-credits ${profile?.isStandalone ? 'clickable-credits' : ''}`} 
+            onClick={() => profile?.isStandalone && setActiveTab('billing')}
+            title={profile?.isStandalone ? "View Billing & Buy Credits" : "Available Credits"}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: profile?.isStandalone ? 'pointer' : 'default' }}
           >
             <Zap size={14} fill="currentColor" /> {credits}
           </div>
@@ -88,9 +88,11 @@ export const MainLayout: React.FC = () => {
             )}
           </>
         )}
-        <div style={{ display: activeTab === 'billing' ? 'block' : 'none', height: '100%' }}>
-          <BillingTab />
-        </div>
+        {profile?.isStandalone && (
+          <div style={{ display: activeTab === 'billing' ? 'block' : 'none', height: '100%' }}>
+            <BillingTab />
+          </div>
+        )}
       </main>
 
       {/* BOTTOM NAV */}

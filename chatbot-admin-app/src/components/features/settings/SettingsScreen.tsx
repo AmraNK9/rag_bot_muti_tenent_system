@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, Bot, BellRing, Send, CreditCard, Pencil, Eye, CheckCircle2, Zap } from 'lucide-react';
 import { useChatbot } from '../../../contexts/ChatbotContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { updateChatbot, getSystemPrompt, updateSystemPrompt, getSystemBotInfo } from '../../../api/client';
 import { BillingTab } from '../billing/BillingTab';
@@ -12,6 +13,7 @@ interface SettingsScreenProps {
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   const { chatbot, credits, businessPlanInfo, setChatbot, loadProfileData } = useChatbot();
+  const { profile } = useAuth();
   const { showToast } = useToast();
   const { t: tc } = useTranslation('common');
   const { t: tp } = useTranslation('prompt');
@@ -21,6 +23,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   const [editName, setEditName] = useState(chatbot?.name || '');
   const [editDesc, setEditDesc] = useState(chatbot?.description || '');
   const [editToken, setEditToken] = useState('');
+  const [editTimeout, setEditTimeout] = useState(chatbot?.handover_timeout_mins || 30);
   const [savingBot, setSavingBot] = useState(false);
 
   // Prompt State
@@ -72,7 +75,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
       const updated = await updateChatbot(
         editName.trim(),
         editDesc.trim(),
-        editToken.trim() || undefined
+        editToken.trim() || undefined,
+        editTimeout
       );
       setChatbot(updated);
       setShowEditBot(false);
@@ -129,7 +133,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
         </div>
       </div>
 
-      {/* Scrollable Content */}
+      {!profile?.isStandalone && (
+        <div style={{ padding: '8px 16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          Managed by Business: <strong style={{ color: 'var(--text-main)', marginLeft: 4 }}>{businessPlanInfo?.name || 'Unknown'}</strong>
+        </div>
+      )}
+
+      {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 16px 60px' }}>
         
         {/* 1. Bot Profile Section */}
@@ -152,9 +162,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tc('settings.description')}</div>
                 <div style={{ marginBottom: 16 }}>{chatbot?.description || <span style={{ color: 'var(--text-muted)' }}>{tc('settings.noDescription')}</span>}</div>
-                <button className="btn btn-secondary btn-sm" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setShowEditBot(true)}>
-                  <Pencil size={14} /> {tc('settings.editBotDetails')}
-                </button>
+                {profile?.isStandalone && (
+                  <button className="btn btn-secondary btn-sm" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setShowEditBot(true)}>
+                    <Pencil size={14} /> {tc('settings.editBotDetails')}
+                  </button>
+                )}
               </>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -170,6 +182,24 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                   <label>{tc('settings.botToken')}</label>
                   <input type="password" value={editToken} onChange={e => setEditToken(e.target.value)} placeholder="Leave blank to keep existing..." />
                   <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{tc('settings.botTokenHint')}</small>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>AI Auto-Release Timeout</label>
+                  <select 
+                    value={editTimeout} 
+                    onChange={e => setEditTimeout(Number(e.target.value))}
+                    className="chat-input-field" 
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-page)', border: '1px solid var(--border)', color: 'var(--text-main)', marginTop: '4px' }}
+                  >
+                    <option value={5}>5 minutes</option>
+                    <option value={10}>10 minutes</option>
+                    <option value={20}>20 minutes</option>
+                    <option value={30}>30 minutes</option>
+                    <option value={60}>60 minutes</option>
+                  </select>
+                  <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
+                    Time before AI automatically takes back control if admin is inactive.
+                  </small>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <button className="btn btn-secondary btn-sm" onClick={() => setShowEditBot(false)} disabled={savingBot}>{tc('cancel')}</button>
@@ -189,14 +219,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
               {tp('subtitle')}
             </p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <button className={`btn ${editPromptMode ? 'btn-primary' : 'btn-secondary'} btn-sm`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => setEditPromptMode(true)}>
-                <Pencil size={14} /> {tp('editMode')}
-              </button>
-              <button className={`btn ${!editPromptMode ? 'btn-primary' : 'btn-secondary'} btn-sm`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => setEditPromptMode(false)}>
-                <Eye size={14} /> {tp('previewMode')}
-              </button>
-            </div>
+            {profile?.canManageSystemPrompt && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <button className={`btn ${editPromptMode ? 'btn-primary' : 'btn-secondary'} btn-sm`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => setEditPromptMode(true)}>
+                  <Pencil size={14} /> {tp('editMode')}
+                </button>
+                <button className={`btn ${!editPromptMode ? 'btn-primary' : 'btn-secondary'} btn-sm`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => setEditPromptMode(false)}>
+                  <Eye size={14} /> {tp('previewMode')}
+                </button>
+              </div>
+            )}
 
             {/* Prompt type badge */}
             {!editPromptMode && (
@@ -290,40 +322,42 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
         </section>
 
         {/* 4. Billing & Subscriptions */}
-        <section style={{ marginBottom: 40 }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CreditCard size={20} color="var(--primary)" /> {tc('settings.billingTitle')}
-          </h2>
-          <div style={{ background: 'var(--bg-surface-2)', borderRadius: 'var(--radius)', padding: 16, border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tc('settings.currentPlan')}</div>
-                <div style={{ fontWeight: 600, fontSize: '1.1rem', textTransform: 'capitalize' }}>{businessPlanInfo?.plan_name || tc('settings.freePlan')}</div>
-                {businessPlanInfo?.subscriptionEndDate ? (
-                  <div style={{ fontSize: '0.72rem', color: 'var(--orange)', marginTop: 2 }}>
-                    ⏰ {tc('settings.expires', { date: new Date(businessPlanInfo.subscriptionEndDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) })}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{tc('settings.noExpiry')}</div>
-                )}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tc('settings.availableCredits')}</div>
-                <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                  <Zap size={16} fill="currentColor" /> {credits || 0}
+        {profile?.isStandalone && (
+          <section style={{ marginBottom: 40 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CreditCard size={20} color="var(--primary)" /> {tc('settings.billingTitle')}
+            </h2>
+            <div style={{ background: 'var(--bg-surface-2)', borderRadius: 'var(--radius)', padding: 16, border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tc('settings.currentPlan')}</div>
+                  <div style={{ fontWeight: 600, fontSize: '1.1rem', textTransform: 'capitalize' }}>{businessPlanInfo?.plan_name || tc('settings.freePlan')}</div>
+                  {businessPlanInfo?.subscriptionEndDate ? (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--orange)', marginTop: 2 }}>
+                      ⏰ {tc('settings.expires', { date: new Date(businessPlanInfo.subscriptionEndDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) })}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{tc('settings.noExpiry')}</div>
+                  )}
                 </div>
-                {businessPlanInfo?.plan_query_limit && (
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {tc('settings.creditsOf', { current: credits, total: businessPlanInfo.plan_query_limit })}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tc('settings.availableCredits')}</div>
+                  <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                    <Zap size={16} fill="currentColor" /> {credits || 0}
                   </div>
-                )}
+                  {businessPlanInfo?.plan_query_limit && (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {tc('settings.creditsOf', { current: credits, total: businessPlanInfo.plan_query_limit })}
+                    </div>
+                  )}
+                </div>
               </div>
+              <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowBilling(true)}>
+                {tc('settings.manageBilling')}
+              </button>
             </div>
-            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowBilling(true)}>
-              {tc('settings.manageBilling')}
-            </button>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Legal Footer */}
         <footer style={{ textAlign: 'center', padding: '20px 0', borderTop: '1px solid var(--border-light)' }}>
