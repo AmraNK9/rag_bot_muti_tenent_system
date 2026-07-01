@@ -545,7 +545,8 @@ body {
   align-self: flex-end;
 }
 
-.message-bubble.bot {
+.message-bubble.bot,
+.message-bubble.admin {
   align-self: flex-start;
 }
 
@@ -563,7 +564,14 @@ body {
 }
 
 .message-bubble.bot .msg-inner {
-  background: var(--bg-surface);
+  background: var(--bubble-bot);
+  color: var(--text-main);
+  border-bottom-left-radius: 4px;
+}
+
+.message-bubble.admin .msg-inner {
+  background: var(--primary-bg);
+  border: 1px solid rgba(46, 166, 234, 0.2);
   color: var(--text-main);
   border-bottom-left-radius: 4px;
 }

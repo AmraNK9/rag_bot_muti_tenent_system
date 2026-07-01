@@ -563,13 +563,7 @@ export const ChatsTab: React.FC = () => {
                     <React.Fragment key={m.id}>
                       {showDate && <div className="msg-date-sep">{msgDate}</div>}
                       <div 
-                        className={`message-bubble ${isUser ? 'user' : 'bot'}`}
-                        style={isAdminReply ? { 
-                          background: 'var(--primary-bg)', 
-                          border: '1px solid rgba(46, 166, 234, 0.2)',
-                          color: 'var(--text-main)',
-                          borderBottomLeftRadius: '4px'
-                        } : undefined}
+                        className={`message-bubble ${isUser ? 'user' : (isAdminReply ? 'admin' : 'bot')}`}
                       >
                         {!isUser && isAdminReply && (
                           <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
