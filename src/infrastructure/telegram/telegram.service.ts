@@ -25,6 +25,22 @@ export class TelegramService {
   }
 
   /**
+   * Retrieves the current webhook status for the given bot token.
+   *
+   * @param token - Telegram Bot token
+   * @returns webhook info object
+   */
+  async getWebhookInfo(token: string): Promise<{ ok: boolean; result?: { url: string; has_custom_certificate: boolean; pending_update_count: number } }> {
+    try {
+      const url = `${this.apiBase}/bot${token}/getWebhookInfo`;
+      const response = await fetch(url);
+      return await response.json() as any;
+    } catch (e) {
+      return { ok: false };
+    }
+  }
+
+  /**
    * Registers a webhook URL with Telegram for the given bot token.
    * Telegram will POST all incoming updates to this URL.
    *

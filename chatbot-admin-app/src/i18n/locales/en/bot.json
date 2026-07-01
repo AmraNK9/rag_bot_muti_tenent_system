@@ -19,6 +19,9 @@
   "cancel": "Cancel",
   "connectBot": "Connect Bot",
   "connecting": "Connecting...",
+  "webhookConflictWarning": "This bot is already connected to another system. Proceeding will disconnect it from the other system and connect it here instead.",
+  "forceConnect": "Force Connect",
+  "invalidTokenError": "Invalid Telegram Bot Token. Please check your token and try again.",
 
   "tokenHelp": {
     "modalTitle": "Get Your Bot Token",

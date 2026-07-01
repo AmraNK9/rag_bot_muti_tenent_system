@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { createChatbot } from '../../../api/client';
@@ -58,11 +58,19 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
   const [showToken, setShowToken] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [showForceConnect, setShowForceConnect] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   // P1: token field highlight after "Got it!"
   const [tokenHighlight, setTokenHighlight] = useState(false);
   const [tokenFocused, setTokenFocused] = useState(false);
-  const tokenRef = React.useRef<HTMLInputElement>(null);
+  const tokenRef = useRef<HTMLInputElement>(null);
+  const warningRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showForceConnect && warningRef.current) {
+      warningRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [showForceConnect]);
 
   const handleHelpComplete = () => {
     setShowHelp(false);
@@ -74,18 +82,25 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
     }, 180);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent, force: boolean = false) => {
     e.preventDefault();
     setError('');
     setCreating(true);
     try {
-      const data = await createChatbot(name, token, type, role);
+      const data = await createChatbot(name, token, type, role, force);
       if (data.success && data.chatbot) {
         setChatbot(data.chatbot);
         onClose();
       }
     } catch (e: any) {
-      setError(e?.response?.data?.error || 'Failed to create chatbot');
+      if (e?.response?.data?.errorCode === 'WEBHOOK_EXISTS') {
+        setShowForceConnect(true);
+        // We intentionally don't set global error here because we show the localized warning banner at the bottom.
+      } else if (e?.response?.data?.errorCode === 'INVALID_TOKEN') {
+        setError(t('invalidTokenError'));
+      } else {
+        setError(e?.response?.data?.error || 'Failed to create chatbot');
+      }
     } finally {
       setCreating(false);
     }
@@ -319,6 +334,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                       alignItems: 'center',
                       gap: 4,
                       transition: 'all 0.15s',
+                      animation: !token ? 'buttonPulse 1.5s infinite' : 'none',
                     }}
                   >
                     <Info size={14} /> {t('howToGet')}
@@ -349,15 +365,20 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                     type={showToken ? 'text' : 'password'}
                     placeholder={t('tokenPlaceholder')}
                     value={token}
-                    onChange={(e) => setToken(e.target.value)}
+                    onChange={(e) => {
+                      setToken(e.target.value);
+                      if (error) setError('');
+                    }}
                     required
                     style={{
                       width: '100%',
                       background: 'var(--bg-surface-2)',
-                      border: tokenHighlight
-                        ? '1.5px solid var(--primary)'
+                      border: error
+                        ? '1.5px solid var(--red)'
+                        : tokenHighlight || (!token && !tokenFocused)
+                        ? '1px solid var(--primary)'
                         : tokenFocused
-                        ? '1px solid rgba(10,132,255,0.5)'
+                        ? '1px solid var(--primary)'
                         : '1px solid var(--border)',
                       boxShadow: tokenHighlight
                         ? '0 0 0 4px rgba(10,132,255,0.18)'
@@ -370,6 +391,11 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                       outline: 'none',
                       transition: 'border-color 0.25s, box-shadow 0.4s',
                       letterSpacing: showToken ? 'normal' : '0.1em',
+                      animation: error 
+                        ? 'pulseError 2s infinite'
+                        : !token && !tokenHighlight 
+                        ? 'pulseHighlight 2.5s infinite' 
+                        : 'none',
                     }}
                     onFocus={() => setTokenFocused(true)}
                     onBlur={() => setTokenFocused(false)}
@@ -480,6 +506,19 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
               </div>
 
               {/* ── Action buttons ── */}
+              {showForceConnect && (
+                <div 
+                  style={{ padding: '12px', background: 'rgba(255, 149, 0, 0.1)', border: '1px solid var(--orange)', borderRadius: 'var(--radius)', marginBottom: 16 }}
+                >
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <Info size={18} color="var(--orange)" style={{ marginTop: 2, flexShrink: 0 }} />
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
+                      {t('webhookConflictWarning')}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                 <button
                   type="button"
@@ -490,25 +529,50 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                 >
                   {t('cancel')}
                 </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-sm"
-                  disabled={creating}
-                  style={{ flex: 2 }}
-                >
-                  {creating ? (
-                    <>
-                      <div
-                        className="spinner"
-                        style={{ width: 14, height: 14, borderWidth: 2 }}
-                      />
-                      {t('connecting')}
-                    </>
-                  ) : (
-                    <>{t('connectBot')}</>
-                  )}
-                </button>
+                {showForceConnect ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={creating}
+                    onClick={(e) => handleCreate(e as any, true)}
+                    style={{ flex: 2, background: 'var(--orange)', color: '#fff', border: 'none' }}
+                  >
+                    {creating ? (
+                      <>
+                        <div
+                          className="spinner"
+                          style={{ width: 14, height: 14, borderWidth: 2 }}
+                        />
+                        {t('connecting')}
+                      </>
+                    ) : (
+                      <>{t('forceConnect')}</>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    disabled={creating}
+                    style={{ flex: 2 }}
+                  >
+                    {creating ? (
+                      <>
+                        <div
+                          className="spinner"
+                          style={{ width: 14, height: 14, borderWidth: 2 }}
+                        />
+                        {t('connecting')}
+                      </>
+                    ) : (
+                      <>{t('connectBot')}</>
+                    )}
+                  </button>
+                )}
               </div>
+              
+              {/* Invisible element at the very bottom to ensure full scroll */}
+              <div ref={warningRef} style={{ height: 1 }} />
             </form>
           </div>
           </>
@@ -520,6 +584,21 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
         @keyframes tokenHintPulse {
           from { opacity: 0.7; transform: translateX(0); }
           to   { opacity: 1;   transform: translateX(3px); }
+        }
+        @keyframes pulseHighlight {
+          0% { box-shadow: 0 0 0 0 rgba(10,132,255,0.3); }
+          70% { box-shadow: 0 0 0 5px rgba(10,132,255,0); }
+          100% { box-shadow: 0 0 0 0 rgba(10,132,255,0); }
+        }
+        @keyframes pulseError {
+          0% { box-shadow: 0 0 0 0 rgba(255,59,48,0.3); }
+          70% { box-shadow: 0 0 0 5px rgba(255,59,48,0); }
+          100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); }
+        }
+        @keyframes buttonPulse {
+          0% { box-shadow: 0 0 0 0 rgba(10,132,255,0.8); transform: scale(1); }
+          50% { box-shadow: 0 0 0 10px rgba(10,132,255,0); transform: scale(1.05); }
+          100% { box-shadow: 0 0 0 0 rgba(10,132,255,0); transform: scale(1); }
         }
       `}</style>
     </>

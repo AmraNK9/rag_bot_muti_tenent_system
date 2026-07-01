@@ -631,7 +631,7 @@ router.put('/chatbot-admin/knowledge/chunks/:docId', chatbotAdminAuthMiddleware,
 router.post('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const adminReq = req as ChatbotAdminRequest;
-    const { name, token, type, botRole } = req.body;
+    const { name, token, type, botRole, forceConnect } = req.body;
 
     if (!name || !token || !type) {
       return res.status(400).json({ success: false, error: 'Missing required fields: "name", "token", or "type".' });
@@ -651,7 +651,22 @@ router.post('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Re
     const telegramService = new TelegramService();
     const isTokenValid = await telegramService.validateBotToken(token);
     if (!isTokenValid) {
-      return res.status(400).json({ success: false, error: 'Invalid Telegram Bot Token. Please check your token and try again.' });
+      return res.status(400).json({ success: false, errorCode: 'INVALID_TOKEN', error: 'Invalid Telegram Bot Token. Please check your token and try again.' });
+    }
+
+    // Check for existing webhook
+    if (!forceConnect && type === 'telegram') {
+      const webhookInfo = await telegramService.getWebhookInfo(token);
+      if (webhookInfo?.ok && webhookInfo.result?.url && webhookInfo.result.url.trim() !== '') {
+        const appUrl = process.env.APP_URL || process.env.NGROK_URL || '';
+        if (!appUrl || !webhookInfo.result.url.startsWith(appUrl)) {
+          return res.status(409).json({ 
+            success: false, 
+            errorCode: 'WEBHOOK_EXISTS', 
+            error: 'This bot token is already connected to another system. Please force connect to override.' 
+          });
+        }
+      }
     }
 
     // Create the chatbot

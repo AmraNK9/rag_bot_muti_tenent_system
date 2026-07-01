@@ -91,8 +91,8 @@ export const updateChunk = (docId: string, text: string) =>
   api.put(`/chatbot-admin/knowledge/chunks/${encodeURIComponent(docId)}`, { text }).then((r) => r.data);
 
 // ─── Chatbot Creation ──────────────────────────────────────────────────────
-export const createChatbot = (name: string, token: string, type: 'telegram' | 'facebook', botRole: 'sales' | 'faq' | 'support' | 'custom') =>
-  api.post('/chatbot-admin/chatbot', { name, token, type, botRole }).then((r) => r.data);
+export const createChatbot = (name: string, token: string, type: 'telegram' | 'facebook', botRole: 'sales' | 'faq' | 'support' | 'custom', forceConnect?: boolean) =>
+  api.post('/chatbot-admin/chatbot', { name, token, type, botRole, forceConnect }).then((r) => r.data);
 
 // ─── System Prompt ─────────────────────────────────────────────────────────
 export const getSystemPrompt = () => api.get(`/chatbot-admin/system-prompt?t=${Date.now()}`).then((r) => r.data);

@@ -79,70 +79,75 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
             </div>
           </div>
 
-          {/* ── Credits Progress Pill ── */}
-          <div style={{ margin: '0 16px 16px' }}>
-            <div style={{
-              padding: '12px 14px',
-              background: 'var(--bg-surface-2)',
-              borderRadius: 'var(--radius)',
-              border: `1px solid ${creditLow ? 'rgba(255,59,48,0.4)' : 'var(--border)'}`,
-            }}>
-              {/* Label row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                  <Zap size={13} fill="currentColor" color={creditLow ? 'var(--red)' : 'var(--primary)'} />
-                  {tc('settings.availableCredits')}
-                </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: creditLow ? 'var(--red)' : 'var(--primary)' }}>
-                  {credits.toLocaleString()}
-                  {planLimit > 0 && (
-                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      {' '}/ {planLimit.toLocaleString()}
+          {/* ── Credits & Topup (Standalone Only) ── */}
+          {profile?.isStandalone && (
+            <>
+              {/* ── Credits Progress Pill ── */}
+              <div style={{ margin: '0 16px 16px' }}>
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'var(--bg-surface-2)',
+                  borderRadius: 'var(--radius)',
+                  border: `1px solid ${creditLow ? 'rgba(255,59,48,0.4)' : 'var(--border)'}`,
+                }}>
+                  {/* Label row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      <Zap size={13} fill="currentColor" color={creditLow ? 'var(--red)' : 'var(--primary)'} />
+                      {tc('settings.availableCredits')}
+                    </div>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: creditLow ? 'var(--red)' : 'var(--primary)' }}>
+                      {credits.toLocaleString()}
+                      {planLimit > 0 && (
+                        <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                          {' '}/ {planLimit.toLocaleString()}
+                        </span>
+                      )}
                     </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  {planLimit > 0 && (
+                    <div style={{ height: 5, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${creditPct}%`,
+                        borderRadius: 4,
+                        background: creditLow
+                          ? 'linear-gradient(90deg, #ff3b30, #ff9500)'
+                          : 'linear-gradient(90deg, var(--primary), #5e5ce6)',
+                        transition: 'width 0.5s ease',
+                      }} />
+                    </div>
                   )}
-                </span>
+
+                  {creditLow && (
+                    <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: 'var(--red)', lineHeight: 1.4 }}>
+                      ⚠️ Credits နည်းနေပါပြီ — ဖြည့်ပေးပါ
+                    </p>
+                  )}
+                </div>
+
+                {/* Upgrade Plan button only */}
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.82rem', padding: '10px' }}
+                    onClick={() => { setDrawerOpen(false); onOpenSettings(); }}
+                  >
+                    <Zap size={14} fill="currentColor" /> {tc('drawer.upgradeBtn')}
+                  </button>
+                </div>
               </div>
 
-              {/* Progress bar */}
-              {planLimit > 0 && (
-                <div style={{ height: 5, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${creditPct}%`,
-                    borderRadius: 4,
-                    background: creditLow
-                      ? 'linear-gradient(90deg, #ff3b30, #ff9500)'
-                      : 'linear-gradient(90deg, var(--primary), #5e5ce6)',
-                    transition: 'width 0.5s ease',
-                  }} />
+              {/* ── Top-up ID ── */}
+              {businessPlanInfo?.topupId && (
+                <div className="topup-pill" style={{ margin: '0 16px 16px' }}>
+                  <div className="topup-pill-label">Top-up ID (Reseller ကိုပေး)</div>
+                  <div className="topup-pill-value">{businessPlanInfo.topupId}</div>
                 </div>
               )}
-
-              {creditLow && (
-                <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: 'var(--red)', lineHeight: 1.4 }}>
-                  ⚠️ Credits နည်းနေပါပြီ — ဖြည့်ပေးပါ
-                </p>
-              )}
-            </div>
-
-            {/* Upgrade Plan button only */}
-            <div style={{ marginTop: 8 }}>
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.82rem', padding: '10px' }}
-                onClick={() => { setDrawerOpen(false); onOpenSettings(); }}
-              >
-                <Zap size={14} fill="currentColor" /> {tc('drawer.upgradeBtn')}
-              </button>
-            </div>
-          </div>
-
-          {/* ── Top-up ID ── */}
-          {businessPlanInfo?.topupId && (
-            <div className="topup-pill" style={{ margin: '0 16px 16px' }}>
-              <div className="topup-pill-label">Top-up ID (Reseller ကိုပေး)</div>
-              <div className="topup-pill-value">{businessPlanInfo.topupId}</div>
-            </div>
+            </>
           )}
 
           {/* ── Account & Settings Gateway ── */}
