@@ -23,7 +23,7 @@ export const SmartItemsTab: React.FC = () => {
   const { t } = useTranslation('smartItems');
   const { t: tc } = useTranslation('common');
 
-  const [items, setItems] = useState<SmartItem[]>([]);
+  const [allItems, setAllItems] = useState<SmartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<SmartItem | undefined>(undefined);
@@ -32,36 +32,43 @@ export const SmartItemsTab: React.FC = () => {
   // Filter + Search state
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState(''); // debounced value sent to API
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounce search input — wait 400ms after user stops typing
-  const handleSearchChange = (val: string) => {
-    setSearchInput(val);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setSearchQuery(val);
-    }, 400);
-  };
-
+  // Pro-level Client-Side Filtering: fetch ALL items once.
   const loadItems = async () => {
     if (!chatbot) return;
     setLoading(true);
     try {
-      const typeParam = filterType === 'all' ? undefined : filterType;
-      const data = await getSmartItems(100, 0, searchQuery || undefined, typeParam);
-      setItems(data.items || []);
+      // Fetch up to 1000 items at once without any filters
+      const data = await getSmartItems(1000, 0);
+      setAllItems(data.items || []);
     } catch (e) {
       console.error(e);
-      setItems([]);
+      setAllItems([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Only fetch from API when the component first mounts or chatbot changes
   useEffect(() => {
     if (chatbot) loadItems();
-  }, [chatbot, filterType, searchQuery]);
+  }, [chatbot]);
+
+  // Derived state: instantly filter items in memory based on local state (0-latency)
+  const filteredItems = allItems.filter(item => {
+    // 1. Filter by category
+    if (filterType !== 'all' && item.item_type !== filterType) return false;
+    
+    // 2. Filter by search input
+    if (searchInput) {
+      const q = searchInput.toLowerCase();
+      const matchesTitle = item.title.toLowerCase().includes(q);
+      const matchesContent = item.content.toLowerCase().includes(q);
+      if (!matchesTitle && !matchesContent) return false;
+    }
+    
+    return true;
+  });
 
   const handleDelete = async (id: string | number, title: string) => {
     if (!confirm(t('deleteConfirm', { title }))) return;
@@ -160,7 +167,7 @@ export const SmartItemsTab: React.FC = () => {
           <input
             type="text"
             value={searchInput}
-            onChange={e => handleSearchChange(e.target.value)}
+            onChange={e => setSearchInput(e.target.value)}
             placeholder={t('searchPlaceholder')}
             style={{
               width: '100%',
@@ -192,13 +199,13 @@ export const SmartItemsTab: React.FC = () => {
 
       {loading ? (
         <div className="loading-row"><div className="spinner" /> {tc('loading')}</div>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 16, color: 'var(--text-muted)' }}>
-            {searchQuery || filterType !== 'all' ? <Search size={48} /> : <Package size={48} />}
+            {searchInput || filterType !== 'all' ? <Search size={48} /> : <Package size={48} />}
           </div>
-          <h3>{searchQuery || filterType !== 'all' ? t('noResults') : t('emptyTitle')}</h3>
-          {!searchQuery && filterType === 'all' && (
+          <h3>{searchInput || filterType !== 'all' ? t('noResults') : t('emptyTitle')}</h3>
+          {!searchInput && filterType === 'all' && (
             <>
               <p>{t('emptyDesc')}</p>
               <button className="btn btn-primary" style={{ maxWidth: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={openNewItemModal}>
@@ -209,9 +216,9 @@ export const SmartItemsTab: React.FC = () => {
         </div>
       ) : (
         <div className="section-card">
-          <div className="section-label">{t('itemCount', { count: items.length })}</div>
+          <div className="section-label">{t('itemCount', { count: filteredItems.length })}</div>
 
-          {items.map(item => {
+          {filteredItems.map(item => {
             const isProduct = item.item_type === 'product';
             const accentColor = hashColor(String(item.id));
             return (
