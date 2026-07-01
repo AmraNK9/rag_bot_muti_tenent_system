@@ -119,6 +119,7 @@ export const SmartItemsTab: React.FC = () => {
         alignItems: 'center',
         gap: 10,
         marginBottom: 16,
+        padding: '0 16px',
         flexWrap: 'wrap',
       }}>
         {/* Category Tabs */}
