@@ -505,7 +505,7 @@ export const ChatsTab: React.FC = () => {
                 color: activeSender === 'system' ? 'var(--text-muted)' : (isTakeoverMode ? '#f59e0b' : '#10b981'),
                 fontWeight: isTakeoverMode ? 600 : 400
               }}>
-                ● {activeSender === 'system' ? t('active') : (isTakeoverMode ? 'Admin Handling' : 'AI Handling')}
+                ● {activeSender === 'system' ? t('active') : (isTakeoverMode ? t('adminHandling') : t('aiHandling'))}
               </div>
             </div>
           </div>
@@ -567,7 +567,7 @@ export const ChatsTab: React.FC = () => {
                       >
                         {!isUser && isAdminReply && (
                           <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            Admin
+                            {t('adminLabel')}
                           </div>
                         )}
                         <div className="msg-inner">{m.message}</div>
@@ -598,7 +598,7 @@ export const ChatsTab: React.FC = () => {
                 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div className="spinner" style={{ width: 8, height: 8, borderWidth: 2, marginRight: 0, borderColor: '#d97706', borderRightColor: 'transparent', animationDuration: '2s' }} />
-                    You are controlling this chat. AI is paused.
+                    {t('controllingNotice')}
                   </span>
                   <button 
                     onClick={() => handleToggleTakeover(false)}
@@ -609,7 +609,7 @@ export const ChatsTab: React.FC = () => {
                       opacity: togglingTakeover ? 0.5 : 1, transition: 'all 0.2s'
                     }}
                   >
-                    Release to AI
+                    {t('releaseToAi')}
                   </button>
                 </div>
               )}
@@ -628,7 +628,7 @@ export const ChatsTab: React.FC = () => {
                       transition: 'opacity 0.2s', opacity: togglingTakeover ? 0.7 : 1
                     }}
                   >
-                    {togglingTakeover ? tc('loading') : 'Reply by Admin (Take over chat)'}
+                    {togglingTakeover ? tc('loading') : t('replyByAdminBtn')}
                   </button>
                 </div>
               ) : (

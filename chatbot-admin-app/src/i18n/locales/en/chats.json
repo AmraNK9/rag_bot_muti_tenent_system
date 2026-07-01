@@ -14,5 +14,12 @@
   "systemAlert": "⚠️ System Alert",
   "systemReadOnly": "🛡️ This is a read-only system notifications channel.",
   "replyPlaceholder": "Reply as admin...",
-  "you": "You"
+  "you": "You",
+  "adminHandling": "Admin Handling",
+  "aiHandling": "AI Handling",
+  "adminLabel": "Admin",
+  "controllingNotice": "You are controlling this chat. AI is paused.",
+  "releaseToAi": "Release to AI",
+  "replyByAdminBtn": "Reply by Admin (Take over chat)",
+  "aiIsHandlingPlaceholder": "AI is currently handling this chat..."
 }

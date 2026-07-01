@@ -104,7 +104,9 @@ export interface SearchResultWithScores extends VectorSearchResult {
       'လူ', 'ဝန်ထမ်း', 'မန်နေဂျာ', 'ပြောချင်', 'အကူအညီ'
     ];
     const lowerMsg = userMessage.toLowerCase();
+    let humanRequested = false;
     if (humanIntentKeywords.some(kw => lowerMsg.includes(kw))) {
+      humanRequested = true;
       const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
       if (humanTool) {
         void humanTool.execute({ reason: userMessage }, { chatbotId, senderId }).catch(err => console.error('[HumanTool Trigger Error]', err));
@@ -146,6 +148,10 @@ export interface SearchResultWithScores extends VectorSearchResult {
       finalSystemPrompt += `\n\n[Context: Verified Business facts. Use ONLY this information to respond if applicable]:\n${contextText}`;
     } else {
       debugLogger.log('PIPELINE', `No relevant context found (all below threshold ${MIN_SIMILARITY_THRESHOLD}) — skipping context injection`);
+    }
+
+    if (humanRequested) {
+      finalSystemPrompt += `\n\n[CRITICAL SYSTEM EVENT]: The user just requested to speak with a human/staff. The backend system has ALREADY successfully triggered the RequestHumanAgentTool and notified the human admin/staff. You MUST acknowledge this to the user gracefully. Tell them politely that the staff has been alerted and will respond shortly. Do NOT tell the user that you cannot contact a human. Do NOT offer to take a message, as the admin can already see this chat.`;
     }
 
     debugLogger.log('PROMPT', `System prompt (${chatbot.custom_system_prompt ? 'CUSTOM' : `role:${chatbot.bot_role}`}), length=${finalSystemPrompt.length} chars`);

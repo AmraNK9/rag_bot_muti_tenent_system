@@ -14,5 +14,12 @@
   "systemAlert": "⚠️ စနစ် သတိပေးချက်",
   "systemReadOnly": "🛡️ ဤချန်နယ်သည် စနစ်မှ အသိပေးချက်များကို ဖတ်ရန်သာဖြစ်သည်။",
   "replyPlaceholder": "Admin အနေဖြင့် စာပြန်ရန်...",
-  "you": "သင်"
+  "you": "သင်",
+  "adminHandling": "Admin ကိုင်တွယ်နေသည်",
+  "aiHandling": "AI ကိုင်တွယ်နေသည်",
+  "adminLabel": "Admin",
+  "controllingNotice": "သင်သည် ဤ Chat ကို ကိုင်တွယ်နေပါသည်။ AI ကို ခေတ္တရပ်ထားသည်။",
+  "releaseToAi": "AI ထံ ပြန်လွှဲမည်",
+  "replyByAdminBtn": "Admin အနေဖြင့် ပြန်မည် (Take over)",
+  "aiIsHandlingPlaceholder": "AI သည် ဤ Chat ကို ကိုင်တွယ်ဖြေကြားပေးနေပါသည်..."
 }
