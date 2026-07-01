@@ -31,6 +31,8 @@
 
   --bubble-user: #0a84ff;
   --bubble-bot: #e5e5ea;
+  --bubble-admin-bg: rgba(10, 132, 255, 0.12);
+  --bubble-admin-border: rgba(10, 132, 255, 0.25);
   --bg-accent: #e5e5ea;
   --bg-header: #ffffff;
 
@@ -49,18 +51,18 @@
 }
 
 [data-theme="dark"] {
-  /* DARK MODE (Telegram Inspired) */
-  --bg-page: #0e1621;
-  --bg-surface: #17212b;
-  --bg-surface-2: #202b36;
-  --bg-glass: rgba(14, 22, 33, 0.85);
+  /* DARK MODE (High Contrast Telegram Inspired) */
+  --bg-page: #090e14;
+  --bg-surface: #121a24;
+  --bg-surface-2: #1e2936;
+  --bg-glass: rgba(9, 14, 20, 0.85);
 
-  --border: #202b36;
+  --border: #1e2936;
   --border-light: rgba(255, 255, 255, 0.05);
-  --border-color: #202b36;
+  --border-color: #1e2936;
 
   --text-main: #f5f5f5;
-  --text-muted: #7f91a4;
+  --text-muted: #8598a9;
   --text-color: #f5f5f5;
 
   --primary: #2ea6ea;
@@ -75,11 +77,13 @@
   --orange: #ff9f0a;
 
   --bubble-user: #2b5278;
-  --bubble-bot: #182533;
-  --bg-accent: #202b36;
-  --bg-header: #17212b;
+  --bubble-bot: #1e2936;
+  --bubble-admin-bg: #132a42;
+  --bubble-admin-border: #254a6e;
+  --bg-accent: #1e2936;
+  --bg-header: #121a24;
 
-  --device-frame: #0e1621;
+  --device-frame: #090e14;
   --device-shadow: 
     0 0 0 1px rgba(255, 255, 255, 0.05),
     0 30px 80px rgba(0, 0, 0, 0.6),
@@ -570,8 +574,8 @@ body {
 }
 
 .message-bubble.admin .msg-inner {
-  background: var(--primary-bg);
-  border: 1px solid rgba(46, 166, 234, 0.2);
+  background: var(--bubble-admin-bg);
+  border: 1px solid var(--bubble-admin-border);
   color: var(--text-main);
   border-bottom-left-radius: 4px;
 }
