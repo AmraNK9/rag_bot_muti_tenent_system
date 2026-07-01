@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
@@ -98,7 +98,10 @@ export const ChatsTab: React.FC = () => {
       if (cached.length > 0) {
         // Cache hit — instant display (zero latency)
         setMessages(cached);
-        setTotalMessages(Math.max(cachedTotal, cached.length));
+        // We don't know the true server total from cache alone, so we allow infinite scroll
+        // to eventually hit the API by setting totalMessages to Infinity. 
+        // The API fallback in loadMoreMessages will correct this with the true total.
+        setTotalMessages(Infinity);
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
 
         // Smart Silent Sync: only sync if we haven't synced this chat yet in this session
@@ -149,6 +152,9 @@ export const ChatsTab: React.FC = () => {
     }
   }, [socket]);
 
+  // Track scroll height before prepending older messages so we can anchor perfectly
+  const scrollAdjustmentRef = useRef<number | null>(null);
+
   /**
    * Infinite scroll up — load older messages
    * Try cache first, then fall back to API
@@ -157,9 +163,12 @@ export const ChatsTab: React.FC = () => {
     if (!activeSender || loadingMore || messages.length >= totalMessages) return;
     setLoadingMore(true);
     const container = chatMessagesRef.current;
-    const previousScrollHeight = container ? container.scrollHeight : 0;
 
     try {
+      if (container) {
+        scrollAdjustmentRef.current = container.scrollHeight;
+      }
+
       const oldestDisplayedId = messages.length > 0 ? messages[0].id : Infinity;
       const olderCached = await getOlderCachedMessages(activeSender, oldestDisplayedId, 50);
 
@@ -172,12 +181,6 @@ export const ChatsTab: React.FC = () => {
         setTotalMessages(data.total || 0);
         await cacheMessages(data.messages || []);
       }
-
-      if (container) {
-        setTimeout(() => {
-          container.scrollTop = container.scrollHeight - previousScrollHeight;
-        }, 30);
-      }
     } catch (e) {
       console.error('Failed to load older messages:', e);
     } finally {
@@ -185,9 +188,22 @@ export const ChatsTab: React.FC = () => {
     }
   };
 
+  // Synchronously adjust scroll position right AFTER DOM updates but BEFORE browser paints
+  // This guarantees absolutely 0 flicker when older messages are prepended.
+  useLayoutEffect(() => {
+    if (scrollAdjustmentRef.current !== null && chatMessagesRef.current) {
+      const container = chatMessagesRef.current;
+      const heightIncrease = container.scrollHeight - scrollAdjustmentRef.current;
+      container.scrollTop += heightIncrease;
+      scrollAdjustmentRef.current = null;
+    }
+  }, [messages]);
+
   const handleScroll = () => {
     const container = chatMessagesRef.current;
-    if (container && container.scrollTop === 0 && messages.length < totalMessages && !loadingMore && !loadingMsgs) {
+    // Use a small threshold (e.g. < 5) instead of strictly === 0, as mobile devices
+    // with bounce scrolling or fractional pixels might never hit exactly 0.
+    if (container && container.scrollTop < 5 && messages.length < totalMessages && !loadingMore && !loadingMsgs) {
       loadMoreMessages();
     }
   };
