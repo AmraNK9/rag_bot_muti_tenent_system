@@ -565,14 +565,14 @@ export const ChatsTab: React.FC = () => {
                       <div 
                         className={`message-bubble ${isUser ? 'user' : 'bot'}`}
                         style={isAdminReply ? { 
-                          background: 'rgba(59, 130, 246, 0.15)', 
-                          border: '1px solid rgba(59, 130, 246, 0.3)',
-                          color: 'var(--text)',
+                          background: 'var(--primary-bg)', 
+                          border: '1px solid rgba(46, 166, 234, 0.2)',
+                          color: 'var(--text-main)',
                           borderBottomLeftRadius: '4px'
                         } : undefined}
                       >
                         {!isUser && isAdminReply && (
-                          <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             Admin
                           </div>
                         )}
