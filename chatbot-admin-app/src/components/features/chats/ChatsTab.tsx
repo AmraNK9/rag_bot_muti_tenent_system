@@ -499,9 +499,14 @@ export const ChatsTab: React.FC = () => {
             </button>
             <div className="chat-header-info">
               <div className="chat-header-name">
-                {activeSender === 'system' ? `🛡️ ${t('systemTitle')}` : `${t('userPrefix')} ${activeSender}`}
+                {activeSender === 'system' ? `${t('systemTitle')}` : `${t('userPrefix')} ${activeSender}`}
               </div>
-              <div className="chat-header-status">● {t('active')}</div>
+              <div className="chat-header-status" style={{ 
+                color: activeSender === 'system' ? 'var(--text-muted)' : (isTakeoverMode ? '#f59e0b' : '#10b981'),
+                fontWeight: isTakeoverMode ? 600 : 400
+              }}>
+                ● {activeSender === 'system' ? t('active') : (isTakeoverMode ? 'Admin Handling' : 'AI Handling')}
+              </div>
             </div>
           </div>
 
@@ -551,10 +556,26 @@ export const ChatsTab: React.FC = () => {
                     );
                   }
 
+                  const isUser = m.sender_type === 'user';
+                  const isAdminReply = m.reply_source === 'admin';
+
                   return (
                     <React.Fragment key={m.id}>
                       {showDate && <div className="msg-date-sep">{msgDate}</div>}
-                      <div className={`message-bubble ${m.sender_type === 'user' ? 'user' : 'bot'}`}>
+                      <div 
+                        className={`message-bubble ${isUser ? 'user' : 'bot'}`}
+                        style={isAdminReply ? { 
+                          background: 'rgba(59, 130, 246, 0.15)', 
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          color: 'var(--text)',
+                          borderBottomLeftRadius: '4px'
+                        } : undefined}
+                      >
+                        {!isUser && isAdminReply && (
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            Admin
+                          </div>
+                        )}
                         <div className="msg-inner">{m.message}</div>
                         <div className="message-time">{formatTime(m.sent_date)}</div>
                       </div>
@@ -570,55 +591,75 @@ export const ChatsTab: React.FC = () => {
             <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
               {t('systemReadOnly')}
             </div>
-          ) : !isTakeoverMode ? (
-            <div style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'center' }}>
-              <button 
-                onClick={() => handleToggleTakeover(true)}
-                disabled={togglingTakeover}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '12px 24px', background: 'var(--primary-color)', color: '#fff',
-                  border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600,
-                  transition: 'opacity 0.2s', opacity: togglingTakeover ? 0.7 : 1
-                }}
-              >
-                👨‍💻 {togglingTakeover ? tc('loading') : 'Reply by Admin (Take over chat)'}
-              </button>
-            </div>
           ) : (
-            <div className="chat-input-area" style={{ flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                <input
-                  ref={inputRef}
-                  className="chat-input-field"
-                  type="text"
-                  placeholder={t('replyPlaceholder')}
-                  value={replyText}
-                  onChange={e => setReplyText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSend()}
-                  disabled={sendingReply}
-                />
-                <button
-                  className="chat-send-btn"
-                  onClick={handleSend}
-                  disabled={sendingReply || !replyText.trim()}
-                >
-                  {sendingReply ? '·' : '↑'}
-                </button>
-              </div>
-              <button 
-                onClick={() => handleToggleTakeover(false)}
-                disabled={togglingTakeover}
-                style={{
-                  alignSelf: 'flex-start',
-                  fontSize: '0.8rem', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)',
-                  color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-                  opacity: togglingTakeover ? 0.5 : 1
-                }}
-              >
-                🤖 Release Chat to AI
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+              
+              {/* Sticky Status Banner for Admin Mode */}
+              {isTakeoverMode && (
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 16px', background: 'rgba(245, 158, 11, 0.1)',
+                  borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
+                  color: '#d97706', fontSize: '0.82rem', fontWeight: 500
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div className="spinner" style={{ width: 8, height: 8, borderWidth: 2, marginRight: 0, borderColor: '#d97706', borderRightColor: 'transparent', animationDuration: '2s' }} />
+                    You are controlling this chat. AI is paused.
+                  </span>
+                  <button 
+                    onClick={() => handleToggleTakeover(false)}
+                    disabled={togglingTakeover}
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#d97706',
+                      padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                      opacity: togglingTakeover ? 0.5 : 1, transition: 'all 0.2s'
+                    }}
+                  >
+                    Release to AI
+                  </button>
+                </div>
+              )}
+
+              {/* Chat Input Area */}
+              {!isTakeoverMode ? (
+                <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
+                  <button 
+                    onClick={() => handleToggleTakeover(true)}
+                    disabled={togglingTakeover}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '12px 24px', background: 'var(--primary)', color: '#fff',
+                      border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600,
+                      fontSize: '0.9rem',
+                      transition: 'opacity 0.2s', opacity: togglingTakeover ? 0.7 : 1
+                    }}
+                  >
+                    {togglingTakeover ? tc('loading') : 'Reply by Admin (Take over chat)'}
+                  </button>
+                </div>
+              ) : (
+                <div className="chat-input-area" style={{ position: 'relative', borderTop: 'none', padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    <input
+                      ref={inputRef}
+                      className="chat-input-field"
+                      type="text"
+                      placeholder={t('replyPlaceholder')}
+                      value={replyText}
+                      onChange={e => setReplyText(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSend()}
+                      disabled={sendingReply}
+                    />
+                    <button
+                      className="chat-send-btn"
+                      onClick={handleSend}
+                      disabled={sendingReply || !replyText.trim()}
+                    >
+                      {sendingReply ? '·' : '↑'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
