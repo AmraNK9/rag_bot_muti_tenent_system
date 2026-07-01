@@ -1,5 +1,5 @@
 {
-  "createTitle": "🤖 Bot ချိတ်ဆက်ရန်",
+  "createTitle": "Bot ချိတ်ဆက်ရန်",
   "botName": "Bot အမည်",
   "botNamePlaceholder": "ဥပမာ: My Shop Assistant",
   "platform": "Platform",
@@ -17,7 +17,7 @@
   "roleSupportDesc": "ဖောက်သည်ပြဿနာများ ဖြေရှင်းရန်",
   "roleCustomDesc": "စိတ်ကြိုက် သတ်မှတ်ချက်",
   "cancel": "မလုပ်တော့ပါ",
-  "connectBot": "🔗 Bot ချိတ်ဆက်မည်",
+  "connectBot": "Bot ချိတ်ဆက်မည်",
   "connecting": "ချိတ်ဆက်နေသည်...",
 
   "tokenHelp": {

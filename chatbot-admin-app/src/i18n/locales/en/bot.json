@@ -1,5 +1,5 @@
 {
-  "createTitle": "🤖 Connect Your Bot",
+  "createTitle": "Connect Your Bot",
   "botName": "Bot Name",
   "botNamePlaceholder": "e.g. My Shop Assistant",
   "platform": "Platform",
@@ -17,7 +17,7 @@
   "roleSupportDesc": "Handle support requests",
   "roleCustomDesc": "Custom behavior",
   "cancel": "Cancel",
-  "connectBot": "🔗 Connect Bot",
+  "connectBot": "Connect Bot",
   "connecting": "Connecting...",
 
   "tokenHelp": {
