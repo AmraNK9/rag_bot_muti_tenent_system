@@ -417,21 +417,25 @@ export const ChatsTab: React.FC = () => {
                       </>
                     ) : `${t('userPrefix')} ${c.sender_id}`}
                   </div>
-                  <div className="conv-preview" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                  <div className="conv-preview" style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', maxWidth: '200px' }}>
                     {isSystem ? (
-                      c.last_message || t('platformMessages')
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {c.last_message || t('platformMessages')}
+                      </span>
                     ) : (
                       <>
                         {c.last_sender_type === 'bot' ? (
-                          <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 4 }}>
+                          <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 4, flexShrink: 0 }}>
                             {c.last_reply_source === 'ai' ? (
-                              <><Bot size={13} /> {t('bot')}: </>
+                              <><Bot size={13} /> {t('bot')}:</>
                             ) : (
-                              <><User size={13} /> {t('you')}: </>
+                              <><User size={13} /> {t('you')}:</>
                             )}
                           </span>
                         ) : null}
-                        {c.last_message || t('messagesCount', { count: c.message_count })}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.last_message || t('messagesCount', { count: c.message_count })}
+                        </span>
                       </>
                     )}
                   </div>
