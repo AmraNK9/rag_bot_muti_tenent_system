@@ -42,6 +42,15 @@ export const ChatsTab: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
+  // Guarantee scroll runs AFTER React has completely painted the messages to the screen
+  const scrollToBottom = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+      });
+    });
+  }, []);
+
   const CONV_CACHE_KEY = 'chatbot_conversations_cache';
 
   const sortConversations = (list: Conversation[]) =>
@@ -102,7 +111,6 @@ export const ChatsTab: React.FC = () => {
         // to eventually hit the API by setting totalMessages to Infinity. 
         // The API fallback in loadMoreMessages will correct this with the true total.
         setTotalMessages(Infinity);
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
 
         // Smart Silent Sync: only sync if we haven't synced this chat yet in this session
         if (!syncedSendersRef.current.has(senderId)) {
@@ -118,7 +126,7 @@ export const ChatsTab: React.FC = () => {
                 const unique = sorted.filter(m => !existingIds.has(m.id));
                 return [...prev, ...unique];
               });
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+              scrollToBottom('smooth');
             }
             // Mark as synced for this session so we don't call API again if user re-enters
             if (socket?.connected) {
@@ -134,7 +142,6 @@ export const ChatsTab: React.FC = () => {
         const rawMsgs: Message[] = data.messages || [];
         setMessages([...rawMsgs].reverse());
         setTotalMessages(data.total || 0);
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 80);
         await cacheMessages(rawMsgs);
         if (socket?.connected) {
           syncedSendersRef.current.add(senderId);
@@ -250,7 +257,7 @@ export const ChatsTab: React.FC = () => {
         setMessages(prev => {
           if (prev.some(m => m.id === msg.id)) return prev;
           const newMsgs = [...prev, msg];
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+          scrollToBottom('smooth');
           return newMsgs;
         });
       }
@@ -281,7 +288,7 @@ export const ChatsTab: React.FC = () => {
                 const unique = sorted.filter(m => !existingIds.has(m.id));
                 return [...prev, ...unique];
               });
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+              scrollToBottom('smooth');
             }
           }
         } catch (err) {
@@ -299,8 +306,21 @@ export const ChatsTab: React.FC = () => {
     };
   }, [socket, activeSender, loadConversations]);
 
+  const shouldScrollToBottomRef = useRef(false);
+
+  // Scroll to bottom reliably on initial load when loading is done
+  useLayoutEffect(() => {
+    if (shouldScrollToBottomRef.current && !loadingMsgs && messages.length > 0) {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+      }
+      shouldScrollToBottomRef.current = false;
+    }
+  }, [loadingMsgs, messages]);
+
   const openChat = (senderId: string) => {
     setActiveSender(senderId);
+    shouldScrollToBottomRef.current = true;
     loadMessages(senderId);
   };
 
@@ -324,7 +344,7 @@ export const ChatsTab: React.FC = () => {
         setMessages((prev) => {
           if (prev.some((m) => m.id === data.message.id)) return prev;
           const newMsgs = [...prev, data.message];
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+          scrollToBottom('smooth');
           return newMsgs;
         });
         // Silently refresh the conversations list in the background to update the previews/badges
