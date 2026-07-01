@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
+import { Search, MoreVertical, Send, MessageSquare, Bot, User } from 'lucide-react';
 import type { Conversation, Message } from '../../../types';
 import { getConversations, getMessages, getMessagesSince, replyToConversation } from '../../../api/client';
 import {
@@ -238,6 +239,7 @@ export const ChatsTab: React.FC = () => {
                   ...c,
                   last_message: msg.message,
                   last_sender_type: msg.sender_type,
+                  last_reply_source: msg.reply_source,
                   last_message_at: msg.sent_date,
                   // If this chat is currently open, don't increment unread
                   unread_count: activeSender === msg.sender_id ? 0 : Number(c.unread_count || 0) + 1,
@@ -420,7 +422,15 @@ export const ChatsTab: React.FC = () => {
                       c.last_message || t('platformMessages')
                     ) : (
                       <>
-                        {c.last_sender_type === 'bot' ? <span style={{ opacity: 0.7 }}>{t('you')}: </span> : null}
+                        {c.last_sender_type === 'bot' ? (
+                          <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 4 }}>
+                            {c.last_reply_source === 'ai' ? (
+                              <><Bot size={13} /> {t('bot')}: </>
+                            ) : (
+                              <><User size={13} /> {t('you')}: </>
+                            )}
+                          </span>
+                        ) : null}
                         {c.last_message || t('messagesCount', { count: c.message_count })}
                       </>
                     )}

@@ -124,6 +124,7 @@ export class Messages extends Model<InferAttributes<Messages>, InferCreationAttr
   declare sender_id: string;
   declare message: string;
   declare sender_type: CreationOptional<'user' | 'bot'>;
+  declare reply_source: CreationOptional<'ai' | 'admin' | null>;
   declare sent_date: CreationOptional<Date>;
   declare is_read: CreationOptional<boolean>;
 }
@@ -469,6 +470,11 @@ export function initModels(sequelize: Sequelize) {
       sender_type: {
         type: DataTypes.ENUM('user', 'bot'),
         allowNull: false,
+      },
+      reply_source: {
+        type: DataTypes.ENUM('ai', 'admin'),
+        allowNull: true,
+        defaultValue: null,
       },
       sent_date: {
         type: DataTypes.DATE,

@@ -253,7 +253,7 @@ router.get('/chatbot-admin/conversations', chatbotAdminAuthMiddleware, async (re
 
     const sequelize = SequelizeService.getClient();
     const conversations = await sequelize.query(
-      `SELECT m.sender_id, count_tbl.message_count, count_tbl.unread_count, m.sent_date AS last_message_at, m.message AS last_message, m.sender_type AS last_sender_type
+      `SELECT m.sender_id, count_tbl.message_count, count_tbl.unread_count, m.sent_date AS last_message_at, m.message AS last_message, m.sender_type AS last_sender_type, m.reply_source AS last_reply_source
        FROM messages m
        INNER JOIN (
          SELECT sender_id,
@@ -348,6 +348,7 @@ router.post('/chatbot-admin/conversations/:senderId/reply', chatbotAdminAuthMidd
       sender_id: senderId,
       message: message,
       sender_type: 'bot',
+      reply_source: 'admin',
     });
 
     // Broadcast new message via Socket.io

@@ -32,6 +32,7 @@ export interface Conversation {
   last_message_at: string;
   last_message?: string;
   last_sender_type?: 'user' | 'bot';
+  last_reply_source?: 'ai' | 'admin' | null;
 }
 
 export interface Message {
@@ -39,6 +40,7 @@ export interface Message {
   sender_id: string;
   message: string;
   sender_type: 'user' | 'bot';
+  reply_source?: 'ai' | 'admin' | null;
   sent_date: string;
 }
 

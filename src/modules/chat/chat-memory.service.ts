@@ -21,6 +21,7 @@ export class ChatMemoryService {
       sender_id: senderId,
       message: messageContent,
       sender_type: isUser ? 'user' : 'bot',
+      reply_source: isUser ? null : 'ai',
       sent_date: new Date(),
     });
 
