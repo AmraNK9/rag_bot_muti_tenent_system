@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
@@ -94,7 +94,7 @@ export const SmartItemsTab: React.FC = () => {
     setShowModal(true);
   };
 
-  const TABS: { key: FilterType; label: string; icon: React.ReactNode } = [
+  const TABS: { key: FilterType; label: string; icon: React.ReactNode }[] = [
     { key: 'all', label: t('filterAll'), icon: <LayoutGrid size={14} /> },
     { key: 'product', label: t('filterProduct'), icon: <Package size={14} /> },
     { key: 'info', label: t('filterInfo'), icon: <MessageSquare size={14} /> },
@@ -187,7 +187,7 @@ export const SmartItemsTab: React.FC = () => {
           />
           {searchInput && (
             <button
-              onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+              onClick={() => { setSearchInput(''); }}
               style={{
                 position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
                 background: 'none', border: 'none', color: 'var(--text-muted)',

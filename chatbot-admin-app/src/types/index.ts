@@ -24,6 +24,7 @@ export interface ChatbotDetails {
   type: string;
   bot_role: string;
   custom_system_prompt: string | null;
+  telegram_username?: string;
 }
 
 export interface Conversation {
@@ -33,6 +34,7 @@ export interface Conversation {
   last_message?: string;
   last_sender_type?: 'user' | 'bot';
   last_reply_source?: 'ai' | 'admin' | null;
+  unread_count?: number;
 }
 
 export interface Message {

@@ -32,6 +32,7 @@ export class ChatBot extends Model<InferAttributes<ChatBot>, InferCreationAttrib
   declare type: 'telegram' | 'facebook';
   declare bot_role: CreationOptional<'sales' | 'faq' | 'support' | 'custom'>;
   declare custom_system_prompt: CreationOptional<string | null>;
+  declare handover_timeout_mins: CreationOptional<number>;
 
   // Relationship definitions
   declare business?: Business;
@@ -136,6 +137,16 @@ export class SummerizeMessages extends Model<InferAttributes<SummerizeMessages>,
   declare sender_id: string;
   declare summary: string;
   declare created_at: CreationOptional<Date>;
+}
+
+// ─── ChatSession Model (Human Handover) ───────────────────────────────────────
+export class ChatSession extends Model<InferAttributes<ChatSession>, InferCreationAttributes<ChatSession>> {
+  declare id: CreationOptional<number>;
+  declare chatbot_id: ForeignKey<ChatBot['id']>;
+  declare sender_id: string;
+  declare is_human_takeover: CreationOptional<boolean>;
+  declare created_at: CreationOptional<Date>;
+  declare updated_at: CreationOptional<Date>;
 }
 
 // ─── TopUpHistory Model ──────────────────────────────────────────────────────
@@ -383,6 +394,11 @@ export function initModels(sequelize: Sequelize) {
         allowNull: true,
         defaultValue: null,
       },
+      handover_timeout_mins: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 30,
+      },
       description: {
         type: DataTypes.TEXT,
         allowNull: true,
@@ -523,6 +539,46 @@ export function initModels(sequelize: Sequelize) {
       sequelize,
       tableName: 'summarize_messages',
       timestamps: false,
+    }
+  );
+
+  ChatSession.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      chatbot_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      sender_id: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      is_human_takeover: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'chat_sessions',
+      timestamps: true, // We need updated_at for timeout checks
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
     }
   );
 

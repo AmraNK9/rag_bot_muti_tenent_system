@@ -36,7 +36,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
 
   const [systemBotUsername, setSystemBotUsername] = useState('YourBotUsername');
   const isTelegramConnected = businessPlanInfo?.telegram_chat_id != null;
-  const botUsername = chatbot?.telegram_username || 'YourBotUsername';
+  // botUsername variable removed
 
   useEffect(() => {
     getSystemBotInfo()

@@ -22,7 +22,7 @@ export const MainLayout: React.FC = () => {
   const [showCreateBotModal, setShowCreateBotModal] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const isTelegramConnected = chatbot?.telegram_username != null || profile?.email === 'demo@user.com'; // Adjust logic based on context or use businessPlanInfo if available here. Wait, MainLayout has `chatbot`, but not `businessPlanInfo`. Let's just use `useChatbot().businessPlanInfo` to check. 
+  // isTelegramConnected removed
 
   // Exclude billing from bottom tab bar
   const tabs = [

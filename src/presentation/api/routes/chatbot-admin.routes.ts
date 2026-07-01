@@ -3,7 +3,7 @@ import { authMiddleware, AuthenticatedRequest } from '../../middleware/auth.midd
 import { chatbotAdminAuthMiddleware, ChatbotAdminRequest } from '../../middleware/chatbot-admin-auth.middleware';
 import { resellerAuthMiddleware, ResellerRequest } from '../../middleware/reseller-auth.middleware';
 import { adminSecretAuth } from '../../middleware/admin-secret-auth.middleware';
-import { ChatBot, Messages, ChatbotAdmin, Business, Reseller, PlanRequest, ChatbotActivity, ResellerTopUp, Plan, SystemSetting, AuditLog, P2PTopupTransaction, SystemBotConfig, SystemBotFaq } from '../../../infrastructure/db/models';
+import { ChatBot, Messages, ChatbotAdmin, Business, Reseller, PlanRequest, ChatbotActivity, ResellerTopUp, Plan, SystemSetting, AuditLog, P2PTopupTransaction, SystemBotConfig, SystemBotFaq, ChatSession } from '../../../infrastructure/db/models';
 import { QueryTypes } from 'sequelize';
 import { SequelizeService } from '../../../infrastructure/db/sequelize.service';
 import bcrypt from 'bcryptjs';
@@ -339,8 +339,21 @@ router.post('/chatbot-admin/conversations/:senderId/reply', chatbotAdminAuthMidd
     }
     await subscriptionService.deductCredit(chatbot.business_id);
 
+    // Use raw message without inline tag for seamless handover
+    const telegramMessage = message;
+
     // Send via Telegram
-    const msgId = await telegramService.sendMessage(chatbot.token, senderId, message);
+    const msgId = await telegramService.sendMessage(chatbot.token, senderId, telegramMessage, undefined, 'HTML');
+
+    // Update ChatSession to refresh the timeout
+    const [session] = await ChatSession.findOrCreate({
+      where: { chatbot_id: chatbotId, sender_id: senderId },
+      defaults: { chatbot_id: chatbotId, sender_id: senderId, is_human_takeover: true }
+    });
+    // Ensure it's active and bump updated_at
+    session.is_human_takeover = true;
+    session.updated_at = new Date();
+    await session.save();
 
     // Save message to DB
     const savedMsg = await Messages.create({
@@ -361,6 +374,76 @@ router.post('/chatbot-admin/conversations/:senderId/reply', chatbotAdminAuthMidd
     return res.json({ success: true, message: savedMsg });
   } catch (error) {
     console.error('[Error in chatbot-admin reply API]:', error);
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 30a. GET /chatbot-admin/conversations/:senderId/session — Chat Takeover Status ───
+router.get('/chatbot-admin/conversations/:senderId/session', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+    const senderId = String(req.params.senderId);
+
+    const session = await ChatSession.findOne({
+      where: { chatbot_id: chatbotId, sender_id: senderId }
+    });
+
+    let isActiveTakeover = false;
+    if (session && session.is_human_takeover) {
+      const chatbot = await ChatBot.findByPk(chatbotId);
+      const timeoutMins = chatbot?.handover_timeout_mins || 30;
+      const now = new Date();
+      const diffMins = (now.getTime() - session.updated_at.getTime()) / 60000;
+      isActiveTakeover = diffMins < timeoutMins;
+    }
+
+    return res.json({ success: true, is_human_takeover: isActiveTakeover });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 30b. POST /chatbot-admin/conversations/:senderId/takeover — Toggle Takeover ───
+router.post('/chatbot-admin/conversations/:senderId/takeover', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+    const senderId = String(req.params.senderId);
+    const { takeover } = req.body;
+
+    const chatbot = await ChatBot.findByPk(chatbotId);
+    if (!chatbot) return res.status(404).json({ success: false, error: 'Chatbot not found.' });
+
+    const [session] = await ChatSession.findOrCreate({
+      where: { chatbot_id: chatbotId, sender_id: senderId },
+      defaults: { chatbot_id: chatbotId, sender_id: senderId, is_human_takeover: takeover }
+    });
+
+    if (session.is_human_takeover !== takeover) {
+      session.is_human_takeover = takeover;
+      session.updated_at = new Date();
+      await session.save();
+    }
+
+    // Send visual notification to the Telegram user
+    const alertMessage = takeover 
+      ? '<b>👨‍💻 Admin has joined the chat.</b>' 
+      : '<b>🤖 The admin has left. I am your AI assistant again.</b>';
+      
+    await telegramService.sendMessage(chatbot.token, senderId, alertMessage, undefined, 'HTML');
+
+    // Optionally broadcast via Socket to update other admins looking at the same chat
+    try {
+      SocketService.io.to(chatbotId.toString()).emit('takeover_changed', { senderId, isTakeoverMode: takeover });
+    } catch (err) {
+      console.error('Socket emit error for takeover:', err);
+    }
+
+    return res.json({ success: true, is_human_takeover: session.is_human_takeover });
+  } catch (error) {
     return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 });

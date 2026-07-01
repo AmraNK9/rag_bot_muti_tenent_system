@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { Search, MoreVertical, Send, MessageSquare, Bot, User } from 'lucide-react';
+import { Bot, User } from 'lucide-react';
 import type { Conversation, Message } from '../../../types';
-import { getConversations, getMessages, getMessagesSince, replyToConversation } from '../../../api/client';
+import { getConversations, getMessages, getMessagesSince, replyToConversation, getChatSessionStatus, toggleChatTakeover } from '../../../api/client';
 import {
   getCachedMessages,
   getMaxCachedId,
@@ -42,6 +42,10 @@ export const ChatsTab: React.FC = () => {
   const [totalMessages, setTotalMessages] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  // Human Takeover state
+  const [isTakeoverMode, setIsTakeoverMode] = useState(false);
+  const [togglingTakeover, setTogglingTakeover] = useState(false);
 
   // Guarantee scroll runs AFTER React has completely painted the messages to the screen
   const scrollToBottom = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
@@ -103,7 +107,7 @@ export const ChatsTab: React.FC = () => {
     setLoadingMsgs(true);
     try {
       const cached = await getCachedMessages(senderId, 50);
-      const cachedTotal = await getCachedCount(senderId);
+      await getCachedCount(senderId);
 
       if (cached.length > 0) {
         // Cache hit — instant display (zero latency)
@@ -299,11 +303,19 @@ export const ChatsTab: React.FC = () => {
       }
     };
 
+    const handleTakeoverChanged = (data: { senderId: string; isTakeoverMode: boolean }) => {
+      if (activeSender === data.senderId) {
+        setIsTakeoverMode(data.isTakeoverMode);
+      }
+    };
+
     socket.on('new_message', handleNewMessage);
+    socket.on('takeover_changed', handleTakeoverChanged);
     socket.io.on('reconnect', handleReconnect);
 
     return () => {
       socket.off('new_message', handleNewMessage);
+      socket.off('takeover_changed', handleTakeoverChanged);
       socket.io.off('reconnect', handleReconnect);
     };
   }, [socket, activeSender, loadConversations]);
@@ -320,10 +332,22 @@ export const ChatsTab: React.FC = () => {
     }
   }, [loadingMsgs, messages]);
 
-  const openChat = (senderId: string) => {
+  const openChat = async (senderId: string) => {
     setActiveSender(senderId);
     shouldScrollToBottomRef.current = true;
     loadMessages(senderId);
+
+    // Fetch takeover status
+    try {
+      if (senderId !== 'system') {
+        const res = await getChatSessionStatus(senderId);
+        setIsTakeoverMode(res.is_human_takeover);
+      } else {
+        setIsTakeoverMode(false);
+      }
+    } catch (e) {
+      console.error('Failed to get chat session status:', e);
+    }
   };
 
   const closeChat = () => {
@@ -357,6 +381,20 @@ export const ChatsTab: React.FC = () => {
       setReplyText(text);
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  const handleToggleTakeover = async (takeover: boolean) => {
+    if (!activeSender || togglingTakeover) return;
+    setTogglingTakeover(true);
+    try {
+      const res = await toggleChatTakeover(activeSender, takeover);
+      setIsTakeoverMode(res.is_human_takeover);
+      showToast('success', takeover ? 'Took over chat from AI' : 'Released chat back to AI');
+    } catch (e: any) {
+      showToast('error', 'Failed to toggle takeover', e?.response?.data?.error);
+    } finally {
+      setTogglingTakeover(false);
     }
   };
 
@@ -532,24 +570,54 @@ export const ChatsTab: React.FC = () => {
             <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
               {t('systemReadOnly')}
             </div>
-          ) : (
-            <div className="chat-input-area">
-              <input
-                ref={inputRef}
-                className="chat-input-field"
-                type="text"
-                placeholder={t('replyPlaceholder')}
-                value={replyText}
-                onChange={e => setReplyText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSend()}
-                disabled={sendingReply}
-              />
-              <button
-                className="chat-send-btn"
-                onClick={handleSend}
-                disabled={sendingReply || !replyText.trim()}
+          ) : !isTakeoverMode ? (
+            <div style={{ padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'center' }}>
+              <button 
+                onClick={() => handleToggleTakeover(true)}
+                disabled={togglingTakeover}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '12px 24px', background: 'var(--primary-color)', color: '#fff',
+                  border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600,
+                  transition: 'opacity 0.2s', opacity: togglingTakeover ? 0.7 : 1
+                }}
               >
-                {sendingReply ? '·' : '↑'}
+                👨‍💻 {togglingTakeover ? tc('loading') : 'Reply by Admin (Take over chat)'}
+              </button>
+            </div>
+          ) : (
+            <div className="chat-input-area" style={{ flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                <input
+                  ref={inputRef}
+                  className="chat-input-field"
+                  type="text"
+                  placeholder={t('replyPlaceholder')}
+                  value={replyText}
+                  onChange={e => setReplyText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSend()}
+                  disabled={sendingReply}
+                />
+                <button
+                  className="chat-send-btn"
+                  onClick={handleSend}
+                  disabled={sendingReply || !replyText.trim()}
+                >
+                  {sendingReply ? '·' : '↑'}
+                </button>
+              </div>
+              <button 
+                onClick={() => handleToggleTakeover(false)}
+                disabled={togglingTakeover}
+                style={{
+                  alignSelf: 'flex-start',
+                  fontSize: '0.8rem', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                  opacity: togglingTakeover ? 0.5 : 1
+                }}
+              >
+                🤖 Release Chat to AI
               </button>
             </div>
           )}

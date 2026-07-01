@@ -116,3 +116,10 @@ export const getSystemBotInfo = () =>
 
 export const updateTelegramProfile = (telegram_chat_id: string, telegram_username?: string) =>
   api.put('/chatbot-admin/profile/telegram', { telegram_chat_id, telegram_username }).then((res) => res.data);
+
+// ─── Human Takeover ────────────────────────────────────────────────────────
+export const getChatSessionStatus = (senderId: string) =>
+  api.get(`/chatbot-admin/conversations/${senderId}/session`).then((r) => r.data);
+
+export const toggleChatTakeover = (senderId: string, takeover: boolean) =>
+  api.post(`/chatbot-admin/conversations/${senderId}/takeover`, { takeover }).then((r) => r.data);

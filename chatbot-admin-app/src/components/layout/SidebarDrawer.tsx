@@ -13,7 +13,7 @@ interface SidebarDrawerProps {
 
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onOpenSettings }) => {
   const { profile, logout } = useAuth();
-  const { chatbot, credits, businessPlanInfo } = useChatbot();
+  const { credits, businessPlanInfo } = useChatbot();
   const { theme, setTheme } = useTheme();
   const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');

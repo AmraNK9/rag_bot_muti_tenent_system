@@ -1,6 +1,6 @@
 import { RetrievalGenerationService } from './retrieval-generation.service';
 import { ChatMemoryService } from './chat-memory.service';
-import { ChatBot } from '../../infrastructure/db/models';
+import { ChatBot, ChatSession } from '../../infrastructure/db/models';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { debugLogger } from '../../core/logger';
 import { ChatbotAnalyticsService } from './chatbot-analytics.service';
@@ -27,6 +27,10 @@ export interface TelegramWebhookUpdate {
     };
     text?: string;
     date: number;
+  };
+  callback_query?: {
+    id: string;
+    data: string;
   };
 }
 
@@ -56,6 +60,18 @@ export class WebhookController {
     chatbotId: number,
     update: TelegramWebhookUpdate
   ): Promise<{ success: boolean; replyText?: string }> {
+    // Handle callback queries (like the Admin tag inline button)
+    if (update.callback_query) {
+      try {
+        const botToken = await this.resolveBotToken(chatbotId);
+        const telegramService = new (require('../../infrastructure/telegram/telegram.service').TelegramService)();
+        await telegramService.answerCallbackQuery(botToken, update.callback_query.id);
+      } catch (e) {
+        console.error('Failed to answer callback query:', e);
+      }
+      return { success: true };
+    }
+
     if (!update.message || !update.message.text) {
       return { success: false };
     }
@@ -97,6 +113,25 @@ export class WebhookController {
       try {
         SocketService.io.to(chatbotId.toString()).emit('new_message', userMsgRecord.toJSON());
       } catch (err) { console.error('Socket emit error:', err); }
+
+      // ─── HUMAN TAKEOVER PROTOCOL ───
+      // Check if an admin has taken over the chat. If so, and the session hasn't expired, stay silent.
+      const session = await ChatSession.findOne({
+        where: { chatbot_id: chatbotId, sender_id: senderId }
+      });
+      if (session && session.is_human_takeover) {
+        const timeoutMins = chatbot?.handover_timeout_mins || 30;
+        const now = new Date();
+        const diffMins = (now.getTime() - session.updated_at.getTime()) / 60000;
+        
+        if (diffMins < timeoutMins) {
+          debugLogger.log('HANDOVER', `Admin has taken over chat for ${senderId}. AI is silent.`);
+          return { success: true };
+        } else {
+          debugLogger.log('HANDOVER', `Admin session expired for ${senderId} (inactive for >${timeoutMins} mins). Auto-releasing.`);
+          await session.update({ is_human_takeover: false });
+        }
+      }
 
       // Stream response chunks and deliver progressively to Telegram
       const assistantReply = await this.streamAndDeliver(

@@ -96,7 +96,7 @@ export class TelegramService {
   /**
    * Sends a text message to a specific Telegram chat using the bot token.
    */
-  async sendMessage(token: string, chatId: string | number, text: string, replyMarkup?: any): Promise<number> {
+  async sendMessage(token: string, chatId: string | number, text: string, replyMarkup?: any, parseMode?: 'Markdown' | 'MarkdownV2' | 'HTML'): Promise<number> {
     const url = `${this.apiBase}/bot${token}/sendMessage`;
     const payload: any = {
       chat_id: String(chatId),
@@ -104,6 +104,9 @@ export class TelegramService {
     };
     if (replyMarkup) {
       payload.reply_markup = replyMarkup;
+    }
+    if (parseMode) {
+      payload.parse_mode = parseMode;
     }
 
     const response = await fetch(url, {
