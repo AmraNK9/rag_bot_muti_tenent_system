@@ -235,10 +235,10 @@ export const ChatsTab: React.FC = () => {
 
       // 2. Update conversation list locally (preview + badge + sort)
       setConversations(prev => {
-        const exists = prev.find(c => c.sender_id === msg.sender_id);
+        const exists = prev.find(c => String(c.sender_id) === String(msg.sender_id));
         if (exists) {
           const updated = prev.map(c =>
-            c.sender_id === msg.sender_id
+            String(c.sender_id) === String(msg.sender_id)
               ? {
                   ...c,
                   last_message: msg.message,
@@ -254,8 +254,28 @@ export const ChatsTab: React.FC = () => {
           // Persist to localStorage for next app open
           try { localStorage.setItem(CONV_CACHE_KEY, JSON.stringify(sorted)); } catch {}
           return sorted;
+        } else {
+          // If a completely new user messages, insert a placeholder instantly
+          // and fetch from API with a delay to avoid DB race conditions.
+          const newConv = {
+            sender_id: msg.sender_id,
+            first_name: msg.sender_name || 'New User',
+            last_name: '',
+            username: '',
+            last_message: msg.message,
+            last_sender_type: msg.sender_type,
+            last_reply_source: msg.reply_source,
+            last_message_at: msg.sent_date,
+            unread_count: 1,
+            chatbot_id: msg.chatbot_id || ''
+          };
+          
+          setTimeout(() => loadConversations(true), 1500);
+          
+          const sorted = sortConversations([...prev, newConv as any]);
+          try { localStorage.setItem(CONV_CACHE_KEY, JSON.stringify(sorted)); } catch {}
+          return sorted;
         }
-        return prev;
       });
 
       // 3. If the message belongs to the active conversation, append in real-time
