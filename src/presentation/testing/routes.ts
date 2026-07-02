@@ -4,10 +4,10 @@ import { VoyageEmbeddingService } from '../../infrastructure/embeddings/voyage.s
 import { PgVectorStoreService } from '../../infrastructure/vectorstore/pgvector.service';
 import { ToolCallingRegistry } from '../../infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from '../../infrastructure/prompt/prompt.factory';
-import { QueryExtractionTool } from '../../modules/chat/query-extraction.tool';
-import { ChatMemoryService } from '../../modules/chat/chat-memory.service';
-import { RetrievalGenerationService } from '../../modules/chat/retrieval-generation.service';
-import { WebhookController } from '../../modules/chat/webhook.controller';
+import { QueryExtractionTool } from '../../modules/chat/tools/query-extraction.tool';
+import { ChatMemoryService } from '../../modules/chat/services/chat-memory.service';
+import { RetrievalGenerationService } from '../../modules/chat/services/retrieval-generation.service';
+import { WebhookController } from '../../modules/chat/controllers/webhook.controller';
 import { BusinessService } from '../../modules/business/business.service';
 import { KnowledgeService } from '../../modules/knowledge/knowledge.service';
 import { chunkMyanmarText } from '../../modules/knowledge/myanmar-chunker';

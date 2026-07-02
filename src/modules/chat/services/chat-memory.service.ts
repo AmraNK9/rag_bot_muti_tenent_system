@@ -1,5 +1,5 @@
-import { Messages, SummerizeMessages, ChatBot, Business, Plan } from '../../infrastructure/db/models';
-import { ILLMService } from '../../core/interfaces/llm.interface';
+import { Messages, SummerizeMessages, ChatBot, Business, Plan } from '../../../infrastructure/db/models';
+import { ILLMService } from '../../../core/interfaces/llm.interface';
 import { Op } from 'sequelize';
 
 export class ChatMemoryService {

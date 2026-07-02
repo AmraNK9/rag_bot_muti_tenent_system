@@ -1,7 +1,7 @@
-import { ITool } from '../../core/interfaces/tool.interface';
-import { ToolDefinition } from '../../core/interfaces/llm.interface';
-import { ChatBot, Business, Messages } from '../../infrastructure/db/models';
-import { SystemBotService } from '../system-bot/system-bot.service';
+import { ITool } from '../../../core/interfaces/tool.interface';
+import { ToolDefinition } from '../../../core/interfaces/llm.interface';
+import { ChatBot, Business, Messages } from '../../../infrastructure/db/models';
+import { SystemBotService } from '../../system-bot/system-bot.service';
 
 export interface RequestHumanAgentArgs {
   reason: string;
@@ -38,16 +38,16 @@ export class RequestHumanAgentTool implements ITool {
             const custMsg = await Messages.create({
               chatbot_id: chatbotId,
               sender_id: senderId,
-              message: `🙋‍♂️ [SYSTEM ALERT] Customer requested human staff assistance. Reason: ${reason}`,
-              sender_type: 'bot',
+              message: `🙋‍♂️ [SYSTEM ALERT] လူကြီးမင်း၏ အကြောင်းကြားစာကို ဆိုင်ဝန်ထမ်းထံ ပေးပို့လိုက်ပါပြီ။ ခေတ္တစောင့်ဆိုင်းပေးပါခင်ဗျာ။`,
+              sender_type: 'system',
             });
             const sysMsg = await Messages.create({
               chatbot_id: chatbotId,
               sender_id: 'system',
               message: `🙋‍♂️ [STAFF REQUEST] Customer User #${senderId} requested staff intervention. Reason: ${reason}`,
-              sender_type: 'user',
+              sender_type: 'system',
             });
-            const { SocketService } = await import('../../infrastructure/socket/socket.service');
+            const { SocketService } = await import('../../../infrastructure/socket/socket.service');
             SocketService.io.to(chatbotId.toString()).emit('new_message', custMsg.toJSON());
             SocketService.io.to(chatbotId.toString()).emit('new_message', sysMsg.toJSON());
             console.log(`[RequestHumanAgentTool] In-app system notifications created and emitted via WebSocket.`);

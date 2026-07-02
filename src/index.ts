@@ -5,16 +5,16 @@ import { VoyageEmbeddingService } from './infrastructure/embeddings/voyage.servi
 import { PgVectorStoreService } from './infrastructure/vectorstore/pgvector.service';
 import { ToolCallingRegistry } from './infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from './infrastructure/prompt/prompt.factory';
-import { QueryExtractionTool } from './modules/chat/query-extraction.tool';
+import { QueryExtractionTool } from './modules/chat/tools/query-extraction.tool';
 import { BusinessService } from './modules/business/business.service';
 import { KnowledgeService } from './modules/knowledge/knowledge.service';
-import { ChatMemoryService } from './modules/chat/chat-memory.service';
+import { ChatMemoryService } from './modules/chat/services/chat-memory.service';
 import { Business, ChatBot, SystemBotConfig } from './infrastructure/db/models';
 import { chunkMyanmarText } from './modules/knowledge/myanmar-chunker';
 import { startServer } from './presentation/server';
 import { startResellerCronJobs } from './modules/reseller/reseller.cron';
 import { tunnelService } from './infrastructure/tunnel/tunnel.service';
-import { ChatbotAnalyticsService } from './modules/chat/chatbot-analytics.service';
+import { ChatbotAnalyticsService } from './modules/chat/services/chatbot-analytics.service';
 import { SystemBotService } from './modules/system-bot/system-bot.service';
 
 declare const process: {

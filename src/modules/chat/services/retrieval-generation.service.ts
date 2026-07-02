@@ -1,12 +1,12 @@
-import { ILLMService, ChatMessage } from '../../core/interfaces/llm.interface';
-import { IEmbeddingService } from '../../core/interfaces/embedding.interface';
-import { IVectorStoreService, VectorSearchResult } from '../../core/interfaces/vectorstore.interface';
-import { IToolCallingRegistry } from '../../core/interfaces/tool.interface';
-import { SystemPromptFactory } from '../../infrastructure/prompt/prompt.factory';
-import { ChatBot, Business } from '../../infrastructure/db/models';
+import { ILLMService, ChatMessage } from '../../../core/interfaces/llm.interface';
+import { IEmbeddingService } from '../../../core/interfaces/embedding.interface';
+import { IVectorStoreService, VectorSearchResult } from '../../../core/interfaces/vectorstore.interface';
+import { IToolCallingRegistry } from '../../../core/interfaces/tool.interface';
+import { SystemPromptFactory } from '../../../infrastructure/prompt/prompt.factory';
+import { ChatBot, Business } from '../../../infrastructure/db/models';
 import { ChatMemoryService } from './chat-memory.service';
 import { LocalKeywordExtractor } from './local-keyword-extractor';
-import { debugLogger } from '../../core/logger';
+import { debugLogger } from '../../../core/logger';
 
 /**
  * Minimum cosine similarity threshold for context injection.
@@ -74,10 +74,15 @@ export interface SearchResultWithScores extends VectorSearchResult {
     debugLogger.log('PIPELINE', `Search mode: ${this.useHybridSearch ? 'HYBRID (vector + keyword)' : 'VECTOR (cosine similarity)'}`);
 
     // ── Phase A: Parallel independent operations ──────────────────────────
+    // Tools available for this chat
+    const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
+    const availableTools = humanTool ? [humanTool.definition] : [];
+
     const parallelTasks: [
       Promise<ChatBot | null>,
       Promise<string[]>,
-      Promise<{ summary: string | null; recentMessages: any[] }>
+      Promise<{ summary: string | null; recentMessages: any[] }>,
+      Promise<any>
     ] = [
       // 1. Fetch ChatBot and associated Business
       ChatBot.findOne({
@@ -90,26 +95,32 @@ export interface SearchResultWithScores extends VectorSearchResult {
 
       // 3. Fetch chat memory context (last 10 messages + summary)
       this.chatMemoryService.getContextForChat(chatbotId, senderId),
+      
+      // 4. Intent classification via LLM tool calling (run in parallel)
+      availableTools.length > 0 
+        ? this.llmService.executeToolCalling(
+            [{ role: 'user', content: userMessage }], 
+            availableTools,
+            { systemPrompt: 'Evaluate the user message. If the user expresses a desire to speak with a human agent, staff, representative, admin, or requires help beyond the bot capabilities, trigger the RequestHumanAgentTool. Otherwise, return normally.' }
+          ).catch(err => {
+             console.error('[ToolCalling Intention Check Error]', err);
+             return null;
+          })
+        : Promise.resolve(null)
     ];
 
-    const [chatbot, extractedKeywords, memoryContext] = await Promise.all(parallelTasks);
+    const [chatbot, extractedKeywords, memoryContext, toolResult] = await Promise.all(parallelTasks);
 
     if (!chatbot || !chatbot.business) {
       throw new Error(`ChatBot with ID ${chatbotId} or its associated Business profile was not found.`);
     }
 
-    // Check if user message requests human agent support or staff intervention
-    const humanIntentKeywords = [
-      'human', 'staff', 'agent', 'support', 'admin', 'person', 'representative',
-      'လူ', 'ဝန်ထမ်း', 'မန်နေဂျာ', 'ပြောချင်', 'အကူအညီ'
-    ];
-    const lowerMsg = userMessage.toLowerCase();
+    // Process Tool Call Result if any
     let humanRequested = false;
-    if (humanIntentKeywords.some(kw => lowerMsg.includes(kw))) {
+    if (toolResult && toolResult.toolName === 'RequestHumanAgentTool') {
       humanRequested = true;
-      const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
       if (humanTool) {
-        void humanTool.execute({ reason: userMessage }, { chatbotId, senderId }).catch(err => console.error('[HumanTool Trigger Error]', err));
+        void humanTool.execute(toolResult.arguments, { chatbotId, senderId }).catch(err => console.error('[HumanTool Trigger Error]', err));
       }
     }
 

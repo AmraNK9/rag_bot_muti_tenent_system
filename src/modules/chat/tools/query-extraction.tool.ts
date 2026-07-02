@@ -1,5 +1,5 @@
-import { ITool } from '../../core/interfaces/tool.interface';
-import { ToolDefinition } from '../../core/interfaces/llm.interface';
+import { ITool } from '../../../core/interfaces/tool.interface';
+import { ToolDefinition } from '../../../core/interfaces/llm.interface';
 
 export interface QueryExtractionArgs {
   exact_keywords: string[];

@@ -1,4 +1,5 @@
-import { ChatbotActivity } from '../../infrastructure/db/models';
+import { ChatbotActivity } from '../../../infrastructure/db/models';
+import { Op, fn, col } from 'sequelize';
 
 interface ActivityBuffer {
   queryCount: number;

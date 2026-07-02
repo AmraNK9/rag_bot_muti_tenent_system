@@ -1,10 +1,10 @@
-import { RetrievalGenerationService } from './retrieval-generation.service';
-import { ChatMemoryService } from './chat-memory.service';
-import { ChatBot, ChatSession } from '../../infrastructure/db/models';
-import { SubscriptionService } from '../subscription/subscription.service';
-import { debugLogger } from '../../core/logger';
-import { ChatbotAnalyticsService } from './chatbot-analytics.service';
-import { SocketService } from '../../infrastructure/socket/socket.service';
+import { RetrievalGenerationService } from '../services/retrieval-generation.service';
+import { ChatMemoryService } from '../services/chat-memory.service';
+import { ChatBot, ChatSession } from '../../../infrastructure/db/models';
+import { SubscriptionService } from '../../subscription/subscription.service';
+import { debugLogger } from '../../../core/logger';
+import { ChatbotAnalyticsService } from '../services/chatbot-analytics.service';
+import { SocketService } from '../../../infrastructure/socket/socket.service';
 
 declare const process: {
   env: {
