@@ -894,7 +894,9 @@ router.put('/total-admin/resellers/:id', adminSecretAuth, async (req: Request, r
     const updates: any = {};
     if (reliability_score !== undefined) updates.reliability_score = Number(reliability_score);
     if (can_collect_payments !== undefined) updates.can_collect_payments = !!can_collect_payments;
-    if (commission_percentage !== undefined) updates.commission_percentage = Number(commission_percentage);
+    if (commission_percentage !== undefined) {
+      updates.commission_percentage = commission_percentage === null ? null : Number(commission_percentage);
+    }
     if (custom_referrer_first_rate !== undefined) {
       updates.custom_referrer_first_rate = custom_referrer_first_rate === null ? null : Number(custom_referrer_first_rate);
     }
@@ -1198,7 +1200,8 @@ router.get('/total-admin/settings', adminSecretAuth, async (req: Request, res: R
         referrer_first_month_rate: 30.00,
         referrer_recurring_rate: 10.00,
         approver_fee_rate: 10.00,
-      });
+        topup_commission_rate: 30.00,
+      } as any);
     }
     return res.json({ success: true, settings });
   } catch (error) {
@@ -1209,19 +1212,21 @@ router.get('/total-admin/settings', adminSecretAuth, async (req: Request, res: R
 // ─── 56. PUT /total-admin/settings — Update global settings ───────────────────────
 router.put('/total-admin/settings', adminSecretAuth, async (req: Request, res: Response) => {
   try {
-    const { referrer_first_month_rate, referrer_recurring_rate, approver_fee_rate } = req.body;
+    const { referrer_first_month_rate, referrer_recurring_rate, approver_fee_rate, topup_commission_rate } = req.body;
     let settings = await SystemSetting.findOne();
     if (!settings) {
       settings = await SystemSetting.create({
         referrer_first_month_rate: 30.00,
         referrer_recurring_rate: 10.00,
         approver_fee_rate: 10.00,
-      });
+        topup_commission_rate: 30.00,
+      } as any);
     }
     await settings.update({
       referrer_first_month_rate: Number(referrer_first_month_rate),
       referrer_recurring_rate: Number(referrer_recurring_rate),
       approver_fee_rate: Number(approver_fee_rate),
+      topup_commission_rate: topup_commission_rate !== undefined ? Number(topup_commission_rate) : settings.topup_commission_rate,
     });
     return res.json({ success: true, settings });
   } catch (error) {

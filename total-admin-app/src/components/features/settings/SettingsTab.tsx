@@ -16,6 +16,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [referrerFirstMonthRate, setReferrerFirstMonthRate] = useState(30);
   const [referrerRecurringRate, setReferrerRecurringRate] = useState(10);
   const [approverFeeRate, setApproverFeeRate] = useState(10);
+  const [topupCommissionRate, setTopupCommissionRate] = useState(30);
   const [updatingSettings, setUpdatingSettings] = useState(false);
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       setReferrerFirstMonthRate(Number(settings.referrer_first_month_rate));
       setReferrerRecurringRate(Number(settings.referrer_recurring_rate));
       setApproverFeeRate(Number(settings.approver_fee_rate));
+      setTopupCommissionRate(Number(settings.topup_commission_rate || 30));
     }
   }, [settings]);
 
@@ -34,6 +36,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         referrer_first_month_rate: Number(referrerFirstMonthRate),
         referrer_recurring_rate: Number(referrerRecurringRate),
         approver_fee_rate: Number(approverFeeRate),
+        topup_commission_rate: Number(topupCommissionRate),
       });
       if (res.success) {
         alert('Global commission settings updated successfully!');
@@ -101,6 +104,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 required
                 value={referrerRecurringRate}
                 onChange={(e) => setReferrerRecurringRate(Number(e.target.value))}
+              />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Top-Up Commission (%)</label>
+              <input
+                className="form-control"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                required
+                value={topupCommissionRate}
+                onChange={(e) => setTopupCommissionRate(Number(e.target.value))}
               />
             </div>
             <div className="form-group" style={{ margin: 0 }}>

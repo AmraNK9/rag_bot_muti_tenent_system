@@ -108,12 +108,22 @@ router.get('/reseller/dashboard', resellerAuthMiddleware, async (req: Request, r
     const referrerFirstRate = reseller.custom_referrer_first_rate !== null ? Number(reseller.custom_referrer_first_rate) : defaultFirstRate;
     const referrerRecRate = reseller.custom_referrer_recurring_rate !== null ? Number(reseller.custom_referrer_recurring_rate) : defaultRecRate;
 
+    const topupCommissionSum = await P2PTopupTransaction.sum('commission_earned', {
+      where: { reseller_id: reseller.id }
+    }) || 0;
+
+    const approveCommissionSum = await PlanRequest.sum('approver_commission_amount', {
+      where: { reseller_id: reseller.id, status: 'approved' }
+    }) || 0;
+
     return res.json({
       success: true,
       stats: {
         id: reseller.id,
         name: reseller.name,
         balance: reseller.balance,
+        topupCommission: topupCommissionSum,
+        approveCommission: approveCommissionSum,
         prepaid_balance: reseller.prepaid_balance,
         pending_debt: reseller.pending_debt,
         postpaid_limit: reseller.postpaid_limit,
@@ -304,7 +314,9 @@ router.post('/reseller/p2p-topup', resellerAuthMiddleware, async (req: Request, 
     }
 
     // 3. Calculate financial details
-    const commissionRate = reseller.commission_percentage || 0;
+    const settings = await SystemSetting.findOne();
+    const globalTopupRate = settings?.topup_commission_rate !== undefined ? Number(settings.topup_commission_rate) : 30.00;
+    const commissionRate = reseller.commission_percentage !== null ? Number(reseller.commission_percentage) : globalTopupRate;
     const commissionEarned = package_price * (commissionRate / 100);
     const netDeduction = package_price - commissionEarned;
 

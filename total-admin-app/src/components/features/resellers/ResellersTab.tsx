@@ -16,7 +16,7 @@ export const ResellersTab: React.FC<ResellersTabProps> = ({
   const [editingReseller, setEditingReseller] = useState<Reseller | null>(null);
   const [reliabilityScore, setReliabilityScore] = useState(100);
   const [canCollectPayments, setCanCollectPayments] = useState(false);
-  const [commissionRate, setCommissionRate] = useState(30);
+  const [commissionRate, setCommissionRate] = useState('');
   const [customReferrerFirstRate, setCustomReferrerFirstRate] = useState('');
   const [customReferrerRecurringRate, setCustomReferrerRecurringRate] = useState('');
   const [customApproverRate, setCustomApproverRate] = useState('');
@@ -29,7 +29,7 @@ export const ResellersTab: React.FC<ResellersTabProps> = ({
     setEditingReseller(reseller);
     setReliabilityScore(reseller.reliability_score);
     setCanCollectPayments(reseller.can_collect_payments);
-    setCommissionRate(reseller.commission_percentage);
+    setCommissionRate(reseller.commission_percentage === null ? '' : String(reseller.commission_percentage));
     setCustomReferrerFirstRate(
       reseller.custom_referrer_first_rate === null ? '' : String(reseller.custom_referrer_first_rate)
     );
@@ -54,7 +54,7 @@ export const ResellersTab: React.FC<ResellersTabProps> = ({
       const res = await updateReseller(editingReseller.id, {
         reliability_score: reliabilityScore,
         can_collect_payments: canCollectPayments,
-        commission_percentage: commissionRate,
+        commission_percentage: commissionRate === '' ? null : Number(commissionRate),
         custom_referrer_first_rate:
           customReferrerFirstRate === '' ? null : Number(customReferrerFirstRate),
         custom_referrer_recurring_rate:
@@ -115,26 +115,35 @@ export const ResellersTab: React.FC<ResellersTabProps> = ({
 
             <div className="reseller-meta-row">
               <span>
-                Commission{' '}
+                Top-Up Comm.{' '}
                 <strong style={{ color: 'var(--text-main)' }}>
-                  {reseller.commission_percentage}%
+                  {reseller.commission_percentage !== null ? reseller.commission_percentage + '%' : 'Default'}
                 </strong>
               </span>
               <span>
-                Collected{' '}
-                <strong style={{ color: 'var(--success)' }}>
-                  {reseller.total_collected.toLocaleString()} MMK
+                Approve Comm.{' '}
+                <strong style={{ color: 'var(--text-main)' }}>
+                  {reseller.custom_approver_rate !== null ? reseller.custom_approver_rate + '%' : 'Default'}
                 </strong>
               </span>
             </div>
 
             <div className="reseller-meta-row">
               <span>
+                Collected{' '}
+                <strong style={{ color: 'var(--success)' }}>
+                  {reseller.total_collected.toLocaleString()} MMK
+                </strong>
+              </span>
+              <span>
                 Earned{' '}
                 <strong style={{ color: 'var(--text-main)' }}>
                   {reseller.balance.toLocaleString()} MMK
                 </strong>
               </span>
+            </div>
+
+            <div className="reseller-meta-row">
               <span>
                 Prepaid{' '}
                 <strong style={{ color: 'var(--primary)' }}>
@@ -206,15 +215,16 @@ export const ResellersTab: React.FC<ResellersTabProps> = ({
                 />
               </div>
               <div className="form-group">
-                <label>Commission (%)</label>
+                <label>Custom Top-Up Commission (%) — optional</label>
                 <input
                   className="form-control"
                   type="number"
                   min="0"
                   max="100"
-                  required
+                  step="0.01"
+                  placeholder="Leave empty to use system default"
                   value={commissionRate}
-                  onChange={(e) => setCommissionRate(Number(e.target.value))}
+                  onChange={(e) => setCommissionRate(e.target.value)}
                 />
               </div>
               <div className="form-group">

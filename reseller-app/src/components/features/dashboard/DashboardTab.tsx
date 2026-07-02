@@ -29,11 +29,79 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
   return (
     <>
+      {/* ACCOUNT ALERTS */}
+      {!stats?.can_sell && (
+        <div className="alert alert-error" style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '1.2rem' }}>⚠️</div>
+          <div>
+            <strong>Account Suspended</strong>
+            <p style={{ margin: 0, fontSize: '0.8rem' }}>
+              Your account is suspended and you cannot approve plans or sell credits. Please contact admin.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {stats?.can_collect_payments === false && (stats?.pending_debt || 0) > 0 && (
+        <div className="alert alert-warning" style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '1.2rem' }}>💳</div>
+          <div>
+            <strong>Prepaid Mode Enforced</strong>
+            <p style={{ margin: 0, fontSize: '0.8rem' }}>
+              Due to pending debt ({Number(stats?.pending_debt).toLocaleString()} MMK), your postpaid collection capability has been revoked. Clear your debt to restore it.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ACCOUNT RATES & STATUS */}
+      <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
+        <h3 style={{ marginBottom: '12px', fontSize: '0.9rem', color: 'var(--text-dim)' }}>📊 Commission Rates & Status</h3>
+        <div className="metrics-grid" style={{ gap: '8px', marginBottom: '0' }}>
+          <div className="metric-item">
+            <span className="metric-label">Top-Up Comm:</span>
+            <strong style={{ color: 'var(--primary)' }}>{stats?.commissionPercentage}%</strong>
+          </div>
+          <div className="metric-item">
+            <span className="metric-label">Approve Comm:</span>
+            <strong style={{ color: 'var(--success)' }}>{stats?.approverRate}%</strong>
+          </div>
+          <div className="metric-item">
+            <span className="metric-label">Refer (New):</span>
+            <strong>{stats?.referrerFirstRate}%</strong>
+          </div>
+          <div className="metric-item">
+            <span className="metric-label">Refer (Renew):</span>
+            <strong>{stats?.referrerRecRate}%</strong>
+          </div>
+          <div className="metric-item">
+            <span className="metric-label">Can Sell:</span>
+            {stats?.can_sell ? <span className="badge badge-green">Yes</span> : <span className="badge badge-danger">Suspended</span>}
+          </div>
+          <div className="metric-item">
+            <span className="metric-label">Postpaid Mode:</span>
+            {stats?.can_collect_payments ? <span className="badge badge-blue">Active</span> : <span className="badge badge-warning">Disabled</span>}
+          </div>
+        </div>
+      </div>
+
       {/* COMPACT WALLET STRIP */}
       <div className="compact-wallet-strip animate-slide-up">
         <div className="wallet-chip">
-          <div className="wallet-chip-label">Commission</div>
+          <div className="wallet-chip-label">Top-Up Comm.</div>
           <div className="wallet-chip-val" style={{ color: 'var(--success)' }}>
+            {stats?.topupCommission ? Number(stats.topupCommission).toLocaleString() : '0'}
+          </div>
+        </div>
+        <div className="wallet-chip">
+          <div className="wallet-chip-label">Approve Comm.</div>
+          <div className="wallet-chip-val" style={{ color: 'var(--success)' }}>
+            {stats?.approveCommission ? Number(stats.approveCommission).toLocaleString() : '0'}
+          </div>
+        </div>
+        <div className="wallet-chip">
+          <div className="wallet-chip-label">Total Earned</div>
+          <div className="wallet-chip-val" style={{ color: 'var(--primary)' }}>
             {stats?.balance ? Number(stats.balance).toLocaleString() : '0'}
           </div>
         </div>

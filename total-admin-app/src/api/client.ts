@@ -37,7 +37,7 @@ export const updateReseller = (
   data: {
     reliability_score?: number;
     can_collect_payments?: boolean;
-    commission_percentage?: number;
+    commission_percentage?: number | null;
     custom_referrer_first_rate?: number | null;
     custom_referrer_recurring_rate?: number | null;
     custom_approver_rate?: number | null;
@@ -79,6 +79,7 @@ export const updateSystemSettings = (data: {
   referrer_first_month_rate: number;
   referrer_recurring_rate: number;
   approver_fee_rate: number;
+  topup_commission_rate: number;
 }) =>
   api.put('/total-admin/settings', data).then((r) => r.data);
 

@@ -2,7 +2,7 @@ export interface Reseller {
   id: number;
   name: string;
   email: string;
-  commission_percentage: number;
+  commission_percentage: number | null;
   balance: number;
   can_collect_payments: boolean;
   reliability_score: number;
@@ -48,6 +48,7 @@ export interface SystemSetting {
   referrer_first_month_rate: number;
   referrer_recurring_rate: number;
   approver_fee_rate: number;
+  topup_commission_rate: number;
 }
 
 export interface Plan {

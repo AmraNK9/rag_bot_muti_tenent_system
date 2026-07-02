@@ -208,10 +208,9 @@ p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
 .app-bar-icon-btn:active { transform: scale(0.9); }
 
 /* ─── Compact Wallet Strip ───────────────────────────────── */
-.compact-wallet-strip { display: flex; gap: 12px; margin-bottom: 24px; }
+.compact-wallet-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
 
 .wallet-chip {
-  flex: 1;
   background: var(--bg-card);
   border: 0.5px solid var(--border-glass);
   border-radius: var(--radius-md);
@@ -221,7 +220,22 @@ p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
 }
 
 .wallet-chip-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
-.wallet-chip-val { font-size: 1.25rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
+.wallet-chip-val { font-size: 1.15rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.5px; }
+
+/* ─── Metric Item (Dashboard) ───────────────────────────── */
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+.metric-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
 
 /* ─── Metrics Grid ───────────────────────────────────────── */
 .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
@@ -278,6 +292,44 @@ p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
   background: linear-gradient(135deg, #0a84ff, #005bb5);
   display: flex; align-items: center; justify-content: center;
   font-size: 2rem; margin: 0 auto 16px; box-shadow: 0 8px 24px rgba(10, 132, 255, 0.35);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-card);
+  border: 0.5px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+}
+
+.auth-tabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px 0;
+  text-align: center;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+  background: var(--bg-card);
+  color: var(--text-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }

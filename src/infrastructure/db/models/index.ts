@@ -61,7 +61,7 @@ export class Reseller extends Model<InferAttributes<Reseller>, InferCreationAttr
   declare name: string;
   declare email: string;
   declare password: string; // bcrypt hashed
-  declare commission_percentage: CreationOptional<number>; // e.g. 10.00%
+  declare commission_percentage: CreationOptional<number | null>; // e.g. 10.00%
   declare balance: CreationOptional<number>; // commission wallet balance
   declare prepaid_balance: CreationOptional<number>;
   declare pending_debt: CreationOptional<number>;
@@ -216,6 +216,7 @@ export class SystemSetting extends Model<InferAttributes<SystemSetting>, InferCr
   declare referrer_first_month_rate: number;
   declare referrer_recurring_rate: number;
   declare approver_fee_rate: number;
+  declare topup_commission_rate: CreationOptional<number>;
 }
 
 // ─── AuditLog Model ────────────────────────────────────────────────────────
@@ -675,8 +676,8 @@ export function initModels(sequelize: Sequelize) {
       },
       commission_percentage: {
         type: DataTypes.DECIMAL(5, 2),
-        allowNull: false,
-        defaultValue: 10.00,
+        allowNull: true,
+        defaultValue: null,
       },
       balance: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
       prepaid_balance: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
@@ -914,6 +915,11 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.DECIMAL(5, 2),
         allowNull: false,
         defaultValue: 10.00,
+      },
+      topup_commission_rate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 30.00,
       },
     },
     {

@@ -2,6 +2,8 @@ export interface DashboardStats {
   id?: number;
   name: string;
   balance: number;
+  topupCommission?: number;
+  approveCommission?: number;
   prepaid_balance: number;
   pending_debt: number;
   postpaid_limit: number;
