@@ -75,30 +75,38 @@ export interface SearchResultWithScores extends VectorSearchResult {
     debugLogger.log('PIPELINE', `Search mode: ${this.useHybridSearch ? 'HYBRID (vector + keyword)' : 'VECTOR (cosine similarity)'}`);
 
     // Tools available for this chat
-    const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
     const updateProfileTool = this.toolRegistry.getTool('UpdateUserProfileTool');
+    const fetchProductsTool = this.toolRegistry.getTool('FetchProductsTool');
     const availableTools = [];
     
     // --- GATEKEEPER PATTERN ---
-    // Only pass the UpdateUserProfileTool to the LLM if the message might contain personal facts.
-    // This avoids making a redundant LLM tool-calling request for simple messages like "hi", "thanks", "how much".
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // Profile Keywords Gatekeeper
     const profileKeywords = [
       'ကျွန်တော်', 'ကျနော်', 'ကျွန်တော့', 'ကျွန်တော့်', 'ကျနော့်', 'ကျနော့', 
       'ကျွန်မ', 'ကျမ', 'ကျွန်မရဲ့', 'ကျမရဲ့', 
       'ကိုယ့်', 'ကိုယ့်ရဲ့', 'ငါ', 'ငါ့', 'ကျုပ်', 'ကျုပ်တို့',
       'နာမည်', 'ဖုန်း', 'လိပ်စာ', 'နေတာ', 'နေပါတယ်', 'နေရပ်', 'ပို့ပေး',
-      'ဆိုဒ်', 'အရောင်', 'ဝတ်တာ', 'စီးတာ', 'ကြိုက်', 'လိုချင်','အနီ','အဝါ','အနက်','အဖြူ','အပြာ','အစိမ်း','အဝါရောင်','အနီရောင်','အနက်ရောင်','အဖြူရောင်','အပြာရောင်','အစိမ်းရောင်',
-      '9','7', '8', '6', '5', '4', '3', '2', '1', '0', 
-      '၀၉', '၇', '၈', '၆', '၅', '၄', '၃', '၂', '၁', '၀',
+      'ဆိုဒ်', 'အရောင်', 'ဝတ်တာ', 'စီးတာ', 'ကြိုက်', 'လိုချင်', 
       '09', '+95', 'name', 'phone', 'ph ', 'address', 'size', 'color', 
       'like', 'my ', 'prefer', 'i am', "i'm", 'mine'
     ];
-    const lowerMessage = userMessage.toLowerCase();
     const mightContainProfile = profileKeywords.some(kw => lowerMessage.includes(kw));
 
     // Notice: We removed RequestHumanAgentTool from Phase A because it is now handled by Auto-Escalation in Phase C.
     if (updateProfileTool && mightContainProfile) {
       availableTools.push(updateProfileTool.definition);
+    }
+
+    // Product Inquiry Keywords Gatekeeper
+    const productKeywords = [
+      'ဘာတွေ', 'ဘာရလဲ', 'ဘာဖုန်း', 'ဘာပစ္စည်း', 'ဘာတွေရောင်း', 'စာရင်း', 'ပြပါ', 'ရှိလဲ', 'ရမလဲ', 'ရနိုင်မလဲ',
+      'list', 'show', 'menu', 'products', 'available', 'what do you have', 'what do you sell'
+    ];
+    const mightInquireProducts = productKeywords.some(kw => lowerMessage.includes(kw));
+    if (fetchProductsTool && mightInquireProducts) {
+      availableTools.push(fetchProductsTool.definition);
     }
 
     const parallelTasks: [
@@ -125,7 +133,7 @@ export interface SearchResultWithScores extends VectorSearchResult {
         ? this.llmService.executeToolCalling(
             [{ role: 'user', content: userMessage }], 
             availableTools,
-            { systemPrompt: 'Evaluate the user message. If the user mentions personal facts, preferences, name, phone number, address, shoe size, or specific interests about themselves, trigger the UpdateUserProfileTool. Otherwise, return normally.' }
+            { systemPrompt: 'Evaluate the user message. If the user mentions personal facts, preferences, name, phone number, address, shoe size, or specific interests about themselves, trigger the UpdateUserProfileTool. If the user asks what products are available or asks for a list, trigger the FetchProductsTool. Otherwise, return normally.' }
           ).catch(err => {
              console.error('[ToolCalling Intention Check Error]', err);
              return null;
@@ -145,17 +153,14 @@ export interface SearchResultWithScores extends VectorSearchResult {
     // Process Tool Call Result if any
     let humanRequested = false;
     let newlyExtractedProfile = null;
+    let fetchedProductsContext = '';
 
     if (toolResult) {
       if (toolResult.toolName === 'RequestHumanAgentTool') {
         humanRequested = true;
-        if (humanTool) {
-          void humanTool.execute(toolResult.arguments, { chatbotId, senderId }).catch(err => console.error('[HumanTool Trigger Error]', err));
-        }
+        // humanTool execution was moved to auto-escalation in Phase C, but leaving this block in case legacy tools invoke it.
       } else if (toolResult.toolName === 'UpdateUserProfileTool') {
         if (updateProfileTool) {
-          // Execute the tool to save the new fact. 
-          // We also capture the result to immediately inject it into the current prompt without waiting for next chat.
           try {
              const execResult = await updateProfileTool.execute(toolResult.arguments, { chatbotId, senderId });
              if (execResult && execResult.success) {
@@ -163,6 +168,19 @@ export interface SearchResultWithScores extends VectorSearchResult {
              }
           } catch(err) {
              console.error('[UpdateUserProfileTool Trigger Error]', err);
+          }
+        }
+      } else if (toolResult.toolName === 'FetchProductsTool') {
+        const fetchProductsTool = this.toolRegistry.getTool('FetchProductsTool');
+        if (fetchProductsTool) {
+          try {
+             const execResult = await fetchProductsTool.execute(toolResult.arguments, { chatbotId, senderId });
+             if (execResult && execResult.status === 'success' && execResult.data) {
+                fetchedProductsContext = execResult.data;
+                debugLogger.log('PIPELINE', `FetchProductsTool executed successfully. Fetched inventory list.`);
+             }
+          } catch(err) {
+             console.error('[FetchProductsTool Trigger Error]', err);
           }
         }
       }
@@ -179,7 +197,12 @@ export interface SearchResultWithScores extends VectorSearchResult {
 
     // Filter by minimum similarity threshold — don't inject irrelevant context
     const relevantDocs = retrievedDocs.filter(doc => doc.similarity >= MIN_SIMILARITY_THRESHOLD);
-    const contextText = relevantDocs.map(doc => doc.text).join('\n---\n');
+    let contextText = relevantDocs.map(doc => doc.text).join('\n---\n');
+
+    // If FetchProductsTool returned a list, prepend it to the contextText
+    if (fetchedProductsContext) {
+      contextText = `${fetchedProductsContext}\n\n${contextText}`;
+    }
 
     if (relevantDocs.length < retrievedDocs.length) {
       debugLogger.log('PIPELINE', `Filtered ${retrievedDocs.length - relevantDocs.length} docs below similarity threshold ${MIN_SIMILARITY_THRESHOLD} — keeping ${relevantDocs.length}`);
@@ -273,6 +296,7 @@ export interface SearchResultWithScores extends VectorSearchResult {
       fullResponseText.includes('Admin ထံသို့')
     )) {
       debugLogger.log('PIPELINE', `AI Auto-Escalation detected in response text. Triggering RequestHumanAgentTool automatically.`);
+      const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
       if (humanTool) {
         void humanTool.execute(
           { reason: 'AI auto-escalated because it could not find the answer in the provided context.' },

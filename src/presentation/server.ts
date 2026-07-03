@@ -13,6 +13,7 @@ import { SystemPromptFactory } from '../infrastructure/prompt/prompt.factory';
 import { QueryExtractionTool } from '../modules/chat/tools/query-extraction.tool';
 import { RequestHumanAgentTool } from '../modules/chat/tools/request-human-agent.tool';
 import { UpdateUserProfileTool } from '../modules/chat/tools/update-user-profile.tool';
+import { FetchProductsTool } from '../modules/chat/tools/fetch-products.tool';
 import { SocketService } from '../infrastructure/socket/socket.service';
 import { redisService } from '../infrastructure/redis/redis.service';
 import { SubscriptionService } from '../modules/subscription/subscription.service';
@@ -80,6 +81,7 @@ const _toolRegistry = new ToolCallingRegistry();
 _toolRegistry.registerTool(new QueryExtractionTool());
 _toolRegistry.registerTool(new RequestHumanAgentTool());
 _toolRegistry.registerTool(new UpdateUserProfileTool());
+_toolRegistry.registerTool(new FetchProductsTool());
 const _chatMemoryService = new ChatMemoryService(_llmService);
 
 // Keyword extraction: local (default, fast) or tool-calling (LLM-based, slower but more accurate)
