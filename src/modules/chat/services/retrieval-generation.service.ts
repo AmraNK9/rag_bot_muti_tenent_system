@@ -3,8 +3,9 @@ import { IEmbeddingService } from '../../../core/interfaces/embedding.interface'
 import { IVectorStoreService, VectorSearchResult } from '../../../core/interfaces/vectorstore.interface';
 import { IToolCallingRegistry } from '../../../core/interfaces/tool.interface';
 import { SystemPromptFactory } from '../../../infrastructure/prompt/prompt.factory';
-import { ChatBot, Business } from '../../../infrastructure/db/models';
+import { ChatBot, Business, ChatbotUser } from '../../../infrastructure/db/models';
 import { ChatMemoryService } from './chat-memory.service';
+import { redisService } from '../../../infrastructure/redis/redis.service';
 import { LocalKeywordExtractor } from './local-keyword-extractor';
 import { debugLogger } from '../../../core/logger';
 
@@ -73,16 +74,39 @@ export interface SearchResultWithScores extends VectorSearchResult {
     debugLogger.log('PIPELINE', `User message: "${userMessage}"`);
     debugLogger.log('PIPELINE', `Search mode: ${this.useHybridSearch ? 'HYBRID (vector + keyword)' : 'VECTOR (cosine similarity)'}`);
 
-    // ── Phase A: Parallel independent operations ──────────────────────────
     // Tools available for this chat
     const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
-    const availableTools = humanTool ? [humanTool.definition] : [];
+    const updateProfileTool = this.toolRegistry.getTool('UpdateUserProfileTool');
+    const availableTools = [];
+    
+    // --- GATEKEEPER PATTERN ---
+    // Only pass the UpdateUserProfileTool to the LLM if the message might contain personal facts.
+    // This avoids making a redundant LLM tool-calling request for simple messages like "hi", "thanks", "how much".
+    const profileKeywords = [
+      'ကျွန်တော်', 'ကျနော်', 'ကျွန်တော့', 'ကျွန်တော့်', 'ကျနော့်', 'ကျနော့', 
+      'ကျွန်မ', 'ကျမ', 'ကျွန်မရဲ့', 'ကျမရဲ့', 
+      'ကိုယ့်', 'ကိုယ့်ရဲ့', 'ငါ', 'ငါ့', 'ကျုပ်', 'ကျုပ်တို့',
+      'နာမည်', 'ဖုန်း', 'လိပ်စာ', 'နေတာ', 'နေပါတယ်', 'နေရပ်', 'ပို့ပေး',
+      'ဆိုဒ်', 'အရောင်', 'ဝတ်တာ', 'စီးတာ', 'ကြိုက်', 'လိုချင်','အနီ','အဝါ','အနက်','အဖြူ','အပြာ','အစိမ်း','အဝါရောင်','အနီရောင်','အနက်ရောင်','အဖြူရောင်','အပြာရောင်','အစိမ်းရောင်',
+      '9','7', '8', '6', '5', '4', '3', '2', '1', '0', 
+      '၀၉', '၇', '၈', '၆', '၅', '၄', '၃', '၂', '၁', '၀',
+      '09', '+95', 'name', 'phone', 'ph ', 'address', 'size', 'color', 
+      'like', 'my ', 'prefer', 'i am', "i'm", 'mine'
+    ];
+    const lowerMessage = userMessage.toLowerCase();
+    const mightContainProfile = profileKeywords.some(kw => lowerMessage.includes(kw));
+
+    // Notice: We removed RequestHumanAgentTool from Phase A because it is now handled by Auto-Escalation in Phase C.
+    if (updateProfileTool && mightContainProfile) {
+      availableTools.push(updateProfileTool.definition);
+    }
 
     const parallelTasks: [
       Promise<ChatBot | null>,
       Promise<string[]>,
       Promise<{ summary: string | null; recentMessages: any[] }>,
-      Promise<any>
+      Promise<any>,
+      Promise<any | null>
     ] = [
       // 1. Fetch ChatBot and associated Business
       ChatBot.findOne({
@@ -101,15 +125,18 @@ export interface SearchResultWithScores extends VectorSearchResult {
         ? this.llmService.executeToolCalling(
             [{ role: 'user', content: userMessage }], 
             availableTools,
-            { systemPrompt: 'Evaluate the user message. If the user expresses a desire to speak with a human agent, staff, representative, admin, or requires help beyond the bot capabilities, trigger the RequestHumanAgentTool. Otherwise, return normally.' }
+            { systemPrompt: 'Evaluate the user message. If the user mentions personal facts, preferences, name, phone number, address, shoe size, or specific interests about themselves, trigger the UpdateUserProfileTool. Otherwise, return normally.' }
           ).catch(err => {
              console.error('[ToolCalling Intention Check Error]', err);
              return null;
           })
-        : Promise.resolve(null)
+        : Promise.resolve(null),
+
+      // 5. Fetch User Profile for personalization (Cached in Redis)
+      this.fetchUserProfile(chatbotId, senderId)
     ];
 
-    const [chatbot, extractedKeywords, memoryContext, toolResult] = await Promise.all(parallelTasks);
+    const [chatbot, extractedKeywords, memoryContext, toolResult, activeProfile] = await Promise.all(parallelTasks);
 
     if (!chatbot || !chatbot.business) {
       throw new Error(`ChatBot with ID ${chatbotId} or its associated Business profile was not found.`);
@@ -117,10 +144,27 @@ export interface SearchResultWithScores extends VectorSearchResult {
 
     // Process Tool Call Result if any
     let humanRequested = false;
-    if (toolResult && toolResult.toolName === 'RequestHumanAgentTool') {
-      humanRequested = true;
-      if (humanTool) {
-        void humanTool.execute(toolResult.arguments, { chatbotId, senderId }).catch(err => console.error('[HumanTool Trigger Error]', err));
+    let newlyExtractedProfile = null;
+
+    if (toolResult) {
+      if (toolResult.toolName === 'RequestHumanAgentTool') {
+        humanRequested = true;
+        if (humanTool) {
+          void humanTool.execute(toolResult.arguments, { chatbotId, senderId }).catch(err => console.error('[HumanTool Trigger Error]', err));
+        }
+      } else if (toolResult.toolName === 'UpdateUserProfileTool') {
+        if (updateProfileTool) {
+          // Execute the tool to save the new fact. 
+          // We also capture the result to immediately inject it into the current prompt without waiting for next chat.
+          try {
+             const execResult = await updateProfileTool.execute(toolResult.arguments, { chatbotId, senderId });
+             if (execResult && execResult.success) {
+                newlyExtractedProfile = execResult.profile;
+             }
+          } catch(err) {
+             console.error('[UpdateUserProfileTool Trigger Error]', err);
+          }
+        }
       }
     }
 
@@ -155,6 +199,15 @@ export interface SearchResultWithScores extends VectorSearchResult {
     );
 
     let finalSystemPrompt = systemPrompt;
+
+    // Inject User Profile (Facts)
+    const profileToInject = newlyExtractedProfile || activeProfile;
+    if (profileToInject && Object.keys(profileToInject).length > 0) {
+      finalSystemPrompt += `\n\n[USER PROFILE / KNOWN FACTS]: You already know the following facts about the user. Do NOT ask them for this information again. Personalize your response using these facts:\n${JSON.stringify(profileToInject, null, 2)}`;
+      debugLogger.log('PIPELINE', `Injected User Profile into prompt.`);
+    }
+
+    // Inject RAG Context
     if (contextText) {
       finalSystemPrompt += `\n\n[Context: Verified Business facts. Use ONLY this information to respond if applicable]:\n${contextText}`;
     } else {
@@ -200,13 +253,33 @@ export interface SearchResultWithScores extends VectorSearchResult {
     // Stream response from LLM
     let chunkCount = 0;
     let totalLength = 0;
+    let fullResponseText = '';
+    
     for await (const chunk of this.llmService.generateCompletionStream(messagesPayload)) {
       chunkCount++;
       totalLength += chunk.length;
+      fullResponseText += chunk;
       yield chunk;
     }
 
     debugLogger.log('STREAM', `Completed: ${chunkCount} chunks, ${totalLength} total chars`);
+
+    // --- AI AUTO-ESCALATION FEATURE ---
+    // If the LLM generated a fallback response indicating it doesn't know and will contact staff,
+    // we programmatically trigger the human notification in the background!
+    if (!humanRequested && (
+      fullResponseText.includes('ဆိုင်ဝန်ထမ်းနှင့် ဆက်သွယ်ပေးပါမည်') || 
+      fullResponseText.includes('ဆိုင်ဝန်ထမ်းနှင့် တိုက်ရိုက်') ||
+      fullResponseText.includes('Admin ထံသို့')
+    )) {
+      debugLogger.log('PIPELINE', `AI Auto-Escalation detected in response text. Triggering RequestHumanAgentTool automatically.`);
+      if (humanTool) {
+        void humanTool.execute(
+          { reason: 'AI auto-escalated because it could not find the answer in the provided context.' },
+          { chatbotId, senderId }
+        ).catch(err => console.error('[Auto-Escalation Tool Error]', err));
+      }
+    }
   }
 
   /**
@@ -237,6 +310,40 @@ export interface SearchResultWithScores extends VectorSearchResult {
     }
 
     return [];
+  }
+
+  /**
+   * Fetches User Profile (Facts). Tries Redis first, falls back to DB.
+   * Caches the result in Redis for 24 hours.
+   */
+  private async fetchUserProfile(chatbotId: number, senderId: string): Promise<any | null> {
+    const cacheKey = `user_profile:${chatbotId}:${senderId}`;
+    try {
+      const cached = await redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (err) {
+      console.warn(`[Redis] Failed to fetch User Profile for ${senderId}:`, err);
+    }
+
+    // Fallback to PostgreSQL
+    const chatbotUser = await ChatbotUser.findOne({
+      where: { chatbot_id: chatbotId, sender_id: senderId }
+    });
+
+    const profileData = chatbotUser ? chatbotUser.profile_data : null;
+
+    if (profileData) {
+      // Save to Redis (24 hours TTL)
+      try {
+        await redisService.set(cacheKey, JSON.stringify(profileData), { EX: 86400 });
+      } catch (err) {
+        console.warn(`[Redis] Failed to cache User Profile for ${senderId}:`, err);
+      }
+    }
+
+    return profileData;
   }
 
   /**

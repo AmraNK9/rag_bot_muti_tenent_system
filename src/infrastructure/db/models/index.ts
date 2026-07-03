@@ -149,6 +149,16 @@ export class ChatSession extends Model<InferAttributes<ChatSession>, InferCreati
   declare updated_at: CreationOptional<Date>;
 }
 
+// ─── ChatbotUser Model (Tool Calling Memory) ─────────────────────────────────
+export class ChatbotUser extends Model<InferAttributes<ChatbotUser>, InferCreationAttributes<ChatbotUser>> {
+  declare id: CreationOptional<number>;
+  declare chatbot_id: ForeignKey<ChatBot['id']>;
+  declare sender_id: string;
+  declare profile_data: CreationOptional<any>; // JSONB for dynamic facts
+  declare created_at: CreationOptional<Date>;
+  declare updated_at: CreationOptional<Date>;
+}
+
 // ─── TopUpHistory Model ──────────────────────────────────────────────────────
 export class TopUpHistory extends Model<InferAttributes<TopUpHistory>, InferCreationAttributes<TopUpHistory>> {
   declare id: CreationOptional<number>;
@@ -580,6 +590,52 @@ export function initModels(sequelize: Sequelize) {
       timestamps: true, // We need updated_at for timeout checks
       createdAt: 'created_at',
       updatedAt: 'updated_at',
+    }
+  );
+
+  ChatbotUser.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      chatbot_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      sender_id: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      profile_data: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {},
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    },
+    {
+      sequelize,
+      tableName: 'chatbot_users',
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      indexes: [
+        {
+          unique: true,
+          fields: ['chatbot_id', 'sender_id'],
+        },
+      ],
     }
   );
 

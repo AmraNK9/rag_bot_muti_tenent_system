@@ -39,13 +39,15 @@ export class RequestHumanAgentTool implements ITool {
               chatbot_id: chatbotId,
               sender_id: senderId,
               message: `🙋‍♂️ [SYSTEM ALERT] လူကြီးမင်း၏ အကြောင်းကြားစာကို ဆိုင်ဝန်ထမ်းထံ ပေးပို့လိုက်ပါပြီ။ ခေတ္တစောင့်ဆိုင်းပေးပါခင်ဗျာ။`,
-              sender_type: 'system',
+              sender_type: 'bot',
+              reply_source: 'ai'
             });
             const sysMsg = await Messages.create({
               chatbot_id: chatbotId,
-              sender_id: 'system',
+              sender_id: senderId,
               message: `🙋‍♂️ [STAFF REQUEST] Customer User #${senderId} requested staff intervention. Reason: ${reason}`,
-              sender_type: 'system',
+              sender_type: 'bot',
+              reply_source: 'admin'
             });
             const { SocketService } = await import('../../../infrastructure/socket/socket.service');
             SocketService.io.to(chatbotId.toString()).emit('new_message', custMsg.toJSON());

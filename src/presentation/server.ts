@@ -12,7 +12,11 @@ import { ToolCallingRegistry } from '../infrastructure/registry/tool-calling.reg
 import { SystemPromptFactory } from '../infrastructure/prompt/prompt.factory';
 import { QueryExtractionTool } from '../modules/chat/tools/query-extraction.tool';
 import { RequestHumanAgentTool } from '../modules/chat/tools/request-human-agent.tool';
+import { UpdateUserProfileTool } from '../modules/chat/tools/update-user-profile.tool';
 import { SocketService } from '../infrastructure/socket/socket.service';
+import { redisService } from '../infrastructure/redis/redis.service';
+import { SubscriptionService } from '../modules/subscription/subscription.service';
+import cron from 'node-cron';
 import { Request, Response } from 'express';
 
 declare const process: {
@@ -75,6 +79,7 @@ const _promptFactory = new SystemPromptFactory();
 const _toolRegistry = new ToolCallingRegistry();
 _toolRegistry.registerTool(new QueryExtractionTool());
 _toolRegistry.registerTool(new RequestHumanAgentTool());
+_toolRegistry.registerTool(new UpdateUserProfileTool());
 const _chatMemoryService = new ChatMemoryService(_llmService);
 
 // Keyword extraction: local (default, fast) or tool-calling (LLM-based, slower but more accurate)
@@ -126,6 +131,16 @@ app.post(
 // Start Server helper
 export function startServer(port: number) {
   const isProduction = process.env.NODE_ENV === 'production';
+
+  // Connect to Redis asyncly, don't block server startup
+  redisService.connect().catch(err => console.error('[Redis] Startup connect error', err));
+
+  // Initialize DB Sync Cron Job (runs every 15 minutes)
+  const subscriptionService = new SubscriptionService();
+  cron.schedule('*/15 * * * *', () => {
+    void subscriptionService.syncCreditsToDB();
+  });
+  console.log('[Config] Credit DB Sync Cron Job scheduled (every 15 minutes)');
 
   const server = app.listen(port, () => {
     console.log(`\n============================================================`);
