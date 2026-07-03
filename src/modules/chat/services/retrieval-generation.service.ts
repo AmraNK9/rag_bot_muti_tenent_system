@@ -3,7 +3,7 @@ import { IEmbeddingService } from '../../../core/interfaces/embedding.interface'
 import { IVectorStoreService, VectorSearchResult } from '../../../core/interfaces/vectorstore.interface';
 import { IToolCallingRegistry } from '../../../core/interfaces/tool.interface';
 import { SystemPromptFactory } from '../../../infrastructure/prompt/prompt.factory';
-import { ChatBot, Business, ChatbotUser } from '../../../infrastructure/db/models';
+import { ChatBot, Business, ChatbotUser, Plan } from '../../../infrastructure/db/models';
 import { ChatMemoryService } from './chat-memory.service';
 import { redisService } from '../../../infrastructure/redis/redis.service';
 import { LocalKeywordExtractor } from './local-keyword-extractor';
@@ -43,6 +43,42 @@ export interface SearchResultWithScores extends VectorSearchResult {
   }
 
   /**
+   * Fetches the ChatBot, Business, and associated Plan details, caching it in Redis to ensure 0ms latency impact.
+   */
+  private async getCachedChatbotConfig(chatbotId: number): Promise<any> {
+    const cacheKey = `chatbot_config_v2:${chatbotId}`;
+    const cached = await redisService.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    const chatbot = await ChatBot.findOne({
+      where: { id: chatbotId },
+      include: [{ model: Business, as: 'business' }],
+    });
+
+    if (!chatbot || !chatbot.business) return null;
+
+    // Fetch associated plan if it's a subscription
+    let plan = null;
+    if (chatbot.business.plan_id) {
+      plan = await Plan.findOne({ where: { id: chatbot.business.plan_id } });
+    }
+
+    const configData = {
+      ...chatbot.toJSON(),
+      business: {
+        ...chatbot.business.toJSON(),
+        plan: plan ? plan.toJSON() : null
+      }
+    };
+
+    // Cache for 1 hour
+    await redisService.set(cacheKey, JSON.stringify(configData), { EX: 3600 });
+    return configData;
+  }
+
+  /**
    * Main flow: Vector/Hybrid Search -> Context Aggregation -> Generation
    * Optimized with parallel execution for independent operations.
    */
@@ -74,12 +110,49 @@ export interface SearchResultWithScores extends VectorSearchResult {
     debugLogger.log('PIPELINE', `User message: "${userMessage}"`);
     debugLogger.log('PIPELINE', `Search mode: ${this.useHybridSearch ? 'HYBRID (vector + keyword)' : 'VECTOR (cosine similarity)'}`);
 
+    // 1. Synchronously Fetch ChatBot Config (Cached in Redis -> 0ms Latency)
+    const chatbotConfig = await this.getCachedChatbotConfig(chatbotId);
+    if (!chatbotConfig || !chatbotConfig.business) {
+      throw new Error(`ChatBot with ID ${chatbotId} or its associated Business profile was not found.`);
+    }
+
+    const businessPlan = chatbotConfig.business.plan;
+    const isPrepaid = businessPlan?.plan_type === 'prepaid_credits' || !businessPlan; // default to true if prepaid or no plan
+    const allowedServices = businessPlan?.services || [];
+    const canUseProfileExtraction = isPrepaid || allowedServices.includes('profile_extraction');
+    const canUseProductFetching = isPrepaid || allowedServices.includes('product_fetching');
+    const canUseHumanHandoff = isPrepaid || allowedServices.includes('human_agent_handoff');
+
+    // --- INSTANT HUMAN HANDOFF (Input Gatekeeper) ---
+    if (canUseHumanHandoff) {
+      const lowerMessage = userMessage.toLowerCase();
+      const handoffKeywords = [
+        'လူနဲ့ပြော', 'လူနဲ့', 'admin', 'agent', 'ဆိုင်ရှင်', 'customer service', 'live chat', 
+        'လူနဲ့ပြပါ', 'လူနဲ့ဆက်သွယ်', 'operator', 'မန်နေဂျာ', 'တာဝန်ခံ', 'ဆက်သွယ်ပေးပါ', 'လူနဲ့ဖြေ', 'လူနဲ့ချိတ်ပေး',
+        'talk to human', 'talk to agent', 'real person', 'support', 'help', 'emergency', 'help desk'
+      ];
+      const userRequestsHandoff = handoffKeywords.some(kw => lowerMessage.includes(kw));
+
+      if (userRequestsHandoff) {
+        debugLogger.log('PIPELINE', 'Instant Human Handoff triggered by user input.');
+        const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
+        if (humanTool) {
+          humanTool.execute({ reason: 'User explicitly requested a human agent.' }, { chatbotId, senderId })
+            .catch(e => console.error('[Backend ERROR] Error processing instant handoff:', e));
+        }
+        
+        // Return immediately without calling LLM
+        yield 'မင်္ဂလာပါ။ ဆိုင်ဝန်ထမ်းနှင့် ချိတ်ဆက်ပေးနေပါတယ်။ ခေတ္တစောင့်ဆိုင်းပေးပါခင်ဗျာ။';
+        return;
+      }
+    }
+
     // Tools available for this chat
     const updateProfileTool = this.toolRegistry.getTool('UpdateUserProfileTool');
     const fetchProductsTool = this.toolRegistry.getTool('FetchProductsTool');
     const availableTools = [];
     
-    // --- GATEKEEPER PATTERN ---
+    // --- GATEKEEPER PATTERN (Now Plan-Aware) ---
     const lowerMessage = userMessage.toLowerCase();
     
     // Profile Keywords Gatekeeper
@@ -94,41 +167,34 @@ export interface SearchResultWithScores extends VectorSearchResult {
     ];
     const mightContainProfile = profileKeywords.some(kw => lowerMessage.includes(kw));
 
-    // Notice: We removed RequestHumanAgentTool from Phase A because it is now handled by Auto-Escalation in Phase C.
-    if (updateProfileTool && mightContainProfile) {
+    if (canUseProfileExtraction && updateProfileTool && mightContainProfile) {
       availableTools.push(updateProfileTool.definition);
     }
 
     // Product Inquiry Keywords Gatekeeper
     const productKeywords = [
       'ဘာတွေ', 'ဘာရလဲ', 'ဘာဖုန်း', 'ဘာပစ္စည်း', 'ဘာတွေရောင်း', 'စာရင်း', 'ပြပါ', 'ရှိလဲ', 'ရမလဲ', 'ရနိုင်မလဲ',
+      'ဘာ', 'ပစ္စည်း', 'ရသေးလဲ', 'ရောင်းသေးလဲ', 'ကျန်သေးလဲ', 'ပေးပါ',
       'list', 'show', 'menu', 'products', 'available', 'what do you have', 'what do you sell'
     ];
     const mightInquireProducts = productKeywords.some(kw => lowerMessage.includes(kw));
-    if (fetchProductsTool && mightInquireProducts) {
+    if (canUseProductFetching && fetchProductsTool && mightInquireProducts) {
       availableTools.push(fetchProductsTool.definition);
     }
 
     const parallelTasks: [
-      Promise<ChatBot | null>,
       Promise<string[]>,
       Promise<{ summary: string | null; recentMessages: any[] }>,
       Promise<any>,
       Promise<any | null>
     ] = [
-      // 1. Fetch ChatBot and associated Business
-      ChatBot.findOne({
-        where: { id: chatbotId },
-        include: [{ model: Business, as: 'business' }],
-      }),
-
-      // 2. Keyword extraction (only needed for hybrid search, but cheap enough to always run)
+      // 1. Keyword extraction (only needed for hybrid search, but cheap enough to always run)
       this.useHybridSearch ? this.extractKeywords(userMessage) : Promise.resolve([]),
 
-      // 3. Fetch chat memory context (last 10 messages + summary)
+      // 2. Fetch chat memory context (last 10 messages + summary)
       this.chatMemoryService.getContextForChat(chatbotId, senderId),
       
-      // 4. Intent classification via LLM tool calling (run in parallel)
+      // 3. Intent classification via LLM tool calling (run in parallel)
       availableTools.length > 0 
         ? this.llmService.executeToolCalling(
             [{ role: 'user', content: userMessage }], 
@@ -140,15 +206,14 @@ export interface SearchResultWithScores extends VectorSearchResult {
           })
         : Promise.resolve(null),
 
-      // 5. Fetch User Profile for personalization (Cached in Redis)
+      // 4. Fetch User Profile for personalization (Cached in Redis)
       this.fetchUserProfile(chatbotId, senderId)
     ];
 
-    const [chatbot, extractedKeywords, memoryContext, toolResult, activeProfile] = await Promise.all(parallelTasks);
+    const [extractedKeywords, memoryContext, toolResult, activeProfile] = await Promise.all(parallelTasks);
+    const { summary: memorySummary, recentMessages } = memoryContext;
 
-    if (!chatbot || !chatbot.business) {
-      throw new Error(`ChatBot with ID ${chatbotId} or its associated Business profile was not found.`);
-    }
+    const chatbot = chatbotConfig;
 
     // Process Tool Call Result if any
     let humanRequested = false;
@@ -248,7 +313,8 @@ export interface SearchResultWithScores extends VectorSearchResult {
     messagesPayload.push({ role: 'system', content: finalSystemPrompt });
 
     // Inject history summary if exists
-    const { summary, recentMessages } = memoryContext;
+    // Extract memory summary and recentMessages directly since we unpacked them at the top.
+    const summary = memorySummary;
     if (summary) {
       messagesPayload.push({
         role: 'system',
@@ -287,14 +353,19 @@ export interface SearchResultWithScores extends VectorSearchResult {
 
     debugLogger.log('STREAM', `Completed: ${chunkCount} chunks, ${totalLength} total chars`);
 
-    // --- AI AUTO-ESCALATION FEATURE ---
+    // --- AI AUTO-ESCALATION FEATURE (Output Gatekeeper) ---
     // If the LLM generated a fallback response indicating it doesn't know and will contact staff,
     // we programmatically trigger the human notification in the background!
-    if (!humanRequested && (
-      fullResponseText.includes('ဆိုင်ဝန်ထမ်းနှင့် ဆက်သွယ်ပေးပါမည်') || 
-      fullResponseText.includes('ဆိုင်ဝန်ထမ်းနှင့် တိုက်ရိုက်') ||
-      fullResponseText.includes('Admin ထံသို့')
-    )) {
+    if (canUseHumanHandoff && !humanRequested) {
+      const fallbackPhrases = [
+        'ဆိုင်ဝန်ထမ်း', 'admin', 'လူနဲ့ပြပါ', 'ဆက်သွယ်ပေးပါမည်', 'မသိရှိပါ', 'မသိပါဘူး', 'မသေချာ', 
+        'မသိနိုင်ပါ', 'တာဝန်ခံ', 'customer service', 'operator', 'ဖြေကြားပေးနိုင်မည်မဟုတ်', 'မရှိပါဘူး',
+        'ချိတ်ဆက်ပေးပါမည်', 'အကြောင်းကြားပေးပါမည်', 'လူနဲ့ပြော', 'လူကိုယ်တိုင်', 'တိုက်ရိုက်'
+      ];
+      
+      const needsEscalation = fallbackPhrases.some(phrase => fullResponseText.includes(phrase));
+      
+      if (needsEscalation) {
       debugLogger.log('PIPELINE', `AI Auto-Escalation detected in response text. Triggering RequestHumanAgentTool automatically.`);
       const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
       if (humanTool) {
@@ -305,6 +376,7 @@ export interface SearchResultWithScores extends VectorSearchResult {
       }
     }
   }
+}
 
   /**
    * Extracts keywords using either local extraction (default) or LLM tool calling.

@@ -19,6 +19,9 @@ export const PlansTab: React.FC<PlansTabProps> = ({ plans, loadingPlans, setPlan
   const [planIsActive, setPlanIsActive] = useState(true);
   const [planMaxChatHistory, setPlanMaxChatHistory] = useState(10);
   const [planServicesStr, setPlanServicesStr] = useState('');
+  const [enableProfileExtraction, setEnableProfileExtraction] = useState(false);
+  const [enableProductFetching, setEnableProductFetching] = useState(false);
+  const [enableHumanHandoff, setEnableHumanHandoff] = useState(false);
   const [planIsOnlyP2p, setPlanIsOnlyP2p] = useState(false);
   const [updatingPlan, setUpdatingPlan] = useState(false);
 
@@ -32,6 +35,9 @@ export const PlansTab: React.FC<PlansTabProps> = ({ plans, loadingPlans, setPlan
     setPlanIsActive(true);
     setPlanMaxChatHistory(10);
     setPlanServicesStr('');
+    setEnableProfileExtraction(false);
+    setEnableProductFetching(false);
+    setEnableHumanHandoff(false);
     setPlanIsOnlyP2p(false);
   };
 
@@ -44,7 +50,11 @@ export const PlansTab: React.FC<PlansTabProps> = ({ plans, loadingPlans, setPlan
     setPlanDurationDays(plan.duration_days);
     setPlanIsActive(plan.is_active);
     setPlanMaxChatHistory(plan.max_chat_history || 10);
-    setPlanServicesStr((plan.services || []).join(', '));
+    const servicesArray = plan.services || [];
+    setEnableProfileExtraction(servicesArray.includes('profile_extraction'));
+    setEnableProductFetching(servicesArray.includes('product_fetching'));
+    setEnableHumanHandoff(servicesArray.includes('human_agent_handoff'));
+    setPlanServicesStr(servicesArray.filter(s => s !== 'profile_extraction' && s !== 'product_fetching' && s !== 'human_agent_handoff').join(', '));
     setPlanIsOnlyP2p(plan.is_only_p2p || false);
   };
 
@@ -55,7 +65,11 @@ export const PlansTab: React.FC<PlansTabProps> = ({ plans, loadingPlans, setPlan
       const services = planServicesStr
         .split(',')
         .map((s) => s.trim())
-        .filter((s) => s.length > 0);
+        .filter((s) => s.length > 0 && s !== 'profile_extraction' && s !== 'product_fetching' && s !== 'human_agent_handoff');
+      
+      if (enableProfileExtraction) services.push('profile_extraction');
+      if (enableProductFetching) services.push('product_fetching');
+      if (enableHumanHandoff) services.push('human_agent_handoff');
       const data = {
         name: planName,
         price: Number(planPrice),
@@ -259,7 +273,7 @@ export const PlansTab: React.FC<PlansTabProps> = ({ plans, loadingPlans, setPlan
                   />
                 </div>
               </div>
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label>Services (Comma-separated)</label>
                 <textarea
                   className="form-control"
@@ -269,6 +283,49 @@ export const PlansTab: React.FC<PlansTabProps> = ({ plans, loadingPlans, setPlan
                   placeholder="Live Chat, Priority Support, Analytics..."
                 ></textarea>
               </div>
+
+              <div style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '16px' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem' }}>AI Capabilities (Gatekeepers)</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      id="enable-profile"
+                      checked={enableProfileExtraction}
+                      onChange={(e) => setEnableProfileExtraction(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="enable-profile" style={{ cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <strong>Profile Extraction</strong> (Remembers customer names, phones, addresses)
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      id="enable-products"
+                      checked={enableProductFetching}
+                      onChange={(e) => setEnableProductFetching(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="enable-products" style={{ cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <strong>Product Fetching</strong> (Allows AI to fetch full inventory list directly)
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      id="enable-human"
+                      checked={enableHumanHandoff}
+                      onChange={(e) => setEnableHumanHandoff(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="enable-human" style={{ cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <strong>Human Agent Handoff</strong> (Live chat routing & auto-escalation)
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '16px 0' }}
               >
