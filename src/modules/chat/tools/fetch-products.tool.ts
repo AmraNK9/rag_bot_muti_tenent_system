@@ -71,6 +71,7 @@ export class FetchProductsTool implements ITool {
         status: 'success',
         message: 'Successfully fetched products.',
         data: productListStr,
+        rawProducts: products.map(p => ({ title: p.title, price: p.price, stock: p.stock_count, detail: p.content })),
       };
 
     } catch (error) {
