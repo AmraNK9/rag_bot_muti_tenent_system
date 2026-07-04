@@ -72,13 +72,13 @@ export class WebhookController {
       return { success: true };
     }
 
-    if (!update.message || !update.message.text) {
+    if (!update.message || (!update.message.text && !update.message.photo)) {
       return { success: false };
     }
 
     const senderId = String(update.message.from.id);
     const chatId = update.message.chat.id;
-    const userText = update.message.text;
+    const userText = update.message.text || '';
 
     try {
       // Resolve bot token (cached or from DB)
@@ -106,13 +106,56 @@ export class WebhookController {
         ChatbotAnalyticsService.recordActivity(chatbotId, 1, 0.00015);
       }
 
+      // ─── EXTRACT IMAGE URL ───
+      let imageTag = '[Photo]';
+      if (update.message.photo && update.message.photo.length > 0) {
+        try {
+          const fileId = update.message.photo[update.message.photo.length - 1].file_id;
+          const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+          const fileData = await fileRes.json() as any;
+          if (fileData.ok && fileData.result?.file_path) {
+            imageTag = `[PHOTO:https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}]`;
+          }
+        } catch (e) {
+          console.error('Failed to get Telegram file path', e);
+        }
+      }
+
       // Save user's incoming message to DB first (so it appears in history)
-      const userMsgRecord = await this.chatMemoryService.saveMessage(chatbotId, senderId, userText, true);
+      const userMsgRecord = await this.chatMemoryService.saveMessage(chatbotId, senderId, userText || imageTag, true);
       
       // Real-time UI update: emit event to chatbot admin room
       try {
         SocketService.io.to(chatbotId.toString()).emit('new_message', userMsgRecord.toJSON());
       } catch (err) { console.error('Socket emit error:', err); }
+
+      // ─── IMAGE INTERCEPTOR (Bypass LLM) ───
+      if (update.message.photo && update.message.photo.length > 0) {
+        debugLogger.log('PIPELINE', 'Image received. Intercepting and creating action banner.');
+        
+        // 1. Auto-reply to Customer FIRST (so it is NOT the last message in DB)
+        const replyText = 'လူကြီးမင်းပို့လိုက်သော ပုံကို လက်ခံရရှိပါပြီရှင်။ Admin မှ ကိုယ်တိုင် ကြည့်ရှုစစ်ဆေးပြီး ချက်ချင်း အကြောင်းပြန်ပေးပါမည်။ ခေတ္တစောင့်ဆိုင်းပေးပါရှင်။';
+        await this.sendTelegramMessage(botToken, chatId, replyText);
+        
+        const botMsgRecord = await this.chatMemoryService.saveMessage(chatbotId, senderId, replyText, false);
+        try {
+          SocketService.io.to(chatbotId.toString()).emit('new_message', botMsgRecord.toJSON());
+        } catch (err) { console.error('Socket emit error:', err); }
+
+        // 2. Trigger Action Banner AND Telegram Notification via Tool
+        try {
+          const { RequestHumanAgentTool } = await import('../tools/request-human-agent.tool');
+          const tool = new RequestHumanAgentTool();
+          await tool.execute({
+            action_type: 'checkout_req',
+            summary: 'Customer uploaded an image. Please verify if it is a payment receipt or product inquiry.'
+          }, { chatbotId, senderId });
+        } catch (e) {
+          console.error('[Image Interceptor] Tool execution error', e);
+        }
+
+        return { success: true };
+      }
 
       // ─── HUMAN TAKEOVER PROTOCOL ───
       // Check if an admin has taken over the chat. If so, and the session hasn't expired, stay silent.

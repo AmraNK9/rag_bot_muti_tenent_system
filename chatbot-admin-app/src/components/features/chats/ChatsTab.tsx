@@ -4,7 +4,7 @@ import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { Bot, User } from 'lucide-react';
 import type { Conversation, Message } from '../../../types';
-import { getConversations, getMessages, getMessagesSince, replyToConversation, getChatSessionStatus, toggleChatTakeover } from '../../../api/client';
+import { getConversations, getMessages, getMessagesSince, replyToConversation, getChatSessionStatus, toggleChatTakeover, getActionRequests, resolveActionRequest } from '../../../api/client';
 import {
   getCachedMessages,
   getMaxCachedId,
@@ -22,7 +22,12 @@ function hashAvatarColor(id: string): string {
   return `hsl(${hue}, 55%, 30%)`;
 }
 
-export const ChatsTab: React.FC = () => {
+interface ChatsTabProps {
+  currentTab?: string;
+  onActionCountChange?: (count: number) => void;
+}
+
+export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActionCountChange }) => {
   const { chatbot, socket } = useChatbot();
   const { showToast } = useToast();
   const { t } = useTranslation('chats');
@@ -47,6 +52,9 @@ export const ChatsTab: React.FC = () => {
   const [isTakeoverMode, setIsTakeoverMode] = useState(false);
   const [togglingTakeover, setTogglingTakeover] = useState(false);
 
+  // Action Requests state
+  const [actionRequests, setActionRequests] = useState<any[]>([]);
+
   // Guarantee scroll runs AFTER React has completely painted the messages to the screen
   const scrollToBottom = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
     requestAnimationFrame(() => {
@@ -55,6 +63,13 @@ export const ChatsTab: React.FC = () => {
       });
     });
   }, []);
+
+  // Keep parent in sync with badge count (using actionRequests length)
+  useEffect(() => {
+    if (onActionCountChange) {
+      onActionCountChange(actionRequests.length);
+    }
+  }, [actionRequests.length, onActionCountChange]);
 
   const CONV_CACHE_KEY = 'chatbot_conversations_cache';
 
@@ -86,6 +101,12 @@ export const ChatsTab: React.FC = () => {
       setConversations(sorted);
       // Update cache for next app open
       localStorage.setItem(CONV_CACHE_KEY, JSON.stringify(rawList));
+
+      // Step 3: Fetch Action Requests
+      const actionsData = await getActionRequests();
+      if (actionsData.success) {
+        setActionRequests(actionsData.actions || []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -328,14 +349,22 @@ export const ChatsTab: React.FC = () => {
         setIsTakeoverMode(data.isTakeoverMode);
       }
     };
+    const handleNewActionRequest = (action: any) => {
+      setActionRequests(prev => {
+        if (prev.find(a => a.id === action.id)) return prev;
+        return [action, ...prev];
+      });
+    };
 
     socket.on('new_message', handleNewMessage);
     socket.on('takeover_changed', handleTakeoverChanged);
+    socket.on('new_action_request', handleNewActionRequest);
     socket.io.on('reconnect', handleReconnect);
 
     return () => {
       socket.off('new_message', handleNewMessage);
       socket.off('takeover_changed', handleTakeoverChanged);
+      socket.off('new_action_request', handleNewActionRequest);
       socket.io.off('reconnect', handleReconnect);
     };
   }, [socket, activeSender, loadConversations]);
@@ -436,35 +465,139 @@ export const ChatsTab: React.FC = () => {
       {/* Conversation list */}
       <div className="conv-list-view">
         <div className="conv-list-header">
-          <h2>{t('title')}</h2>
+          <h2>{currentTab === 'actions' ? 'Action Required' : t('title')}</h2>
         </div>
 
         {loadingConvs ? (
           <div className="loading-row"><div className="spinner" /> {tc('loading')}</div>
-        ) : conversations.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">💬</div>
-            <h3>{t('emptyTitle')}</h3>
-            <p>{t('emptyDesc')}</p>
-          </div>
-        ) : (
-          conversations.map(c => {
+        ) : (function() {
+          if (currentTab === 'actions') {
+            if (actionRequests.length === 0) {
+              return (
+                <div className="empty-state" style={{ marginTop: '40px', background: 'var(--bg-surface-2)', padding: '30px', borderRadius: '16px', border: '1px solid var(--border)' }}>
+                  <div className="empty-icon" style={{ fontSize: '3rem', filter: 'hue-rotate(150deg)' }}>🎉</div>
+                  <h3>Inbox Zero!</h3>
+                  <p>You have no pending actions to review. Great job!</p>
+                </div>
+              );
+            }
+            return actionRequests.map(req => {
+              const handleApprove = async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                try {
+                  await resolveActionRequest(req.id);
+                  setActionRequests(prev => prev.filter(a => a.id !== req.id));
+                  
+                  // Open chat
+                  openChat(req.sender_id);
+                  
+                  // Wait briefly for chat to open and takeover mode to sync, then auto-enable takeover
+                  setTimeout(async () => {
+                    try {
+                       await toggleChatTakeover(req.sender_id, true);
+                       setIsTakeoverMode(true);
+                       setReplyText(`မင်္ဂလာပါခင်ဗျာ။ လူကြီးမင်း ဘာများအကူအညီလိုပါသလဲခင်ဗျာ။`);
+                       if (inputRef.current) inputRef.current.focus();
+                    } catch(e) { console.error(e); }
+                  }, 500);
+
+                } catch (err) {
+                  showToast('error', 'Failed to resolve action');
+                }
+              };
+
+              return (
+                <div
+                  key={req.id}
+                  className="conv-item"
+                  onClick={() => openChat(req.sender_id)}
+                  style={{
+                    borderLeft: '4px solid var(--red)',
+                    background: 'var(--bg-surface)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                    margin: '10px 15px',
+                    borderRadius: '12px',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    padding: '16px'
+                  }}
+                >
+                  <div style={{ display: 'flex', width: '100%', alignItems: 'center', marginBottom: '12px' }}>
+                    <div className="conv-avatar" style={{ background: 'var(--red)', color: '#fff', width: 36, height: 36, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚠️</div>
+                    <div style={{ marginLeft: 12, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{req.action_type.toUpperCase().replace('_', ' ')}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        User {req.sender_id} • {req.created_at ? formatTime(req.created_at) : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.95rem', marginBottom: '16px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {req.summary}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openChat(req.sender_id); }}
+                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      View Chat
+                    </button>
+                    <button 
+                      onClick={handleApprove}
+                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'var(--red)', color: '#fff', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <User size={16} /> Approve & Reply
+                    </button>
+                  </div>
+                </div>
+              );
+            });
+          }
+
+          // Normal Chat List Rendering
+          if (conversations.length === 0) {
+            return (
+              <div className="empty-state">
+                <div className="empty-icon">💬</div>
+                <h3>{t('emptyTitle')}</h3>
+                <p>{t('emptyDesc')}</p>
+              </div>
+            );
+          }
+
+          return conversations.map(c => {
             const isSystem = c.sender_id === 'system';
+            let previewText = c.last_message;
+            let isActionReq = false;
+
+            if (c.last_message?.startsWith('[ACTION_REQUIRED:')) {
+               const match = c.last_message?.match(/\[ACTION_REQUIRED:([^\]]+)\]\s*(.*)/);
+               if (match) {
+                 previewText = match[2] || 'Action Required';
+                 // Only highlight as pending if it's currently in actionRequests
+                 isActionReq = actionRequests.some(a => String(a.sender_id) === String(c.sender_id));
+               }
+            }
             return (
               <div
                 key={c.sender_id}
                 className={`conv-item ${isSystem ? 'system-conv' : ''}`}
                 onClick={() => openChat(c.sender_id)}
-                style={isSystem ? { borderLeft: '4px solid var(--primary)', background: 'var(--bg-surface-2)' } : undefined}
+                style={
+                  isSystem ? { borderLeft: '4px solid var(--primary)', background: 'var(--bg-surface-2)' }
+                  : isActionReq ? { borderLeft: '4px solid var(--red)', background: 'rgba(239, 68, 68, 0.04)' }
+                  : undefined
+                }
               >
                 <div
                   className="conv-avatar"
                   style={isSystem
                     ? { background: 'rgba(139, 92, 246, 0.15)', color: 'var(--primary)' }
+                    : isActionReq 
+                    ? { background: 'var(--red)', color: '#fff' }
                     : { background: hashAvatarColor(c.sender_id) }
                   }
                 >
-                  {isSystem ? '🛡️' : c.sender_id.charAt(0).toUpperCase()}
+                  {isSystem ? '🛡️' : isActionReq ? '⚠️' : c.sender_id.charAt(0).toUpperCase()}
                 </div>
                 <div className="conv-info">
                   <div className="conv-name" style={isSystem ? { fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' } : undefined}>
@@ -482,7 +615,11 @@ export const ChatsTab: React.FC = () => {
                       </span>
                     ) : (
                       <>
-                        {c.last_sender_type === 'bot' ? (
+                        {isActionReq ? (
+                          <span style={{ color: 'var(--red)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            🔴 Action Needed
+                          </span>
+                        ) : c.last_sender_type === 'bot' ? (
                           <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 4, flexShrink: 0 }}>
                             {c.last_reply_source === 'ai' ? (
                               <><Bot size={13} /> {t('bot')}:</>
@@ -491,8 +628,8 @@ export const ChatsTab: React.FC = () => {
                             )}
                           </span>
                         ) : null}
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {c.last_message || t('messagesCount', { count: c.message_count })}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: isActionReq ? 'var(--red)' : undefined, fontWeight: isActionReq ? 500 : undefined }}>
+                          {previewText || t('messagesCount', { count: c.message_count })}
                         </span>
                       </>
                     )}
@@ -506,8 +643,8 @@ export const ChatsTab: React.FC = () => {
                 </div>
               </div>
             );
-          })
-        )}
+          });
+        })()}
       </div>
 
       {/* Full-screen chat window */}
@@ -578,21 +715,39 @@ export const ChatsTab: React.FC = () => {
 
                   const isUser = m.sender_type === 'user';
                   const isAdminReply = m.reply_source === 'admin';
+                  
+                  const isActionMsg = m.message?.startsWith('[ACTION_REQUIRED:');
 
                   return (
                     <React.Fragment key={m.id}>
                       {showDate && <div className="msg-date-sep">{msgDate}</div>}
-                      <div 
-                        className={`message-bubble ${isUser ? 'user' : (isAdminReply ? 'admin' : 'bot')}`}
-                      >
-                        {!isUser && isAdminReply && (
-                          <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {t('adminLabel')}
+                      {isActionMsg ? (
+                        <div style={{ textAlign: 'center', margin: '8px 0' }}>
+                          <span style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', fontSize: '0.7rem', padding: '4px 10px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            ⚡ AI requested admin review
+                          </span>
+                        </div>
+                      ) : (
+                        <div className={`message-bubble ${isUser ? 'user' : (isAdminReply ? 'admin' : 'bot')}`}>
+                          {!isUser && isAdminReply && (
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '4px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {t('adminLabel')}
+                            </div>
+                          )}
+                          <div className="msg-inner">
+                            {m.message?.startsWith('[PHOTO:') ? (
+                              <img 
+                                src={m.message.match(/\[PHOTO:(.+?)\]/)?.[1] || ''} 
+                                alt="User Photo" 
+                                style={{ maxWidth: '100%', borderRadius: '8px', marginTop: '4px' }} 
+                              />
+                            ) : (
+                              m.message
+                            )}
                           </div>
-                        )}
-                        <div className="msg-inner">{m.message}</div>
-                        <div className="message-time">{formatTime(m.sent_date)}</div>
-                      </div>
+                          <div className="message-time">{formatTime(m.sent_date)}</div>
+                        </div>
+                      )}
                     </React.Fragment>
                   );
                 });
@@ -608,6 +763,62 @@ export const ChatsTab: React.FC = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', width: '100%', borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
               
+              {/* Dynamic Action Banner */}
+              {(() => {
+                if (isTakeoverMode) return null;
+                
+                // Use ActionRequests as the source of truth for the active chat
+                const activeAction = actionRequests.find(a => String(a.sender_id) === String(activeSender));
+                if (!activeAction) return null;
+                
+                const actionType = activeAction.action_type;
+                const actionSummary = activeAction.summary;
+                
+                const handleActionApprove = async () => {
+                   try {
+                      await resolveActionRequest(activeAction.id);
+                      setActionRequests(prev => prev.filter(a => a.id !== activeAction.id));
+                   } catch(e) {
+                      console.error('Failed to resolve action:', e);
+                   }
+                   
+                   let template = '';
+                   if (actionType === 'checkout_req') template = 'မင်္ဂလာပါ။ ဘေလ်ရှင်းဖို့ အဆင်သင့်ဖြစ်ပါပြီ။ ငွေလွှဲပြေစာလေး confirm လုပ်ပေးဖို့ ဒီကိုပို့ပေးပါ။';
+                   else if (actionType === 'order_req') template = 'လူကြီးမင်းမှာယူထားတဲ့ ပစ္စည်းတွေရပါပြီ။ ငွေလွှဲဖို့ KBZ Pay: 09 123456789 (နာမည်) သို့လွှဲနိုင်ပါတယ်။';
+                   else if (actionType === 'discount_req') template = '၁၀% လျှော့စျေးကုဒ် လျှောက်ထားမှုကို ခွင့်ပြုပါတယ်။';
+                   else template = 'မင်္ဂလာပါခင်ဗျာ။ Admin ပါ။ ဘာများအကူအညီလိုပါသလဲခင်ဗျာ။';
+                   
+                   setReplyText(template);
+                   handleToggleTakeover(true);
+                   inputRef.current?.focus();
+                };
+                
+                return (
+                  <div style={{
+                    padding: '12px 16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)',
+                    boxShadow: '0 -4px 12px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', marginBottom: 2 }}>
+                        ⚠️ Action Required
+                      </div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 500 }}>
+                        {actionSummary}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={handleActionApprove}
+                      style={{
+                        padding: '8px 16px', background: 'var(--red)', color: 'white', border: 'none',
+                        borderRadius: '6px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Approve / Handle
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* Sticky Status Banner for Admin Mode */}
               {isTakeoverMode && (
                 <div style={{

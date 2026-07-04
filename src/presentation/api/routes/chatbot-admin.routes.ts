@@ -580,4 +580,49 @@ router.get('/chatbot-admin/system-prompt', chatbotAdminAuthMiddleware, async (re
 });
 
 
+// ─── 36. GET /chatbot-admin/action-requests — View pending actions ───────────────
+router.get('/chatbot-admin/action-requests', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+
+    // Ensure we have ActionRequest imported in this file
+    const { ActionRequest } = await import('../../../infrastructure/db/models');
+
+    const actions = await ActionRequest.findAll({
+      where: { chatbot_id: chatbotId, status: 'pending' },
+      order: [['created_at', 'DESC']]
+    });
+
+    return res.json({ success: true, actions });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// ─── 37. POST /chatbot-admin/action-requests/:id/resolve — Resolve action ────────
+router.post('/chatbot-admin/action-requests/:id/resolve', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const adminReq = req as ChatbotAdminRequest;
+    const chatbotId = adminReq.chatbotAdmin.chatbotId;
+    if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
+
+    const { ActionRequest } = await import('../../../infrastructure/db/models');
+    
+    const actionId = req.params.id;
+    const actionReq = await ActionRequest.findOne({ where: { id: actionId, chatbot_id: chatbotId } });
+    if (!actionReq) return res.status(404).json({ success: false, error: 'Action request not found.' });
+
+    await actionReq.update({
+      status: 'resolved',
+      resolved_by: 'admin'
+    });
+
+    return res.json({ success: true, action: actionReq });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
 export { router };

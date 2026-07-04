@@ -139,6 +139,19 @@ export class SummerizeMessages extends Model<InferAttributes<SummerizeMessages>,
   declare created_at: CreationOptional<Date>;
 }
 
+// ─── ActionRequest Model (For Task Inbox) ──────────────────────────────────────
+export class ActionRequest extends Model<InferAttributes<ActionRequest>, InferCreationAttributes<ActionRequest>> {
+  declare id: CreationOptional<number>;
+  declare chatbot_id: ForeignKey<ChatBot['id']>;
+  declare sender_id: string;
+  declare action_type: string;
+  declare summary: string;
+  declare status: CreationOptional<'pending' | 'resolved'>;
+  declare resolved_by: CreationOptional<'admin' | 'system' | null>;
+  declare created_at: CreationOptional<Date>;
+  declare updated_at: CreationOptional<Date>;
+}
+
 // ─── ChatSession Model (Human Handover) ───────────────────────────────────────
 export class ChatSession extends Model<InferAttributes<ChatSession>, InferCreationAttributes<ChatSession>> {
   declare id: CreationOptional<number>;
@@ -264,7 +277,6 @@ export class KnowledgeAsset extends Model<InferAttributes<KnowledgeAsset>, Infer
   declare item_type: 'product' | 'info';
   declare title: string;
   declare content: string;
-  declare embedding: CreationOptional<any>;
   declare price: CreationOptional<number | null>;
   declare stock_count: CreationOptional<number | null>;
   declare auto_track_stock: CreationOptional<boolean>;
@@ -553,6 +565,21 @@ export function initModels(sequelize: Sequelize) {
     }
   );
 
+  ActionRequest.init(
+    {
+      id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+      chatbot_id: { type: DataTypes.INTEGER, allowNull: false },
+      sender_id: { type: DataTypes.STRING, allowNull: false },
+      action_type: { type: DataTypes.STRING, allowNull: false },
+      summary: { type: DataTypes.TEXT, allowNull: false },
+      status: { type: DataTypes.ENUM('pending', 'resolved'), defaultValue: 'pending' },
+      resolved_by: { type: DataTypes.STRING, allowNull: true },
+      created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+      updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    },
+    { sequelize, tableName: 'action_requests', timestamps: true, createdAt: 'created_at', updatedAt: 'updated_at' }
+  );
+
   ChatSession.init(
     {
       id: {
@@ -699,6 +726,9 @@ export function initModels(sequelize: Sequelize) {
 
   ChatBot.hasMany(Messages, { foreignKey: 'chatbot_id', as: 'messages' });
   Messages.belongsTo(ChatBot, { foreignKey: 'chatbot_id', as: 'chatbot' });
+
+  ChatBot.hasMany(ActionRequest, { foreignKey: 'chatbot_id', as: 'action_requests' });
+  ActionRequest.belongsTo(ChatBot, { foreignKey: 'chatbot_id', as: 'chatbot' });
 
   ChatBot.hasMany(SummerizeMessages, { foreignKey: 'chatbot_id', as: 'summarizedMessages' });
   SummerizeMessages.belongsTo(ChatBot, { foreignKey: 'chatbot_id', as: 'chatbot' });
@@ -1191,10 +1221,6 @@ export function initModels(sequelize: Sequelize) {
       content: {
         type: DataTypes.TEXT,
         allowNull: false,
-      },
-      embedding: {
-        type: `VECTOR(${process.env.VECTOR_DIMENSION || 1024})`, // Voyage AI uses 1024
-        allowNull: true,
       },
       price: {
         type: DataTypes.DECIMAL(10, 2),

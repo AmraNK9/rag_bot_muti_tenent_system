@@ -123,34 +123,16 @@ export interface SearchResultWithScores extends VectorSearchResult {
     const canUseProductFetching = isPrepaid || allowedServices.includes('product_fetching');
     const canUseHumanHandoff = isPrepaid || allowedServices.includes('human_agent_handoff');
 
-    // --- INSTANT HUMAN HANDOFF (Input Gatekeeper) ---
-    if (canUseHumanHandoff) {
-      const lowerMessage = userMessage.toLowerCase();
-      const handoffKeywords = [
-        'လူနဲ့ပြော', 'လူနဲ့', 'admin', 'agent', 'ဆိုင်ရှင်', 'customer service', 'live chat', 
-        'လူနဲ့ပြပါ', 'လူနဲ့ဆက်သွယ်', 'operator', 'မန်နေဂျာ', 'တာဝန်ခံ', 'ဆက်သွယ်ပေးပါ', 'လူနဲ့ဖြေ', 'လူနဲ့ချိတ်ပေး',
-        'talk to human', 'talk to agent', 'real person', 'support', 'help', 'emergency', 'help desk'
-      ];
-      const userRequestsHandoff = handoffKeywords.some(kw => lowerMessage.includes(kw));
-
-      if (userRequestsHandoff) {
-        debugLogger.log('PIPELINE', 'Instant Human Handoff triggered by user input.');
-        const humanTool = this.toolRegistry.getTool('RequestHumanAgentTool');
-        if (humanTool) {
-          humanTool.execute({ reason: 'User explicitly requested a human agent.' }, { chatbotId, senderId })
-            .catch(e => console.error('[Backend ERROR] Error processing instant handoff:', e));
-        }
-        
-        // Return immediately without calling LLM
-        yield 'မင်္ဂလာပါ။ ဆိုင်ဝန်ထမ်းနှင့် ချိတ်ဆက်ပေးနေပါတယ်။ ခေတ္တစောင့်ဆိုင်းပေးပါခင်ဗျာ။';
-        return;
-      }
-    }
-
     // Tools available for this chat
     const updateProfileTool = this.toolRegistry.getTool('UpdateUserProfileTool');
     const fetchProductsTool = this.toolRegistry.getTool('FetchProductsTool');
+    const requestHumanAgentTool = this.toolRegistry.getTool('RequestHumanAgentTool');
     const availableTools = [];
+    
+    // Unconditionally provide Human Agent Tool for semantic triggering
+    if (canUseHumanHandoff && requestHumanAgentTool) {
+      availableTools.push(requestHumanAgentTool.definition);
+    }
     
     // --- GATEKEEPER PATTERN (Now Plan-Aware) ---
     const lowerMessage = userMessage.toLowerCase();
@@ -215,11 +197,11 @@ export interface SearchResultWithScores extends VectorSearchResult {
       this.chatMemoryService.getContextForChat(chatbotId, senderId),
       
       // 3. Intent classification via LLM tool calling (run in parallel)
-      availableTools.length > 0 
+          availableTools.length > 0 
         ? this.llmService.executeToolCalling(
             [{ role: 'user', content: userMessage }], 
             availableTools,
-            { systemPrompt: 'Evaluate the user message. If the user mentions personal facts, preferences, name, phone number, address, shoe size, or specific interests about themselves, trigger the UpdateUserProfileTool. If the user asks what products are available or asks for a list, trigger the FetchProductsTool. Otherwise, return normally.' }
+            { systemPrompt: 'Evaluate the user message. If the user mentions personal facts, preferences, name, phone number, address, shoe size, or specific interests about themselves, trigger the UpdateUserProfileTool. If the user asks what products are available or asks for a list, trigger the FetchProductsTool. If the user wants to buy an item, asks for a discount, or explicitly asks for human staff support, trigger RequestHumanAgentTool. Otherwise, return normally.' }
           ).catch(err => {
              console.error('[ToolCalling Intention Check Error]', err);
              return null;
@@ -243,7 +225,18 @@ export interface SearchResultWithScores extends VectorSearchResult {
     if (toolResult) {
       if (toolResult.toolName === 'RequestHumanAgentTool') {
         humanRequested = true;
-        // humanTool execution was moved to auto-escalation in Phase C, but leaving this block in case legacy tools invoke it.
+        if (requestHumanAgentTool) {
+          try {
+            const execResult = await requestHumanAgentTool.execute(toolResult.arguments, { chatbotId, senderId });
+            if (execResult && execResult.status === 'success') {
+              debugLogger.log('PIPELINE', `RequestHumanAgentTool executed successfully.`);
+              // Inject the success message so LLM knows to tell the user to wait
+              fetchedProductsContext = `[SYSTEM: ${execResult.message}]`;
+            }
+          } catch(err) {
+            console.error('[RequestHumanAgentTool Trigger Error]', err);
+          }
+        }
       } else if (toolResult.toolName === 'UpdateUserProfileTool') {
         if (updateProfileTool) {
           try {

@@ -123,3 +123,10 @@ export const getChatSessionStatus = (senderId: string) =>
 
 export const toggleChatTakeover = (senderId: string, takeover: boolean) =>
   api.post(`/chatbot-admin/conversations/${senderId}/takeover`, { takeover }).then((r) => r.data);
+
+// ─── Action Requests ───────────────────────────────────────────────────────
+export const getActionRequests = () =>
+  api.get(`/chatbot-admin/action-requests?t=${Date.now()}`).then((r) => r.data);
+
+export const resolveActionRequest = (id: number) =>
+  api.post(`/chatbot-admin/action-requests/${id}/resolve`).then((r) => r.data);

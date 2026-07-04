@@ -11,7 +11,7 @@ import { CreateBotModal } from '../features/chatbot/CreateBotModal';
 import { Bot, Zap, Menu, MessageSquare, BookOpen, Unplug, X, BellRing, Send } from 'lucide-react';
 import { getSystemBotInfo } from '../../api/client';
 
-type TabId = 'chats' | 'knowledge' | 'billing';
+type TabId = 'chats' | 'actions' | 'knowledge' | 'billing';
 
 export const MainLayout: React.FC = () => {
   const { t: tc } = useTranslation('common');
@@ -25,6 +25,7 @@ export const MainLayout: React.FC = () => {
 
   const [systemBotUsername, setSystemBotUsername] = useState('YourBotUsername');
   const [showNotiBanner, setShowNotiBanner] = useState(true);
+  const [actionCount, setActionCount] = useState(0);
 
   React.useEffect(() => {
     if (chatbot && businessPlanInfo?.telegram_chat_id == null) {
@@ -41,6 +42,24 @@ export const MainLayout: React.FC = () => {
   // Exclude billing from bottom tab bar
   const tabs = [
     { id: 'chats' as TabId, label: tc('nav.chats', 'Chats'), icon: <MessageSquare size={20} /> },
+    { 
+      id: 'actions' as TabId, 
+      label: tc('nav.actions', 'Actions'), 
+      icon: (
+        <div style={{ position: 'relative' }}>
+          <BellRing size={20} />
+          {actionCount > 0 && (
+            <span style={{
+              position: 'absolute', top: -4, right: -6, background: 'var(--red)', color: 'white',
+              fontSize: '10px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '10px',
+              border: '1px solid var(--bg-surface)'
+            }}>
+              {actionCount}
+            </span>
+          )}
+        </div>
+      )
+    },
     ...(profile?.canManageKnowledge ? [{ id: 'knowledge' as TabId, label: tc('nav.smartItems', 'Smart Items'), icon: <BookOpen size={20} /> }] : []),
   ];
 
@@ -93,8 +112,8 @@ export const MainLayout: React.FC = () => {
         {chatbot && (
           <>
 
-            <div style={{ display: activeTab === 'chats' ? 'flex' : 'none', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-              <ChatsTab />
+            <div style={{ display: (activeTab === 'chats' || activeTab === 'actions') ? 'flex' : 'none', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              <ChatsTab currentTab={activeTab} onActionCountChange={setActionCount} />
             </div>
             {profile?.canManageKnowledge && (
               <div style={{ display: activeTab === 'knowledge' ? 'flex' : 'none', flexDirection: 'column', height: '100%', minHeight: 0 }}>
