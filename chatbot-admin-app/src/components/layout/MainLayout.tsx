@@ -8,7 +8,7 @@ import { ChatsTab } from '../features/chats/ChatsTab';
 import { SmartItemsTab } from '../features/smart-items/SmartItemsTab';
 import { BillingTab } from '../features/billing/BillingTab';
 import { CreateBotModal } from '../features/chatbot/CreateBotModal';
-import { Bot, Zap, Menu, MessageSquare, BookOpen, Unplug, X, BellRing, Send } from 'lucide-react';
+import { Bot, Zap, Menu, MessageSquare, BookOpen, Unplug, X, BellRing, Send, ListTodo } from 'lucide-react';
 import { getSystemBotInfo } from '../../api/client';
 
 type TabId = 'chats' | 'actions' | 'knowledge' | 'billing';
@@ -47,7 +47,7 @@ export const MainLayout: React.FC = () => {
       label: tc('nav.actions', 'Actions'), 
       icon: (
         <div style={{ position: 'relative' }}>
-          <BellRing size={20} />
+          <ListTodo size={20} />
           {actionCount > 0 && (
             <span style={{
               position: 'absolute', top: -4, right: -6, background: 'var(--red)', color: 'white',
