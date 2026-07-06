@@ -29,5 +29,12 @@
   "actionApproveReply": "Approve & Reply",
   "actionNeeded": "Action Needed",
   "actionAiRequested": "AI requested admin review",
-  "actionApproveHandle": "Approve / Handle"
+  "actionApproveHandle": "Approve / Handle",
+  "actionTypes": {
+    "order_req": "Order Request",
+    "checkout_req": "Checkout Request",
+    "discount_req": "Discount Request",
+    "handover_req": "Human Handover",
+    "other": "Other"
+  }
 }

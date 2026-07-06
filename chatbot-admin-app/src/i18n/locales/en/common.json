@@ -25,7 +25,11 @@
     "botAdmin": "Bot Admin",
     "emptyBotTitle": "Connect Your First Bot",
     "emptyBotDesc": "Connect your first AI Chatbot and start automating customer replies 24/7.",
-    "createBotBtn": "Create My First Bot"
+    "createBotBtn": "Create My First Bot",
+    "viewBilling": "View Billing & Buy Credits",
+    "availableCredits": "Available Credits",
+    "noBotTitle": "No Chatbot Selected",
+    "noBotDesc": "Create your first AI assistant to get started."
   },
   "error": {
     "saveFailed": "Failed to save",
@@ -70,6 +74,20 @@
     "expires": "Expires {{date}}",
     "noExpiry": "No active subscription",
     "manageBilling": "Manage Billing",
-    "freePlan": "Free"
+    "freePlan": "Free",
+    "managedBy": "Managed by Business: ",
+    "unknown": "Unknown",
+    "language": "Language",
+    "role": "Role",
+    "botNamePlaceholder": "Bot name...",
+    "botDescPlaceholder": "Optional description...",
+    "botTokenPlaceholder": "Leave blank to keep existing...",
+    "defaultLanguage": "Default Language",
+    "aiTimeout": "AI Auto-Release Timeout",
+    "minutes": "{{count}} minutes",
+    "aiTimeoutHint": "Time before AI automatically takes back control if admin is inactive.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "about": "About Us"
   }
 }

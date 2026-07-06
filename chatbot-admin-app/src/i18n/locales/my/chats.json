@@ -29,5 +29,12 @@
   "actionApproveReply": "ခွင့်ပြုပြီး စာပြန်မည်",
   "actionNeeded": "လုပ်ဆောင်ရန် လိုအပ်သည်",
   "actionAiRequested": "AI မှ Admin ကို စစ်ဆေးပေးရန် တောင်းဆိုထားသည်",
-  "actionApproveHandle": "ခွင့်ပြုမည် / ကိုင်တွယ်မည်"
+  "actionApproveHandle": "ခွင့်ပြုမည် / ကိုင်တွယ်မည်",
+  "actionTypes": {
+    "order_req": "အော်ဒါ တောင်းဆိုမှု",
+    "checkout_req": "ငွေရှင်း တောင်းဆိုမှု",
+    "discount_req": "လျှော့စျေး တောင်းဆိုမှု",
+    "handover_req": "Admin ဖြင့် စကားပြောလိုမှု",
+    "other": "အခြား"
+  }
 }

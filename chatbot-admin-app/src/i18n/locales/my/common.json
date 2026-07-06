@@ -25,7 +25,11 @@
     "botAdmin": "Bot Admin",
     "emptyBotTitle": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပါ",
     "emptyBotDesc": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပြီး Customer တွေကို ၂၄နာရီ အလိုအလျောက် ဖြေဆိုနိုင်ပါပြီ။",
-    "createBotBtn": "ပထမဆုံး Bot ဖန်တီးမည်"
+    "createBotBtn": "ပထမဆုံး Bot ဖန်တီးမည်",
+    "viewBilling": "Billing စီမံရန် သို့မဟုတ် Credits ဝယ်ရန်",
+    "availableCredits": "လက်ကျန် Credits",
+    "noBotTitle": "Chatbot မရွေးချယ်ရသေးပါ",
+    "noBotDesc": "အသုံးပြုရန် ပထမဆုံး AI Assistant ကို ဖန်တီးပါ။"
   },
   "error": {
     "saveFailed": "သိမ်းဆည်းမရပါ",
@@ -70,6 +74,20 @@
     "expires": "{{date}} တွင် ကုန်ဆုံးမည်",
     "noExpiry": "လက်ရှိ Subscription မရှိ",
     "manageBilling": "Billing စီမံ",
-    "freePlan": "Free"
+    "freePlan": "Free",
+    "managedBy": "လုပ်ငန်းမှ စီမံသည် - ",
+    "unknown": "အမည်မသိ",
+    "language": "ဘာသာစကား",
+    "role": "တာဝန်",
+    "botNamePlaceholder": "Bot အမည်...",
+    "botDescPlaceholder": "ဖော်ပြချက် (ချန်လှပ်ထားနိုင်သည်)...",
+    "botTokenPlaceholder": "လက်ရှိအတိုင်းထားရန် အလွတ်ထားပါ...",
+    "defaultLanguage": "အခြေခံ ဘာသာစကား",
+    "aiTimeout": "AI ထံ အလိုအလျောက် ပြန်လွှဲမည့်အချိန်",
+    "minutes": "{{count}} မိနစ်",
+    "aiTimeoutHint": "Admin ဘက်မှ အကြောင်းမပြန်ပါက AI ထံသို့ အလိုအလျောက် ပြန်လည်လွှဲပြောင်းပေးမည့် အချိန်။",
+    "privacy": "ကိုယ်ရေးကိုယ်တာ မူဝါဒ",
+    "terms": "အသုံးပြုမှု စည်းမျဉ်းများ",
+    "about": "ကျွန်ုပ်တို့အကြောင်း"
   }
 }

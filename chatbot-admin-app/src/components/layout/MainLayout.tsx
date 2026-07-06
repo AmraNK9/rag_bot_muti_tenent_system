@@ -73,7 +73,7 @@ export const MainLayout: React.FC = () => {
           <div 
             className={`nav-credits ${profile?.isStandalone ? 'clickable-credits' : ''}`} 
             onClick={() => profile?.isStandalone && setActiveTab('billing')}
-            title={profile?.isStandalone ? "View Billing & Buy Credits" : "Available Credits"}
+            title={profile?.isStandalone ? tc('layout.viewBilling') : tc('layout.availableCredits')}
             style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: profile?.isStandalone ? 'pointer' : 'default' }}
           >
             <Zap size={14} fill="currentColor" /> {credits}
@@ -101,8 +101,8 @@ export const MainLayout: React.FC = () => {
         {!chatbot && !showCreateBotModal && activeTab !== 'billing' && (
           <div className="empty-state" style={{ height: '100%' }}>
             <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Unplug size={48} color="var(--text-muted)" /></div>
-            <h3>{tc('layout.noBotTitle', 'No Chatbot Selected')}</h3>
-            <p>{tc('layout.noBotDesc', 'Create your first AI assistant to get started.')}</p>
+            <h3>{tc('layout.noBotTitle')}</h3>
+            <p>{tc('layout.noBotDesc')}</p>
             <button className="btn btn-primary" style={{ maxWidth: 240 }} onClick={() => setShowCreateBotModal(true)}>
               {tc('layout.createBotBtn', 'Create Bot')}
             </button>
@@ -139,9 +139,9 @@ export const MainLayout: React.FC = () => {
               <BellRing size={20} />
             </div>
             <div>
-              <h4 style={{ margin: '0 0 4px', fontSize: '0.95rem', color: 'var(--primary)', paddingRight: 24 }}>{tc('settings.telegramNudgeTitle', 'Connect Telegram Notifications')}</h4>
+              <h4 style={{ margin: '0 0 4px', fontSize: '0.95rem', color: 'var(--primary)', paddingRight: 24 }}>{tc('settings.telegramNudgeTitle')}</h4>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
-                {tc('settings.telegramNudgeDesc', 'Get instantly notified on Telegram when a user requests a human handover.')}
+                {tc('settings.telegramNudgeDesc')}
               </p>
             </div>
           </div>

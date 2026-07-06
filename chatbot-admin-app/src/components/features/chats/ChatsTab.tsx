@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { Bot, User, AlertTriangle } from 'lucide-react';
+import { Bot, User, AlertTriangle, MessageSquare } from 'lucide-react';
 import type { Conversation, Message } from '../../../types';
 import { getConversations, getMessages, getMessagesSince, replyToConversation, getChatSessionStatus, toggleChatTakeover, getActionRequests, resolveActionRequest } from '../../../api/client';
 import {
@@ -475,7 +475,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
             if (actionRequests.length === 0) {
               return (
                 <div className="empty-state" style={{ marginTop: '40px', background: 'var(--bg-surface-2)', padding: '30px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                  <div className="empty-icon" style={{ fontSize: '3rem', filter: 'hue-rotate(150deg)' }}>🎉</div>
+                  <div className="empty-icon" style={{ fontSize: '3rem', color: 'var(--primary)', filter: 'opacity(0.8)' }}>✓</div>
                   <h3>{t('actionInboxZero')}</h3>
                   <p>{t('actionNoPending')}</p>
                 </div>
@@ -525,7 +525,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                   <div style={{ display: 'flex', width: '100%', alignItems: 'center', marginBottom: '12px' }}>
                     <div className="conv-avatar" style={{ background: 'var(--red)', color: '#fff', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><AlertTriangle size={20} /></div>
                     <div style={{ marginLeft: 12, flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{req.action_type.toUpperCase().replace('_', ' ')}</div>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{t(`actionTypes.${req.action_type}`, { defaultValue: req.action_type.toUpperCase().replace('_', ' ') })}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                         {t('userPrefix')} {req.sender_id} • {req.created_at ? formatTime(req.created_at) : ''}
                       </div>
@@ -557,7 +557,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
           if (conversations.length === 0) {
             return (
               <div className="empty-state">
-                <div className="empty-icon">💬</div>
+                <div className="empty-icon"><MessageSquare size={40} color="var(--text-muted)" /></div>
                 <h3>{t('emptyTitle')}</h3>
                 <p>{t('emptyDesc')}</p>
               </div>
@@ -597,14 +597,14 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                     : { background: hashAvatarColor(c.sender_id) }
                   }
                 >
-                  {isSystem ? '🛡️' : isActionReq ? <AlertTriangle size={24} /> : c.sender_id.charAt(0).toUpperCase()}
+                  {isSystem ? <Bot size={24} /> : isActionReq ? <AlertTriangle size={24} /> : c.sender_id.charAt(0).toUpperCase()}
                 </div>
                 <div className="conv-info">
                   <div className="conv-name" style={isSystem ? { fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' } : undefined}>
                     {isSystem ? (
                       <>
                         {t('systemTitle')}
-                        <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>📌 {t('pinned')}</span>
+                        <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>{t('pinned')}</span>
                       </>
                     ) : `${t('userPrefix')} ${c.sender_id}`}
                   </div>
@@ -617,7 +617,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                       <>
                         {isActionReq ? (
                           <span style={{ color: 'var(--red)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            🔴 {t('actionNeeded')}
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)' }} /> {t('actionNeeded')}
                           </span>
                         ) : c.last_sender_type === 'bot' ? (
                           <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 4, flexShrink: 0 }}>
@@ -724,7 +724,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                       {isActionMsg ? (
                         <div style={{ textAlign: 'center', margin: '8px 0' }}>
                           <span style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', fontSize: '0.7rem', padding: '4px 10px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            ⚡ {t('actionAiRequested')}
+                            {t('actionAiRequested')}
                           </span>
                         </div>
                       ) : (

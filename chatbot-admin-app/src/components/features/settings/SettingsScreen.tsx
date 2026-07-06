@@ -137,7 +137,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
 
       {!profile?.isStandalone && (
         <div style={{ padding: '8px 16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          Managed by Business: <strong style={{ color: 'var(--text-main)', marginLeft: 4 }}>{businessPlanInfo?.name || 'Unknown'}</strong>
+          {tc('settings.managedBy')} <strong style={{ color: 'var(--text-main)', marginLeft: 4 }}>{businessPlanInfo?.name || tc('settings.unknown')}</strong>
         </div>
       )}
 
@@ -158,11 +158,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                     <div style={{ fontWeight: 600 }}>{chatbot?.name || 'Unnamed Bot'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>Language</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>{tc('settings.language')}</div>
                     <div style={{ fontWeight: 600 }}>{chatbot?.default_language || 'Myanmar'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>Role</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>{tc('settings.role')}</div>
                     <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{chatbot?.bot_role || '-'}</div>
                   </div>
                 </div>
@@ -178,19 +178,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>{tc('settings.botName')}</label>
-                  <input type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="Bot name..." />
+                  <input type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder={tc('settings.botNamePlaceholder')} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>{tc('settings.description')}</label>
-                  <textarea rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Optional description..." style={{ resize: 'none' }} />
+                  <textarea rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder={tc('settings.botDescPlaceholder')} style={{ resize: 'none' }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>{tc('settings.botToken')}</label>
-                  <input type="password" value={editToken} onChange={e => setEditToken(e.target.value)} placeholder="Leave blank to keep existing..." />
+                  <input type="password" value={editToken} onChange={e => setEditToken(e.target.value)} placeholder={tc('settings.botTokenPlaceholder')} />
                   <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{tc('settings.botTokenHint')}</small>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Default Language</label>
+                  <label>{tc('settings.defaultLanguage')}</label>
                   <select 
                     value={editLanguage} 
                     onChange={e => setEditLanguage(e.target.value)}
@@ -202,21 +202,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>AI Auto-Release Timeout</label>
+                  <label>{tc('settings.aiTimeout')}</label>
                   <select 
                     value={editTimeout} 
                     onChange={e => setEditTimeout(Number(e.target.value))}
                     className="chat-input-field" 
                     style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-page)', border: '1px solid var(--border)', color: 'var(--text-main)', marginTop: '4px' }}
                   >
-                    <option value={5}>5 minutes</option>
-                    <option value={10}>10 minutes</option>
-                    <option value={20}>20 minutes</option>
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>60 minutes</option>
+                    <option value={5}>{tc('settings.minutes', { count: 5 })}</option>
+                    <option value={10}>{tc('settings.minutes', { count: 10 })}</option>
+                    <option value={20}>{tc('settings.minutes', { count: 20 })}</option>
+                    <option value={30}>{tc('settings.minutes', { count: 30 })}</option>
+                    <option value={60}>{tc('settings.minutes', { count: 60 })}</option>
                   </select>
                   <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
-                    Time before AI automatically takes back control if admin is inactive.
+                    {tc('settings.aiTimeoutHint')}
                   </small>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
@@ -380,11 +380,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
         {/* Legal Footer */}
         <footer style={{ textAlign: 'center', padding: '20px 0', borderTop: '1px solid var(--border-light)' }}>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12, fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8 }}>
-            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</a>
+            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>{tc('settings.privacy')}</a>
             <span>•</span>
-            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Terms of Service</a>
+            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>{tc('settings.terms')}</a>
             <span>•</span>
-            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>About Us</a>
+            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>{tc('settings.about')}</a>
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.6 }}>
             Chatbot Admin v1.0.0
