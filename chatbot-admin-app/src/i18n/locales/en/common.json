@@ -16,6 +16,7 @@
   "inStock": "{{count}} in stock",
   "nav": {
     "chats": "Chats",
+    "actions": "Actions",
     "smartItems": "Smart Items",
     "prompt": "Prompt",
     "billing": "Billing"

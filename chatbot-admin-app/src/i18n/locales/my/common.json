@@ -16,7 +16,8 @@
   "inStock": "{{count}} ခု ကျန်သည်",
   "nav": {
     "chats": "စကားဝိုင်းများ",
-    "smartItems": "Smart Items",
+    "actions": "လုပ်ဆောင်ချက်များ",
+    "smartItems": "ထုတ်ကုန်/ဒေတာများ",
     "prompt": "Prompt",
     "billing": "ငွေပေးချေမှု"
   },
