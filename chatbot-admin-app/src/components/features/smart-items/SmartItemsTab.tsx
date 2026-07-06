@@ -241,21 +241,6 @@ export const SmartItemsTab: React.FC = () => {
                         <CircleDollarSign size={12} color="var(--text-muted)" /> {item.price}
                       </span>
                     )}
-                    {isProduct && item.stock_count != null && (
-                      <span className="smart-item-meta-val" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <Package size={12} color={item.stock_count === 0 ? 'var(--red)' : 'var(--text-muted)'} />
-                        <span style={{ color: item.stock_count === 0 ? 'var(--red)' : 'var(--text-muted)' }}>
-                          {item.stock_count === 0
-                            ? tc('outOfStock')
-                            : tc('inStock', { count: item.stock_count })}
-                        </span>
-                      </span>
-                    )}
-                    {isProduct && item.auto_track_stock && (
-                      <span className="badge badge-green" style={{ fontSize: '0.65rem' }}>
-                        {t('meta.autoTrack')}
-                      </span>
-                    )}
                   </div>
                 </div>
 

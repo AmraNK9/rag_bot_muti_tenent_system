@@ -19,16 +19,12 @@ export const SmartItemFormModal: React.FC<Props> = ({ onClose, onSave, existingI
   const [title, setTitle] = useState(existingItem?.title || '');
   const [content, setContent] = useState(existingItem?.content || '');
   const [price, setPrice] = useState<string>(existingItem?.price?.toString() || '');
-  const [stockCount, setStockCount] = useState<string>(existingItem?.stock_count?.toString() || '');
-  const [autoTrackStock, setAutoTrackStock] = useState(existingItem?.auto_track_stock || false);
   const [saving, setSaving] = useState(false);
 
   // Clear product-only fields when switching to 'info'
   useEffect(() => {
     if (itemType === 'info') {
       setPrice('');
-      setStockCount('');
-      setAutoTrackStock(false);
     }
   }, [itemType]);
 
@@ -49,8 +45,8 @@ export const SmartItemFormModal: React.FC<Props> = ({ onClose, onSave, existingI
       title: title.trim(),
       content: content.trim(),
       price: itemType === 'product' && price !== '' ? parseFloat(price) : null,
-      stock_count: itemType === 'product' && stockCount !== '' ? parseInt(stockCount, 10) : null,
-      auto_track_stock: itemType === 'product' ? autoTrackStock : false,
+      stock_count: null,
+      auto_track_stock: false,
     };
 
     try {
@@ -153,32 +149,6 @@ export const SmartItemFormModal: React.FC<Props> = ({ onClose, onSave, existingI
                       placeholder="0.00"
                     />
                   </div>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label>{t('form.stockCount')}</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={stockCount}
-                      onChange={e => setStockCount(e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                {/* ── iOS Toggle ── */}
-                <div className="toggle-row">
-                  <div>
-                    <div className="toggle-label">{t('form.autoTrackLabel')}</div>
-                    <div className="toggle-sub">{t('form.autoTrackSub')}</div>
-                  </div>
-                  <label className="toggle-switch" aria-label={t('form.autoTrackLabel')}>
-                    <input
-                      type="checkbox"
-                      checked={autoTrackStock}
-                      onChange={e => setAutoTrackStock(e.target.checked)}
-                    />
-                    <span className="toggle-track" />
-                  </label>
                 </div>
               </div>
             )}
