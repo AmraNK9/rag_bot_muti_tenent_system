@@ -1,15 +1,15 @@
 {
-  "title": "Smart Items",
+  "title": "ထုတ်ကုန်/ဒေတာများ",
   "subtitle": "ကုန်ပစ္စည်းနှင့် FAQ များ စီမံပါ",
   "addBtn": "ထည့်",
   "itemCount": "{{count}} ခု",
-  "emptyTitle": "Smart Items မရှိသေးပါ",
+  "emptyTitle": "ထုတ်ကုန်/ဒေတာများ မရှိသေးပါ",
   "emptyDesc": "AI Bot ကို ကောင်းကောင်း ဖြေကြားနိုင်ရန် ကုန်ပစ္စည်းများ သို့မဟုတ် FAQ တွေ ထည့်ပါ",
   "addFirstBtn": "ပထမဆုံး Item ထည့်ရန်",
   "searchPlaceholder": "နာမည် သို့မဟုတ် ကြောင်းအရာနဲ့ ရှာပါ...",
   "filterAll": "အားလုံး",
   "filterProduct": "ကုန်ပစ္စည်း",
-  "filterInfo": "Info / FAQ",
+  "filterInfo": "အချက်အလက် / FAQ",
   "noResults": "ရှာဖွေမှု နဲ့ ကိုက်ညီတဲ့ Item မရှိပါ",
   "type": {
     "product": "ကုန်ပစ္စည်း",
@@ -43,7 +43,7 @@
   },
   "toast": {
     "addedTitle": "Item ထည့်ပြီးပါပြီ",
-    "addedMsg": "\"{{title}}\" ကို Smart Items တွင် ထည့်သွင်းပြီးပါပြီ",
+    "addedMsg": "\"{{title}}\" ကို ထုတ်ကုန်/ဒေတာများ တွင် ထည့်သွင်းပြီးပါပြီ",
     "updatedTitle": "ပြင်ဆင်မှု သိမ်းပြီး",
     "updatedMsg": "\"{{title}}\" ကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ",
     "deletedTitle": "Item ဖျက်ပြီး",
