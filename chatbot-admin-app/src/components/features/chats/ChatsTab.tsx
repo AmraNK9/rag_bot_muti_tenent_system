@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from
 import { useTranslation } from 'react-i18next';
 import { useChatbot } from '../../../contexts/ChatbotContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { Bot, User } from 'lucide-react';
+import { Bot, User, AlertTriangle } from 'lucide-react';
 import type { Conversation, Message } from '../../../types';
 import { getConversations, getMessages, getMessagesSince, replyToConversation, getChatSessionStatus, toggleChatTakeover, getActionRequests, resolveActionRequest } from '../../../api/client';
 import {
@@ -523,7 +523,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                   }}
                 >
                   <div style={{ display: 'flex', width: '100%', alignItems: 'center', marginBottom: '12px' }}>
-                    <div className="conv-avatar" style={{ background: 'var(--red)', color: '#fff', width: 36, height: 36, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚠️</div>
+                    <div className="conv-avatar" style={{ background: 'var(--red)', color: '#fff', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><AlertTriangle size={20} /></div>
                     <div style={{ marginLeft: 12, flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{req.action_type.toUpperCase().replace('_', ' ')}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -597,7 +597,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                     : { background: hashAvatarColor(c.sender_id) }
                   }
                 >
-                  {isSystem ? '🛡️' : isActionReq ? '⚠️' : c.sender_id.charAt(0).toUpperCase()}
+                  {isSystem ? '🛡️' : isActionReq ? <AlertTriangle size={24} /> : c.sender_id.charAt(0).toUpperCase()}
                 </div>
                 <div className="conv-info">
                   <div className="conv-name" style={isSystem ? { fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' } : undefined}>
