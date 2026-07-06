@@ -99,7 +99,7 @@ ${context.businessDetailInfo}`;
     }
 
     // Wrapper to enforce strict conciseness and save tokens
-    const tokenOptimizationWrapper = `
+    let tokenOptimizationWrapper = `
 ---
 CRITICAL SYSTEM INSTRUCTIONS (TOKEN OPTIMIZATION):
 You MUST be extremely concise and direct in your answers (လိုတိုရှင်း). 
@@ -107,6 +107,10 @@ You MUST be extremely concise and direct in your answers (လိုတိုရ�
 2. Answer the user's question in the shortest possible way while remaining accurate.
 3. Do NOT repeat the user's question.
 4. Your primary goal is to save output tokens and answer strictly to the point.`;
+
+    if (context.defaultLanguage) {
+      tokenOptimizationWrapper += `\n5. LANGUAGE ENFORCEMENT: You MUST always reply strictly in ${context.defaultLanguage} language, regardless of the language the user uses.`;
+    }
 
     return `${basePrompt}\n${tokenOptimizationWrapper}`;
   }

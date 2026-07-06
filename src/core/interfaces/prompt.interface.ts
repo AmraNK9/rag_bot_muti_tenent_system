@@ -3,6 +3,7 @@ export interface SystemPromptContext {
   businessName: string;
   businessDetailInfo: string;
   botType: string; // e.g. "sales", "faq", "custom"
+  defaultLanguage?: string;
   additionalContext?: Record<string, any>;
 }
 

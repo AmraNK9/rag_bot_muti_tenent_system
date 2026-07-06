@@ -24,6 +24,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   const [editDesc, setEditDesc] = useState(chatbot?.description || '');
   const [editToken, setEditToken] = useState('');
   const [editTimeout, setEditTimeout] = useState(chatbot?.handover_timeout_mins || 30);
+  const [editLanguage, setEditLanguage] = useState(chatbot?.default_language || 'Myanmar');
   const [savingBot, setSavingBot] = useState(false);
 
   // Prompt State
@@ -76,7 +77,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
         editName.trim(),
         editDesc.trim(),
         editToken.trim() || undefined,
-        editTimeout
+        editTimeout,
+        editLanguage
       );
       setChatbot(updated);
       setShowEditBot(false);
@@ -156,6 +158,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                     <div style={{ fontWeight: 600 }}>{chatbot?.name || 'Unnamed Bot'}</div>
                   </div>
                   <div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>Language</div>
+                    <div style={{ fontWeight: 600 }}>{chatbot?.default_language || 'Myanmar'}</div>
+                  </div>
+                  <div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>Role</div>
                     <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{chatbot?.bot_role || '-'}</div>
                   </div>
@@ -182,6 +188,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                   <label>{tc('settings.botToken')}</label>
                   <input type="password" value={editToken} onChange={e => setEditToken(e.target.value)} placeholder="Leave blank to keep existing..." />
                   <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>{tc('settings.botTokenHint')}</small>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Default Language</label>
+                  <select 
+                    value={editLanguage} 
+                    onChange={e => setEditLanguage(e.target.value)}
+                    className="chat-input-field" 
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-page)', border: '1px solid var(--border)', color: 'var(--text-main)', marginTop: '4px' }}
+                  >
+                    <option value="Myanmar">Myanmar</option>
+                    <option value="English">English</option>
+                  </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>AI Auto-Release Timeout</label>

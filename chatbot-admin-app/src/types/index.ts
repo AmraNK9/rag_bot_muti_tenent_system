@@ -26,6 +26,7 @@ export interface ChatbotDetails {
   custom_system_prompt: string | null;
   telegram_username?: string;
   handover_timeout_mins?: number;
+  default_language?: string;
 }
 
 export interface Conversation {

@@ -134,6 +134,7 @@ router.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: Req
         type: chatbot.type,
         bot_role: chatbot.bot_role,
         custom_system_prompt: chatbot.custom_system_prompt,
+        default_language: chatbot.default_language,
       } : null,
       credits,
       business: business ? await (async () => {
@@ -198,7 +199,7 @@ router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Req
       return res.status(403).json({ success: false, error: 'Only standalone chatbot admins can customize chatbot metadata.' });
     }
 
-    const { name, description, bot_token, handover_timeout_mins } = req.body;
+    const { name, description, bot_token, handover_timeout_mins, default_language } = req.body;
     const chatbotId = adminReq.chatbotAdmin.chatbotId;
     if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
     const chatbot = await ChatBot.findByPk(chatbotId);
@@ -208,6 +209,7 @@ router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Req
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
     if (handover_timeout_mins !== undefined) updates.handover_timeout_mins = Number(handover_timeout_mins);
+    if (default_language) updates.default_language = default_language;
 
     // Handle bot token update
     if (bot_token && bot_token !== chatbot.token) {
@@ -237,6 +239,14 @@ router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Req
       } catch (err) {
         console.error('[Webhook] Failed to register new webhook during update:', err);
       }
+    }
+
+    // Invalidate Redis cache for this chatbot so the new language/settings take effect immediately
+    try {
+      const { redisService } = await import('../../../infrastructure/redis/redis.service');
+      await redisService.del(`chatbot_config_v2:${chatbot.id}`);
+    } catch (err) {
+      console.error('[Redis] Failed to invalidate chatbot config cache:', err);
     }
 
     return res.json({ success: true, chatbot });

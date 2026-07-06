@@ -296,6 +296,7 @@ export interface SearchResultWithScores extends VectorSearchResult {
         businessName: chatbot.business.name,
         businessDetailInfo: chatbot.business.detail_info,
         botType: chatbot.bot_role || 'sales',
+        defaultLanguage: chatbot.default_language || 'Myanmar',
       }
     );
 

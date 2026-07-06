@@ -33,6 +33,7 @@ export class ChatBot extends Model<InferAttributes<ChatBot>, InferCreationAttrib
   declare bot_role: CreationOptional<'sales' | 'faq' | 'support' | 'custom'>;
   declare custom_system_prompt: CreationOptional<string | null>;
   declare handover_timeout_mins: CreationOptional<number>;
+  declare default_language: CreationOptional<string>;
 
   // Relationship definitions
   declare business?: Business;
@@ -426,6 +427,11 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.TEXT,
         allowNull: true,
         defaultValue: null,
+      },
+      default_language: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: 'Myanmar',
       },
     },
     {
