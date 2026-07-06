@@ -465,7 +465,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
       {/* Conversation list */}
       <div className="conv-list-view">
         <div className="conv-list-header">
-          <h2>{currentTab === 'actions' ? 'Action Required' : t('title')}</h2>
+          <h2>{currentTab === 'actions' ? t('actionTitle') : t('title')}</h2>
         </div>
 
         {loadingConvs ? (
@@ -476,8 +476,8 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
               return (
                 <div className="empty-state" style={{ marginTop: '40px', background: 'var(--bg-surface-2)', padding: '30px', borderRadius: '16px', border: '1px solid var(--border)' }}>
                   <div className="empty-icon" style={{ fontSize: '3rem', filter: 'hue-rotate(150deg)' }}>🎉</div>
-                  <h3>Inbox Zero!</h3>
-                  <p>You have no pending actions to review. Great job!</p>
+                  <h3>{t('actionInboxZero')}</h3>
+                  <p>{t('actionNoPending')}</p>
                 </div>
               );
             }
@@ -527,7 +527,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                     <div style={{ marginLeft: 12, flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{req.action_type.toUpperCase().replace('_', ' ')}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        User {req.sender_id} • {req.created_at ? formatTime(req.created_at) : ''}
+                        {t('userPrefix')} {req.sender_id} • {req.created_at ? formatTime(req.created_at) : ''}
                       </div>
                     </div>
                   </div>
@@ -539,13 +539,13 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                       onClick={(e) => { e.stopPropagation(); openChat(req.sender_id); }}
                       style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}
                     >
-                      View Chat
+                      {t('actionViewChat')}
                     </button>
                     <button 
                       onClick={handleApprove}
                       style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'var(--red)', color: '#fff', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                      <User size={16} /> Approve & Reply
+                      <User size={16} /> {t('actionApproveReply')}
                     </button>
                   </div>
                 </div>
@@ -617,7 +617,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                       <>
                         {isActionReq ? (
                           <span style={{ color: 'var(--red)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            🔴 Action Needed
+                            🔴 {t('actionNeeded')}
                           </span>
                         ) : c.last_sender_type === 'bot' ? (
                           <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 4, flexShrink: 0 }}>
@@ -724,7 +724,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                       {isActionMsg ? (
                         <div style={{ textAlign: 'center', margin: '8px 0' }}>
                           <span style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', fontSize: '0.7rem', padding: '4px 10px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            ⚡ AI requested admin review
+                            ⚡ {t('actionAiRequested')}
                           </span>
                         </div>
                       ) : (
@@ -800,7 +800,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                   }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', marginBottom: 2 }}>
-                        ⚠️ Action Required
+                        ⚠️ {t('actionTitle')}
                       </div>
                       <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 500 }}>
                         {actionSummary}
@@ -813,7 +813,7 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                         borderRadius: '6px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap'
                       }}
                     >
-                      Approve / Handle
+                      {t('actionApproveHandle')}
                     </button>
                   </div>
                 );

@@ -21,5 +21,13 @@
   "controllingNotice": "သင်သည် ဤ Chat ကို ကိုင်တွယ်နေပါသည်။ AI ကို ခေတ္တရပ်ထားသည်။",
   "releaseToAi": "AI ထံ ပြန်လွှဲမည်",
   "replyByAdminBtn": "Admin အနေဖြင့် ပြန်မည် (Take over)",
-  "aiIsHandlingPlaceholder": "AI သည် ဤ Chat ကို ကိုင်တွယ်ဖြေကြားပေးနေပါသည်..."
+  "aiIsHandlingPlaceholder": "AI သည် ဤ Chat ကို ကိုင်တွယ်ဖြေကြားပေးနေပါသည်...",
+  "actionTitle": "လုပ်ဆောင်ရန် လိုအပ်သည်",
+  "actionInboxZero": "လုပ်ဆောင်စရာ မရှိတော့ပါ!",
+  "actionNoPending": "လောလောဆယ် လုပ်ဆောင်ရန်ကျန်ရှိနေသော အရာများမရှိပါ။ အလွန်ကောင်းမွန်ပါသည်။",
+  "actionViewChat": "Chat ကိုကြည့်မည်",
+  "actionApproveReply": "ခွင့်ပြုပြီး စာပြန်မည်",
+  "actionNeeded": "လုပ်ဆောင်ရန် လိုအပ်သည်",
+  "actionAiRequested": "AI မှ Admin ကို စစ်ဆေးပေးရန် တောင်းဆိုထားသည်",
+  "actionApproveHandle": "ခွင့်ပြုမည် / ကိုင်တွယ်မည်"
 }

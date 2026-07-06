@@ -21,5 +21,13 @@
   "controllingNotice": "You are controlling this chat. AI is paused.",
   "releaseToAi": "Release to AI",
   "replyByAdminBtn": "Reply by Admin (Take over chat)",
-  "aiIsHandlingPlaceholder": "AI is currently handling this chat..."
+  "aiIsHandlingPlaceholder": "AI is currently handling this chat...",
+  "actionTitle": "Action Required",
+  "actionInboxZero": "Inbox Zero!",
+  "actionNoPending": "You have no pending actions to review. Great job!",
+  "actionViewChat": "View Chat",
+  "actionApproveReply": "Approve & Reply",
+  "actionNeeded": "Action Needed",
+  "actionAiRequested": "AI requested admin review",
+  "actionApproveHandle": "Approve / Handle"
 }
