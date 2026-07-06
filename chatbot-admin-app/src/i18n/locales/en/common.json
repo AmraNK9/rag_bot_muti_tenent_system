@@ -25,7 +25,7 @@
     "botAdmin": "Bot Admin",
     "emptyBotTitle": "Connect Your First Bot",
     "emptyBotDesc": "Connect your first AI Chatbot and start automating customer replies 24/7.",
-    "createBotBtn": "➕ Create My First Bot"
+    "createBotBtn": "Create My First Bot"
   },
   "error": {
     "saveFailed": "Failed to save",
@@ -36,7 +36,7 @@
   "drawer": {
     "creditsRemaining": "{{count}} credits remaining",
     "ofTotal": "of {{total}}",
-    "upgradeBtn": "⚡ Upgrade Plan",
+    "upgradeBtn": "Upgrade Plan",
     "addCreditsBtn": "+ Add Credits"
   },
   "settings": {

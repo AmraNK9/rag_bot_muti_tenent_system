@@ -25,7 +25,7 @@
     "botAdmin": "Bot Admin",
     "emptyBotTitle": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပါ",
     "emptyBotDesc": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပြီး Customer တွေကို ၂၄နာရီ အလိုအလျောက် ဖြေဆိုနိုင်ပါပြီ။",
-    "createBotBtn": "➕ ပထမဆုံး Bot ဖန်တီးမည်"
+    "createBotBtn": "ပထမဆုံး Bot ဖန်တီးမည်"
   },
   "error": {
     "saveFailed": "သိမ်းဆည်းမရပါ",
@@ -36,7 +36,7 @@
   "drawer": {
     "creditsRemaining": "{{count}} credits ကျန်သည်",
     "ofTotal": "{{total}} ထဲမှ",
-    "upgradeBtn": "⚡ Plan အဆင့်မြှင့်",
+    "upgradeBtn": "Plan အဆင့်မြှင့်",
     "addCreditsBtn": "+ Credits ဖြည့်"
   },
   "settings": {

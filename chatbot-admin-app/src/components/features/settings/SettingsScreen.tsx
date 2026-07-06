@@ -253,11 +253,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
               <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {prompt ? (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, background: 'rgba(10,132,255,0.12)', color: 'var(--primary)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.5px' }}>
-                    ✏️ {tc('settings.customBadge')}
+                    {tc('settings.customBadge')}
                   </span>
                 ) : (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, background: 'rgba(142,142,147,0.15)', color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.5px' }}>
-                    🤖 {tc('settings.defaultBadge')}
+                    {tc('settings.defaultBadge')}
                   </span>
                 )}
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
@@ -352,7 +352,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                   <div style={{ fontWeight: 600, fontSize: '1.1rem', textTransform: 'capitalize' }}>{businessPlanInfo?.plan_name || tc('settings.freePlan')}</div>
                   {businessPlanInfo?.subscriptionEndDate ? (
                     <div style={{ fontSize: '0.72rem', color: 'var(--orange)', marginTop: 2 }}>
-                      ⏰ {tc('settings.expires', { date: new Date(businessPlanInfo.subscriptionEndDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) })}
+                      {tc('settings.expires', { date: new Date(businessPlanInfo.subscriptionEndDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) })}
                     </div>
                   ) : (
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{tc('settings.noExpiry')}</div>
