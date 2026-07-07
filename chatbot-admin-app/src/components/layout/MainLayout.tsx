@@ -11,7 +11,9 @@ import { CreateBotModal } from '../features/chatbot/CreateBotModal';
 import { Bot, Zap, Menu, MessageSquare, BookOpen, Unplug, X, BellRing, Send, ListTodo } from 'lucide-react';
 import { getSystemBotInfo } from '../../api/client';
 
-type TabId = 'chats' | 'actions' | 'knowledge' | 'billing';
+import { ChevronLeft } from 'lucide-react';
+
+type TabId = 'chats' | 'actions' | 'knowledge';
 
 export const MainLayout: React.FC = () => {
   const { t: tc } = useTranslation('common');
@@ -22,6 +24,7 @@ export const MainLayout: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showCreateBotModal, setShowCreateBotModal] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBillingOpen, setIsBillingOpen] = useState(false);
 
   const [systemBotUsername, setSystemBotUsername] = useState('YourBotUsername');
   const [showNotiBanner, setShowNotiBanner] = useState(true);
@@ -72,7 +75,7 @@ export const MainLayout: React.FC = () => {
           <span className="brand-name">{chatbot ? chatbot.name : tc('layout.botAdmin', 'Bot Admin')}</span>
           <div 
             className={`nav-credits ${profile?.isStandalone ? 'clickable-credits' : ''}`} 
-            onClick={() => profile?.isStandalone && setActiveTab('billing')}
+            onClick={() => profile?.isStandalone && setIsBillingOpen(true)}
             title={profile?.isStandalone ? tc('layout.viewBilling') : tc('layout.availableCredits')}
             style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: profile?.isStandalone ? 'pointer' : 'default' }}
           >
@@ -92,14 +95,30 @@ export const MainLayout: React.FC = () => {
         drawerOpen={drawerOpen} 
         setDrawerOpen={setDrawerOpen} 
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenBilling={() => { setIsSettingsOpen(false); setActiveTab('billing'); }}
+        onOpenBilling={() => { setIsSettingsOpen(false); setIsBillingOpen(true); }}
       />
 
       {isSettingsOpen && <SettingsScreen onClose={() => setIsSettingsOpen(false)} />}
+      
+      {isBillingOpen && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1000, background: 'var(--bg-page)', display: 'flex', flexDirection: 'column', animation: 'fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+          <div style={{ height: 'var(--nav-h)', display: 'flex', alignItems: 'center', padding: '0 16px', background: 'var(--bg-glass)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--border)', flexShrink: 0, zIndex: 2 }}>
+            <button onClick={() => setIsBillingOpen(false)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--primary)', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>
+              <ChevronLeft size={20} /> {tc('settings.back')}
+            </button>
+            <div style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: '1.05rem', paddingRight: 60 }}>
+              {tc('settings.billingTitle', 'Billing & Subscription')}
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <BillingTab />
+          </div>
+        </div>
+      )}
 
       {/* CONTENT */}
       <main className="main-content">
-        {!chatbot && !showCreateBotModal && activeTab !== 'billing' && (
+        {!chatbot && !showCreateBotModal && (
           <div className="empty-state" style={{ height: '100%' }}>
             <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Unplug size={48} color="var(--text-muted)" /></div>
             <h3>{tc('layout.noBotTitle')}</h3>
@@ -122,11 +141,6 @@ export const MainLayout: React.FC = () => {
               </div>
             )}
           </>
-        )}
-        {profile?.isStandalone && (
-          <div style={{ display: activeTab === 'billing' ? 'flex' : 'none', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-            <BillingTab />
-          </div>
         )}
       </main>
 
