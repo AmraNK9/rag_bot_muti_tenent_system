@@ -53,6 +53,9 @@ export class FetchProductsTool implements ITool {
           message: args.keyword 
             ? `No products found matching "${args.keyword}".` 
             : 'No products are currently listed in the inventory.',
+          data: args.keyword 
+            ? `[SYSTEM ALERT: The inventory search returned NO RESULTS for "${args.keyword}". Inform the user that you don't have this item.]` 
+            : '[SYSTEM ALERT: The product inventory is currently EMPTY. Inform the user respectfully that you have no products listed at the moment.]',
         };
       }
 
