@@ -222,7 +222,8 @@ export class SubscriptionService {
       }
 
       // 2. Telegram Notification to Business Owner
-      if (business.telegram_chat_id) {
+      const business = await Business.findByPk(businessId);
+      if (business && business.telegram_chat_id) {
         try {
           const { SystemBotService } = await import('../system-bot/system-bot.service');
           const sysBot = new SystemBotService();

@@ -213,6 +213,10 @@ router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Req
 
     // Handle bot token update
     if (bot_token && bot_token !== chatbot.token) {
+      const existingBot = await ChatBot.findOne({ where: { token: bot_token } });
+      if (existingBot && existingBot.id !== chatbot.id) {
+        return res.status(400).json({ success: false, error: 'This token is already connected to another bot in the system.' });
+      }
       const isTokenValid = await telegramService.validateBotToken(bot_token);
       if (!isTokenValid) {
         return res.status(400).json({ success: false, error: 'Invalid Telegram Bot Token. Please check your token and try again.' });

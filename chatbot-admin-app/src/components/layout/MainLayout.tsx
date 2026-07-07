@@ -92,6 +92,7 @@ export const MainLayout: React.FC = () => {
         drawerOpen={drawerOpen} 
         setDrawerOpen={setDrawerOpen} 
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenBilling={() => { setIsSettingsOpen(false); setActiveTab('billing'); }}
       />
 
       {isSettingsOpen && <SettingsScreen onClose={() => setIsSettingsOpen(false)} />}

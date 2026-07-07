@@ -9,9 +9,10 @@ interface SidebarDrawerProps {
   drawerOpen: boolean;
   setDrawerOpen: (open: boolean) => void;
   onOpenSettings: () => void;
+  onOpenBilling?: () => void;
 }
 
-export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onOpenSettings }) => {
+export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onOpenSettings, onOpenBilling }) => {
   const { profile, logout } = useAuth();
   const { credits, businessPlanInfo } = useChatbot();
   const { theme, setTheme } = useTheme();
@@ -133,7 +134,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
                   <button
                     className="btn btn-primary btn-sm"
                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.82rem', padding: '10px' }}
-                    onClick={() => { setDrawerOpen(false); onOpenSettings(); }}
+                    onClick={() => { setDrawerOpen(false); if (onOpenBilling) onOpenBilling(); else onOpenSettings(); }}
                   >
                     <Zap size={14} fill="currentColor" /> {tc('drawer.upgradeBtn')}
                   </button>

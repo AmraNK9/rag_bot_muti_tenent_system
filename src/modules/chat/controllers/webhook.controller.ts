@@ -26,6 +26,7 @@ export interface TelegramWebhookUpdate {
       type: string;
     };
     text?: string;
+    photo?: Array<{ file_id: string }>;
     date: number;
   };
   callback_query?: {
@@ -41,8 +42,8 @@ export interface TelegramWebhookUpdate {
 const TELEGRAM_EDIT_DEBOUNCE_MS = 500;
 
 export class WebhookController {
-  /** In-memory cache for bot tokens to avoid redundant DB lookups */
-  private tokenCache: Map<number, string> = new Map();
+  /** In-memory cache for bot tokens with expiration to avoid redundant DB lookups */
+  private tokenCache: Map<number, { token: string; expiresAt: number }> = new Map();
   private subscriptionService: SubscriptionService;
 
   constructor(
@@ -288,19 +289,19 @@ export class WebhookController {
     return fullText;
   }
 
-  /**
-   * Resolves bot token from cache or DB.
-   */
   private async resolveBotToken(chatbotId: number): Promise<string> {
     const cached = this.tokenCache.get(chatbotId);
-    if (cached) return cached;
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.token;
+    }
 
     const chatbot = await ChatBot.findByPk(chatbotId);
     if (!chatbot) {
       throw new Error(`Cannot resolve token: ChatBot ID ${chatbotId} not found.`);
     }
 
-    this.tokenCache.set(chatbotId, chatbot.token);
+    // Cache for 5 minutes
+    this.tokenCache.set(chatbotId, { token: chatbot.token, expiresAt: Date.now() + 5 * 60 * 1000 });
     return chatbot.token;
   }
 
