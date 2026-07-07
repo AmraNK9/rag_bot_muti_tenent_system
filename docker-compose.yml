@@ -47,6 +47,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
       NGROK_DOMAIN: ${NGROK_DOMAIN}
+      PUBLIC_URL: ${PUBLIC_URL}
       DEBUG_MODE: "true"
     ports:
       - "4321:4321"

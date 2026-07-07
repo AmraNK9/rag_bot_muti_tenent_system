@@ -26,12 +26,19 @@ export class TunnelService {
    * @param port - Local port the Express server is listening on
    */
   async startTunnel(port: number): Promise<string> {
+    // If a production PUBLIC_URL is provided, use it directly instead of starting ngrok.
+    if (process.env.PUBLIC_URL) {
+      this.publicUrl = process.env.PUBLIC_URL.replace(/\/$/, ''); // Remove trailing slash
+      console.log(`[TunnelService] Using provided PUBLIC_URL: ${this.publicUrl}`);
+      return this.publicUrl;
+    }
+
     const authtoken = process.env.NGROK_AUTHTOKEN;
     const domain = process.env.NGROK_DOMAIN; 
     if (!authtoken) {
       throw new Error(
         'NGROK_AUTHTOKEN is not set in .env. ' +
-        'Get a free token at https://ngrok.com and add it to your .env file.'
+        'Get a free token at https://ngrok.com and add it to your .env file, or set PUBLIC_URL.'
       );
     }
 
