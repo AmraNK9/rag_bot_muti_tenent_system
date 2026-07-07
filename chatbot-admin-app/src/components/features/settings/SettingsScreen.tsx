@@ -26,7 +26,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   const [editTimeout, setEditTimeout] = useState(chatbot?.handover_timeout_mins || 30);
   const [editLanguage, setEditLanguage] = useState(chatbot?.default_language || 'Myanmar');
   const [editRole, setEditRole] = useState(chatbot?.bot_role || 'sales');
-  const [editType, setEditType] = useState(chatbot?.type || 'telegram');
+  const [editType] = useState(chatbot?.type || 'telegram');
   const [savingBot, setSavingBot] = useState(false);
 
   // Prompt State
