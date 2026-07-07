@@ -153,35 +153,8 @@ export interface SearchResultWithScores extends VectorSearchResult {
       availableTools.push(updateProfileTool.definition);
     }
 
-    // Product Inquiry Keywords Gatekeeper (Direct Execution / Token Saver Bypass)
-    const productKeywords = [
-      'ဘာတွေ', 'ဘာရလဲ', 'ဘာဖုန်း', 'ဘာပစ္စည်း', 'ဘာတွေရောင်း', 'စာရင်း', 'ပြပါ', 'ရှိလဲ', 'ရမလဲ', 'ရနိုင်မလဲ',
-      'ဘာ', 'ပစ္စည်း', 'ရသေးလဲ', 'ရောင်းသေးလဲ', 'ကျန်သေးလဲ', 'ပေးပါ',
-      'list', 'show', 'menu', 'products', 'available', 'what do you have', 'what do you sell'
-    ];
-    const mightInquireProducts = productKeywords.some(kw => lowerMessage.includes(kw));
-    
-    if (canUseProductFetching && fetchProductsTool && mightInquireProducts) {
-      debugLogger.log('PIPELINE', 'Product Inquiry detected. Bypassing LLM generation to save tokens.');
-      const result = await fetchProductsTool.execute({}, { chatbotId, senderId });
-      
-      if (result && result.rawProducts && result.rawProducts.length > 0) {
-        let directResponse = 'မင်္ဂလာပါရှင်။ ကျွန်တော်တို့ဆီမှာ ရနိုင်တဲ့ ပစ္စည်းစာရင်းလေးတွေကတော့ အောက်ပါအတိုင်း ဖြစ်ပါတယ်ရှင် 👇\n\n';
-        result.rawProducts.forEach((p: any, idx: number) => {
-          directResponse += `🛒 **${p.title}**\n`;
-          if (p.price) directResponse += `   💰 ဈေးနှုန်း: ${p.price} MMK\n`;
-          if (p.stock !== null && p.stock !== undefined) directResponse += `   📦 လက်ကျန်: ${p.stock}\n`;
-          if (p.detail) directResponse += `   📝 အသေးစိတ်: ${p.detail.substring(0, 50)}...\n`;
-          directResponse += '\n';
-        });
-        directResponse += 'စိတ်ဝင်စားတဲ့ ပစ္စည်းလေးရှိရင် အသေးစိတ် ထပ်မေးနိုင်ပါတယ်ရှင်။ ☺️';
-        
-        yield directResponse;
-        return; // Halt the entire LLM pipeline
-      } else {
-        yield 'လောလောဆယ် ပြသစရာ ပစ္စည်းစာရင်း မရှိသေးပါဘူးရှင်။ တခြား သိလိုသည်များ မေးမြန်းနိုင်ပါတယ်။';
-        return;
-      }
+    if (canUseProductFetching && fetchProductsTool) {
+      availableTools.push(fetchProductsTool.definition);
     }
 
     const parallelTasks: [

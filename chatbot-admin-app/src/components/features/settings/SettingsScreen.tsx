@@ -25,6 +25,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   const [editToken, setEditToken] = useState('');
   const [editTimeout, setEditTimeout] = useState(chatbot?.handover_timeout_mins || 30);
   const [editLanguage, setEditLanguage] = useState(chatbot?.default_language || 'Myanmar');
+  const [editRole, setEditRole] = useState(chatbot?.bot_role || 'sales');
+  const [editType, setEditType] = useState(chatbot?.type || 'telegram');
   const [savingBot, setSavingBot] = useState(false);
 
   // Prompt State
@@ -78,7 +80,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
         editDesc.trim(),
         editToken.trim() || undefined,
         editTimeout,
-        editLanguage
+        editLanguage,
+        editRole,
+        editType
       );
       setChatbot(updated);
       setShowEditBot(false);
@@ -162,9 +166,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                     <div style={{ fontWeight: 600 }}>{chatbot?.default_language || 'Myanmar'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>{tc('settings.role')}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>Bot Role</div>
                     <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{chatbot?.bot_role || '-'}</div>
                   </div>
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <a href="https://t.me/AmraNK9" target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+                    Connect Facebook or Viber
+                  </a>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tc('settings.description')}</div>
                 <div style={{ marginBottom: 16 }}>{chatbot?.description || <span style={{ color: 'var(--text-muted)' }}>{tc('settings.noDescription')}</span>}</div>
@@ -201,6 +210,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
                     <option value="English">English</option>
                   </select>
                 </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Bot Role</label>
+                  <select 
+                    value={editRole} 
+                    onChange={e => setEditRole(e.target.value)}
+                    className="chat-input-field" 
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-page)', border: '1px solid var(--border)', color: 'var(--text-main)', marginTop: '4px' }}
+                  >
+                    <option value="sales">Sales & Product Discovery</option>
+                    <option value="faq">General FAQ</option>
+                    <option value="support">Customer Support</option>
+                    <option value="custom">Custom Agent</option>
+                  </select>
+                </div>
+
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>{tc('settings.aiTimeout')}</label>
                   <select 
@@ -239,7 +263,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
             </p>
             {profile?.canManageSystemPrompt && (
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <button className={`btn ${editPromptMode ? 'btn-primary' : 'btn-secondary'} btn-sm`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => setEditPromptMode(true)}>
+                <button className={`btn ${editPromptMode ? 'btn-primary' : 'btn-secondary'} btn-sm`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => {
+                  if (!prompt) {
+                    setPrompt(activePrompt);
+                  }
+                  setEditPromptMode(true);
+                }}>
                   <Pencil size={14} /> {tp('editMode')}
                 </button>
                 <button className={`btn ${!editPromptMode ? 'btn-primary' : 'btn-secondary'} btn-sm`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => setEditPromptMode(false)}>

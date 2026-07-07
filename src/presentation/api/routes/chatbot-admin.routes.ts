@@ -199,7 +199,7 @@ router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Req
       return res.status(403).json({ success: false, error: 'Only standalone chatbot admins can customize chatbot metadata.' });
     }
 
-    const { name, description, bot_token, handover_timeout_mins, default_language } = req.body;
+    const { name, description, bot_token, handover_timeout_mins, default_language, bot_role, type } = req.body;
     const chatbotId = adminReq.chatbotAdmin.chatbotId;
     if (!chatbotId) return res.status(400).json({ success: false, error: 'No chatbot associated with this admin.' });
     const chatbot = await ChatBot.findByPk(chatbotId);
@@ -210,6 +210,8 @@ router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Req
     if (description !== undefined) updates.description = description;
     if (handover_timeout_mins !== undefined) updates.handover_timeout_mins = Number(handover_timeout_mins);
     if (default_language) updates.default_language = default_language;
+    if (bot_role) updates.bot_role = bot_role;
+    if (type) updates.type = type;
 
     // Handle bot token update
     if (bot_token && bot_token !== chatbot.token) {
