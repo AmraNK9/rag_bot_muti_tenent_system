@@ -37,7 +37,7 @@ services:
     restart: always
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 4321
       DATABASE_URL: postgresql://postgres:mysecretpassword@postgres:5432/chat-bot-sass
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-in-production}
