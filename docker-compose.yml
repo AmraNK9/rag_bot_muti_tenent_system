@@ -49,7 +49,7 @@ services:
       NGROK_DOMAIN: ${NGROK_DOMAIN}
       DEBUG_MODE: "true"
     ports:
-      - "3000:3000"
+      - "4321:4321"
     volumes:
       - uploads_data:/app/uploads
     depends_on:

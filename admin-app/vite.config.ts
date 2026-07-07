@@ -1,3 +1,12 @@
+declare module 'vite' {
+  export function defineConfig(config: any): any
+}
+
+declare module '@vitejs/plugin-react' {
+  const reactPlugin: any
+  export default reactPlugin
+}
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -8,7 +17,7 @@ export default defineConfig({
     proxy: {
       // Proxy /api/* to backend during development — avoids CORS issues
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3300',
         changeOrigin: true,
       },
     },
