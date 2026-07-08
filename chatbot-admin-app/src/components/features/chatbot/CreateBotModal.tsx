@@ -55,6 +55,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
   const [token, setToken] = useState('');
   const [type, setType] = useState<'telegram' | 'facebook'>('telegram');
   const [role, setRole] = useState<'sales' | 'faq' | 'support' | 'custom'>('sales');
+  const [systemPrompt, setSystemPrompt] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -87,7 +88,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
     setError('');
     setCreating(true);
     try {
-      const data = await createChatbot(name, token, type, role, force);
+      const data = await createChatbot(name, token, type, role, force, systemPrompt);
       if (data.success && data.chatbot) {
         setChatbot(data.chatbot);
         onClose();
@@ -504,6 +505,51 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                   ))}
                 </div>
               </div>
+
+              {/* ── Custom System Prompt (only for Custom role) ── */}
+              {role === 'custom' && (
+                <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.6px',
+                      marginBottom: 8,
+                    }}
+                  >
+                    Custom System Prompt
+                  </label>
+                  <textarea
+                    placeholder="Enter the custom AI instructions and rules for your chatbot..."
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                    required
+                    rows={4}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-surface-2)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '13px 16px',
+                      color: 'var(--text-main)',
+                      fontFamily: 'var(--font)',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      resize: 'vertical',
+                      minHeight: '80px',
+                      transition: 'border-color 0.2s',
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
+                    onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
+                  />
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Define exactly how your AI should behave. You can also update this later in Settings.
+                  </div>
+                </div>
+              )}
 
               {/* ── Action buttons ── */}
               {showForceConnect && (

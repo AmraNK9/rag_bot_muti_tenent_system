@@ -631,7 +631,7 @@ router.put('/chatbot-admin/knowledge/chunks/:docId', chatbotAdminAuthMiddleware,
 router.post('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const adminReq = req as ChatbotAdminRequest;
-    const { name, token, type, botRole, forceConnect } = req.body;
+    const { name, token, type, botRole, forceConnect, custom_system_prompt } = req.body;
 
     if (!name || !token || !type) {
       return res.status(400).json({ success: false, error: 'Missing required fields: "name", "token", or "type".' });
@@ -669,14 +669,19 @@ router.post('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Re
       }
     }
 
-    // Create the chatbot
-    const chatbot = await ChatBot.create({
+    const botParams: any = {
       business_id: business.id,
       name,
       token,
       type,
       bot_role: botRole || 'sales',
-    });
+    };
+    if (botRole === 'custom' && custom_system_prompt) {
+      botParams.custom_system_prompt = custom_system_prompt;
+    }
+
+    // Create the chatbot
+    const chatbot = await ChatBot.create(botParams);
 
     // Link admin to chatbot
     await admin.update({ chatbot_id: chatbot.id });
