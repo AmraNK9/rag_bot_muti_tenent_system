@@ -1,31 +1,35 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrainCircuit, Zap, Gem } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface LandingOnboardingProps {
   onComplete: () => void;
 }
 
-const slides = [
+const slidesConfig = [
   {
-    icon: <BrainCircuit size={48} color="white" strokeWidth={1.5} />,
+    iconComponent: BrainCircuit,
     titleKey: 'landing.slide1Title',
     descKey: 'landing.slide1Desc',
-    gradient: 'linear-gradient(160deg, #060d1f 0%, #000000 70%)',
+    darkGradient: 'linear-gradient(160deg, #060d1f 0%, #000000 70%)',
+    lightGradient: 'linear-gradient(160deg, #e6f0ff 0%, #ffffff 70%)',
     accentColor: '#0a84ff',
   },
   {
-    icon: <Zap size={48} color="white" strokeWidth={1.5} />,
+    iconComponent: Zap,
     titleKey: 'landing.slide2Title',
     descKey: 'landing.slide2Desc',
-    gradient: 'linear-gradient(160deg, #0d1a0f 0%, #000000 70%)',
+    darkGradient: 'linear-gradient(160deg, #0d1a0f 0%, #000000 70%)',
+    lightGradient: 'linear-gradient(160deg, #e8f9eb 0%, #ffffff 70%)',
     accentColor: '#32d74b',
   },
   {
-    icon: <Gem size={48} color="white" strokeWidth={1.5} />,
+    iconComponent: Gem,
     titleKey: 'landing.slide3Title',
     descKey: 'landing.slide3Desc',
-    gradient: 'linear-gradient(160deg, #1a0d1a 0%, #000000 70%)',
+    darkGradient: 'linear-gradient(160deg, #1a0d1a 0%, #000000 70%)',
+    lightGradient: 'linear-gradient(160deg, #f5e8ff 0%, #ffffff 70%)',
     accentColor: '#bf5af2',
   },
 ];
@@ -35,8 +39,16 @@ const SWIPE_THRESHOLD = 50;
 
 export const LandingOnboarding: React.FC<LandingOnboardingProps> = ({ onComplete }) => {
   const { t } = useTranslation('auth');
+  const { effectiveTheme } = useTheme();
   const [step, setStep] = useState(0);
   const [animDir, setAnimDir] = useState<'left' | 'right' | null>(null);
+
+  // Compute slides based on theme
+  const slides = slidesConfig.map(s => ({
+    ...s,
+    icon: <s.iconComponent size={48} color={effectiveTheme === 'light' ? s.accentColor : 'white'} strokeWidth={1.5} />,
+    gradient: effectiveTheme === 'light' ? s.lightGradient : s.darkGradient,
+  }));
 
   // Touch tracking refs — no re-renders on every touch move
   const touchStartX = useRef<number | null>(null);
@@ -160,9 +172,13 @@ export const LandingOnboarding: React.FC<LandingOnboardingProps> = ({ onComplete
               borderRadius: 28,
               minHeight: 52,
               fontSize: '1rem',
-              background: `linear-gradient(135deg, ${slide.accentColor}, ${slide.accentColor}cc)`,
+              color: 'white',
+              background: effectiveTheme === 'light' 
+                ? `linear-gradient(135deg, ${slide.accentColor}, ${slide.accentColor}ee)`
+                : `linear-gradient(135deg, ${slide.accentColor}, ${slide.accentColor}cc)`,
               boxShadow: `0 6px 24px ${slide.accentColor}55`,
               transition: 'background 0.4s ease, box-shadow 0.4s ease',
+              border: 'none'
             }}
           >
             {step < slides.length - 1 ? t('landing.next') : t('landing.getStarted')}

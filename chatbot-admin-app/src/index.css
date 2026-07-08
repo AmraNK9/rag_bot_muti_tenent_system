@@ -1697,7 +1697,7 @@ body {
   flex-direction: column;
   height: 100%;
   align-items: center;
-  color: #ffffff;
+  color: var(--text-main);
   justify-content: space-between;
   padding: 60px 28px 48px;
   text-align: center;
@@ -1714,7 +1714,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.28);
+  color: var(--text-muted);
   letter-spacing: 0.5px;
   font-weight: 500;
   animation: swipeHintFade 3.5s ease forwards;
