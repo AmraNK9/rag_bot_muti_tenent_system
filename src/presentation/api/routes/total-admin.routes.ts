@@ -686,6 +686,15 @@ router.post('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Re
     // Link admin to chatbot
     await admin.update({ chatbot_id: chatbot.id });
 
+    // Initialize Webhook for Bot
+    if (type === 'telegram') {
+      try {
+        await chatbotWebhookService.registerWebhook(chatbot.business_id, chatbot.id);
+      } catch (err) {
+        console.error('[Webhook] Failed to register webhook on creation:', err);
+      }
+    }
+
     // Generate a new token with chatbotId updated
     const secret = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
     const newToken = jwt.sign({
