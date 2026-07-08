@@ -16,7 +16,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (saved as ThemeMode) || 'system';
   });
 
-  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('dark');
+  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>(() => {
+    const saved = (localStorage.getItem('chatbot_admin_theme') as ThemeMode) || 'system';
+    const effective: 'light' | 'dark' =
+      saved === 'system'
+        ? window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        : saved;
+    // Apply immediately to avoid flash of unstyled theme
+    document.documentElement.setAttribute('data-theme', effective);
+    return effective;
+  });
 
   const updateEffectiveTheme = (currentTheme: ThemeMode) => {
     if (currentTheme === 'system') {

@@ -230,7 +230,7 @@ export const BillingTab: React.FC = () => {
           }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255, 255, 255, 0.02)' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--inset-bg)' }}>
                   <th style={{ padding: '10px 12px', fontWeight: 600 }}>{t('colDate')}</th>
                   <th style={{ padding: '10px 12px', fontWeight: 600 }}>{t('colPackage')}</th>
                   <th style={{ padding: '10px 12px', fontWeight: 600 }}>{t('colAmount')}</th>

@@ -36,6 +36,23 @@
   --bg-accent: #e5e5ea;
   --bg-header: #ffffff;
 
+  /* Theme-adaptive utility tokens */
+  --input-bg: rgba(0, 0, 0, 0.04);
+  --toggle-off-bg: rgba(0, 0, 0, 0.12);
+  --modal-handle-bg: rgba(0, 0, 0, 0.15);
+  --badge-gray-bg: rgba(0, 0, 0, 0.08);
+  --btn-icon-hover-bg: rgba(0, 0, 0, 0.08);
+  --btn-icon-active-bg: rgba(0, 0, 0, 0.12);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --spinner-track: rgba(0, 0, 0, 0.10);
+  --toast-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+  --select-option-bg: #ffffff;
+  --landing-dot-inactive: rgba(0, 0, 0, 0.15);
+  --prompt-preview-bg: rgba(0, 0, 0, 0.04);
+  --drawer-close-active: rgba(0, 0, 0, 0.08);
+  --tab-active-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  --inset-bg: rgba(0, 0, 0, 0.04);
+
   --font: 'Inter', 'Noto Sans Myanmar', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --nav-h: 56px;
   --bottom-h: 72px;
@@ -82,6 +99,23 @@
   --bubble-admin-border: #254a6e;
   --bg-accent: #1e2936;
   --bg-header: #121a24;
+
+  /* Theme-adaptive utility tokens — dark overrides */
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --toggle-off-bg: rgba(255, 255, 255, 0.15);
+  --modal-handle-bg: rgba(255, 255, 255, 0.20);
+  --badge-gray-bg: rgba(255, 255, 255, 0.10);
+  --btn-icon-hover-bg: rgba(255, 255, 255, 0.12);
+  --btn-icon-active-bg: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --spinner-track: rgba(255, 255, 255, 0.10);
+  --toast-shadow: 0 8px 32px rgba(0, 0, 0, 0.50);
+  --select-option-bg: #1c1c1e;
+  --landing-dot-inactive: rgba(255, 255, 255, 0.20);
+  --prompt-preview-bg: rgba(255, 255, 255, 0.03);
+  --drawer-close-active: rgba(255, 255, 255, 0.15);
+  --tab-active-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
+  --inset-bg: rgba(255, 255, 255, 0.04);
 
   --device-frame: #090e14;
   --device-shadow: 
@@ -909,7 +943,7 @@ body {
 }
 
 .kpay-info-box {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--inset-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 14px;
@@ -1004,7 +1038,7 @@ body {
 .auth-tab.active {
   background: var(--bg-surface-2);
   color: var(--text-main);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--tab-active-shadow);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1027,7 +1061,7 @@ body {
 .form-group textarea,
 .form-group select {
   width: 100%;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--input-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 13px 15px;
@@ -1053,7 +1087,7 @@ body {
 }
 
 .form-group select option {
-  background: #1c1c1e;
+  background: var(--select-option-bg);
   color: var(--text-main);
 }
 
@@ -1166,7 +1200,7 @@ body {
   width: 36px;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--modal-handle-bg);
   margin: 10px auto 0;
 }
 
@@ -1223,12 +1257,12 @@ body {
 }
 
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--btn-icon-hover-bg);
   color: var(--text-main);
 }
 
 .btn-icon:active {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--btn-icon-active-bg);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1301,7 +1335,7 @@ body {
 }
 
 .drawer-close:active {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--drawer-close-active);
 }
 
 .drawer-content {
@@ -1435,7 +1469,7 @@ body {
 .spinner {
   width: 22px;
   height: 22px;
-  border: 2.5px solid rgba(255, 255, 255, 0.1);
+  border: 2.5px solid var(--spinner-track);
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
@@ -1509,7 +1543,7 @@ body {
 }
 
 .badge-gray {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--badge-gray-bg);
   color: var(--text-muted);
 }
 
@@ -1560,7 +1594,7 @@ body {
 .toggle-track {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--toggle-off-bg);
   border-radius: 13px;
   transition: background 0.25s ease;
   cursor: pointer;
@@ -1605,17 +1639,20 @@ body {
 }
 
 .toast {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 12px 16px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-surface-2);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--toast-shadow);
   pointer-events: all;
+  cursor: pointer;
+  overflow: hidden;
   animation: toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1669,24 +1706,85 @@ body {
   line-height: 1.4;
 }
 
+.toast-close {
+  align-self: flex-start;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-family: inherit;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  margin-top: 1px;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+/* Progress bar — shrinks from 100% → 0% over the toast duration */
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: currentColor;
+  opacity: 0.25;
+  transform-origin: left;
+  animation: toastProgress linear forwards;
+}
+
+@keyframes toastProgress {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* Light mode toast variants */
 .toast-success {
-  border-color: rgba(50, 215, 75, 0.3);
-  background: rgba(50, 215, 75, 0.08);
+  border-color: rgba(52, 199, 89, 0.35);
+  background: rgba(52, 199, 89, 0.08);
 }
 
 .toast-error {
-  border-color: rgba(255, 69, 58, 0.3);
-  background: rgba(255, 69, 58, 0.08);
+  border-color: rgba(255, 59, 48, 0.35);
+  background: rgba(255, 59, 48, 0.08);
 }
 
 .toast-warning {
-  border-color: rgba(255, 214, 10, 0.3);
-  background: rgba(255, 214, 10, 0.06);
+  border-color: rgba(255, 204, 0, 0.40);
+  background: rgba(255, 204, 0, 0.08);
 }
 
 .toast-info {
-  border-color: rgba(10, 132, 255, 0.3);
+  border-color: rgba(10, 132, 255, 0.35);
   background: rgba(10, 132, 255, 0.08);
+}
+
+/* Dark mode toast variants */
+[data-theme="dark"] .toast-success {
+  border-color: rgba(50, 215, 75, 0.30);
+  background: rgba(50, 215, 75, 0.08);
+}
+
+[data-theme="dark"] .toast-error {
+  border-color: rgba(255, 69, 58, 0.30);
+  background: rgba(255, 69, 58, 0.08);
+}
+
+[data-theme="dark"] .toast-warning {
+  border-color: rgba(255, 214, 10, 0.30);
+  background: rgba(255, 214, 10, 0.06);
+}
+
+[data-theme="dark"] .toast-info {
+  border-color: rgba(46, 166, 234, 0.30);
+  background: rgba(46, 166, 234, 0.08);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1840,7 +1938,7 @@ body {
 .landing-dot {
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--landing-dot-inactive);
   transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
 }
@@ -1863,7 +1961,7 @@ body {
    SYSTEM PROMPT TAB
    ═══════════════════════════════════════════════════════════ */
 .prompt-preview {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--prompt-preview-bg);
   border-radius: var(--radius-sm);
   padding: 14px;
   font-size: 0.82rem;
@@ -1890,7 +1988,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--scrollbar-thumb);
   border-radius: 10px;
 }
 
