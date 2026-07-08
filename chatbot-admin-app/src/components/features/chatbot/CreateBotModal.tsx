@@ -520,10 +520,10 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                       marginBottom: 8,
                     }}
                   >
-                    Custom System Prompt
+                    {t('customPromptTitle')}
                   </label>
                   <textarea
-                    placeholder="Enter the custom AI instructions and rules for your chatbot..."
+                    placeholder={t('customPromptPlaceholder')}
                     value={systemPrompt}
                     onChange={(e) => setSystemPrompt(e.target.value)}
                     required
@@ -546,7 +546,7 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                     onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
                   />
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Define exactly how your AI should behave. You can also update this later in Settings.
+                    {t('customPromptHint')}
                   </div>
                 </div>
               )}

@@ -22,6 +22,9 @@
   "webhookConflictWarning": "This bot is already connected to another system. Proceeding will disconnect it from the other system and connect it here instead.",
   "forceConnect": "Force Connect",
   "invalidTokenError": "Invalid Telegram Bot Token. Please check your token and try again.",
+  "customPromptTitle": "Custom System Prompt",
+  "customPromptPlaceholder": "Enter the custom AI instructions and rules for your chatbot...",
+  "customPromptHint": "Define exactly how your AI should behave. You can also update this later in Settings.",
 
   "tokenHelp": {
     "modalTitle": "Get Your Bot Token",
