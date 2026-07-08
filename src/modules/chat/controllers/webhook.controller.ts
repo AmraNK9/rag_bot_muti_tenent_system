@@ -5,6 +5,7 @@ import { SubscriptionService } from '../../subscription/subscription.service';
 import { debugLogger } from '../../../core/logger';
 import { ChatbotAnalyticsService } from '../services/chatbot-analytics.service';
 import { SocketService } from '../../../infrastructure/socket/socket.service';
+import { redisService } from '../../../infrastructure/redis/redis.service';
 
 declare const process: {
   env: {
@@ -42,8 +43,6 @@ export interface TelegramWebhookUpdate {
 const TELEGRAM_EDIT_DEBOUNCE_MS = 500;
 
 export class WebhookController {
-  /** In-memory cache for bot tokens with expiration to avoid redundant DB lookups */
-  private tokenCache: Map<number, { token: string; expiresAt: number }> = new Map();
   private subscriptionService: SubscriptionService;
 
   constructor(
@@ -290,9 +289,17 @@ export class WebhookController {
   }
 
   private async resolveBotToken(chatbotId: number): Promise<string> {
-    const cached = this.tokenCache.get(chatbotId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.token;
+    try {
+      const cacheKey = `chatbot_config_v2:${chatbotId}`;
+      const cached = await redisService.get(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.token) {
+          return parsed.token;
+        }
+      }
+    } catch (err) {
+      console.warn(`[Redis] Failed to fetch bot token from cache:`, err);
     }
 
     const chatbot = await ChatBot.findByPk(chatbotId);
@@ -300,8 +307,6 @@ export class WebhookController {
       throw new Error(`Cannot resolve token: ChatBot ID ${chatbotId} not found.`);
     }
 
-    // Cache for 5 minutes
-    this.tokenCache.set(chatbotId, { token: chatbot.token, expiresAt: Date.now() + 5 * 60 * 1000 });
     return chatbot.token;
   }
 
