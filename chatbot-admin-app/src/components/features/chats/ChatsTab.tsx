@@ -280,9 +280,10 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
           // and fetch from API with a delay to avoid DB race conditions.
           const newConv = {
             sender_id: msg.sender_id,
-            first_name: msg.sender_name || 'New User',
-            last_name: '',
-            username: '',
+            profile_data: {
+              first_name: msg.sender_name || 'New User',
+              username: '',
+            },
             last_message: msg.message,
             last_sender_type: msg.sender_type,
             last_reply_source: msg.reply_source,
@@ -597,7 +598,17 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                     : { background: hashAvatarColor(c.sender_id) }
                   }
                 >
-                  {isSystem ? <Bot size={24} /> : isActionReq ? <AlertTriangle size={24} /> : c.sender_id.charAt(0).toUpperCase()}
+                  {isSystem ? <Bot size={24} /> : isActionReq ? <AlertTriangle size={24} /> : (
+                    c.profile_data?.profile_pic_url ? (
+                      <img 
+                        src={c.profile_data.profile_pic_url} 
+                        alt="Profile" 
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      c.profile_data?.first_name ? c.profile_data.first_name.charAt(0).toUpperCase() : c.sender_id.charAt(0).toUpperCase()
+                    )
+                  )}
                 </div>
                 <div className="conv-info">
                   <div className="conv-name" style={isSystem ? { fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' } : undefined}>
@@ -606,7 +617,13 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
                         {t('systemTitle')}
                         <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>{t('pinned')}</span>
                       </>
-                    ) : `${t('userPrefix')} ${c.sender_id}`}
+                    ) : (
+                      c.profile_data?.first_name ? (
+                        <>
+                          {c.profile_data.first_name} {c.profile_data.username ? <span style={{ opacity: 0.6, fontSize: '0.85em', fontWeight: 'normal' }}>@{c.profile_data.username}</span> : ''}
+                        </>
+                      ) : `${t('userPrefix')} ${c.sender_id}`
+                    )}
                   </div>
                   <div className="conv-preview" style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', maxWidth: '200px' }}>
                     {isSystem ? (
@@ -654,17 +671,37 @@ export const ChatsTab: React.FC<ChatsTabProps> = ({ currentTab = 'chats', onActi
             <button className="chat-back-btn" onClick={closeChat}>
               ‹
             </button>
-            <div className="chat-header-info">
-              <div className="chat-header-name">
-                {activeSender === 'system' ? `${t('systemTitle')}` : `${t('userPrefix')} ${activeSender}`}
-              </div>
-              <div className="chat-header-status" style={{ 
-                color: activeSender === 'system' ? 'var(--text-muted)' : (isTakeoverMode ? '#f59e0b' : '#10b981'),
-                fontWeight: isTakeoverMode ? 600 : 400
-              }}>
-                ● {activeSender === 'system' ? t('active') : (isTakeoverMode ? t('adminHandling') : t('aiHandling'))}
-              </div>
-            </div>
+            {(() => {
+              const activeConv = conversations.find(c => String(c.sender_id) === String(activeSender));
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {activeSender !== 'system' && activeConv?.profile_data?.profile_pic_url && (
+                    <img 
+                      src={activeConv.profile_data.profile_pic_url} 
+                      alt="Profile" 
+                      style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                  )}
+                  <div className="chat-header-info">
+                    <div className="chat-header-name">
+                      {activeSender === 'system' ? `${t('systemTitle')}` : (
+                        activeConv?.profile_data?.first_name ? (
+                          <>
+                            {activeConv.profile_data.first_name} {activeConv.profile_data.username ? <span style={{ opacity: 0.6, fontSize: '0.85em', fontWeight: 'normal' }}>@{activeConv.profile_data.username}</span> : ''}
+                          </>
+                        ) : `${t('userPrefix')} ${activeSender}`
+                      )}
+                    </div>
+                    <div className="chat-header-status" style={{ 
+                      color: activeSender === 'system' ? 'var(--text-muted)' : (isTakeoverMode ? '#f59e0b' : '#10b981'),
+                      fontWeight: isTakeoverMode ? 600 : 400
+                    }}>
+                      ● {activeSender === 'system' ? t('active') : (isTakeoverMode ? t('adminHandling') : t('aiHandling'))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="chat-messages" ref={chatMessagesRef} onScroll={handleScroll}>

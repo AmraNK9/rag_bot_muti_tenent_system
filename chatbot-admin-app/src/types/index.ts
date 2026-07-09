@@ -37,6 +37,11 @@ export interface Conversation {
   last_sender_type?: 'user' | 'bot';
   last_reply_source?: 'ai' | 'admin' | null;
   unread_count?: number;
+  profile_data?: {
+    first_name?: string;
+    username?: string;
+    profile_pic_url?: string;
+  } | null;
 }
 
 export interface Message {

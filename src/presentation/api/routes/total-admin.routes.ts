@@ -285,10 +285,11 @@ router.get('/chatbots/:id/conversations', authMiddleware, async (req: Request, r
 
     const sequelize = SequelizeService.getClient();
     const conversations = await sequelize.query(
-      `SELECT sender_id, COUNT(*) AS message_count, MAX(sent_date) AS last_message_at
-       FROM messages
-       WHERE chatbot_id = :chatbotId
-       GROUP BY sender_id
+      `SELECT m.sender_id, COUNT(*) AS message_count, MAX(m.sent_date) AS last_message_at, cu.profile_data
+       FROM messages m
+       LEFT JOIN chatbot_users cu ON m.chatbot_id = cu.chatbot_id AND m.sender_id = cu.sender_id
+       WHERE m.chatbot_id = :chatbotId
+       GROUP BY m.sender_id, cu.profile_data
        ORDER BY last_message_at DESC;`,
       { replacements: { chatbotId }, type: QueryTypes.SELECT }
     ) as Array<{ sender_id: string; message_count: string; last_message_at: Date }>;

@@ -10,6 +10,7 @@ import { TelegramService } from '../../infrastructure/telegram/telegram.service'
 import { tunnelService } from '../../infrastructure/tunnel/tunnel.service';
 import { ChatbotAdminAuthService } from '../../modules/auth/chatbot-admin-auth.service';
 import { SystemBotService } from '../../modules/system-bot/system-bot.service';
+import { ProfileSyncService } from '../../modules/chat/services/profile-sync.service';
 
 export const authService = new AuthService();
 export const subscriptionService = new SubscriptionService();
@@ -22,4 +23,5 @@ export const telegramService = new TelegramService();
 export const chatbotWebhookService = new ChatbotWebhookService(telegramService, tunnelService);
 export const chatbotAdminAuthService = new ChatbotAdminAuthService();
 export const systemBotService = new SystemBotService(telegramService);
+export const profileSyncService = new ProfileSyncService();
 export { tunnelService };

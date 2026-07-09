@@ -13,6 +13,8 @@ declare const process: {
   };
 };
 
+import { profileSyncService } from '../../../presentation/api/container';
+
 export interface TelegramWebhookUpdate {
   update_id: number;
   message?: {
@@ -83,6 +85,9 @@ export class WebhookController {
     try {
       // Resolve bot token (cached or from DB)
       const botToken = await this.resolveBotToken(chatbotId);
+
+      // Fire-and-forget: Sync Profile Photo and Name (Debounced by 7 Days TTL via Redis)
+      void profileSyncService.syncProfileIfNeeded(chatbotId, senderId, botToken, update.message.from).catch(() => {});
 
       // Send "typing" indicator immediately for better UX
       void this.sendChatAction(botToken, chatId, 'typing').catch(() => {});

@@ -270,7 +270,7 @@ router.get('/chatbot-admin/conversations', chatbotAdminAuthMiddleware, async (re
 
     const sequelize = SequelizeService.getClient();
     const conversations = await sequelize.query(
-      `SELECT m.sender_id, count_tbl.message_count, count_tbl.unread_count, m.sent_date AS last_message_at, m.message AS last_message, m.sender_type AS last_sender_type, m.reply_source AS last_reply_source
+      `SELECT m.sender_id, count_tbl.message_count, count_tbl.unread_count, m.sent_date AS last_message_at, m.message AS last_message, m.sender_type AS last_sender_type, m.reply_source AS last_reply_source, cu.profile_data
        FROM messages m
        INNER JOIN (
          SELECT sender_id,
@@ -281,6 +281,7 @@ router.get('/chatbot-admin/conversations', chatbotAdminAuthMiddleware, async (re
          WHERE chatbot_id = :chatbotId
          GROUP BY sender_id
        ) count_tbl ON m.id = count_tbl.max_id
+       LEFT JOIN chatbot_users cu ON m.chatbot_id = cu.chatbot_id AND m.sender_id = cu.sender_id
        ORDER BY m.id DESC`,
       {
         replacements: { chatbotId },
