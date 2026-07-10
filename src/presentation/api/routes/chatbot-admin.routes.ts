@@ -243,6 +243,7 @@ router.put('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Req
     if (updates.token) {
       try {
         await chatbotWebhookService.registerWebhook(chatbot.business_id, chatbot.id);
+        await chatbot.reload(); // Reload to get telegram_username
       } catch (err) {
         console.error('[Webhook] Failed to register new webhook during update:', err);
       }

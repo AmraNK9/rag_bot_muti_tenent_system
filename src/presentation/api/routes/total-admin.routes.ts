@@ -691,6 +691,7 @@ router.post('/chatbot-admin/chatbot', chatbotAdminAuthMiddleware, async (req: Re
     if (type === 'telegram') {
       try {
         await chatbotWebhookService.registerWebhook(chatbot.business_id, chatbot.id);
+        await chatbot.reload(); // Reload to get telegram_username
       } catch (err) {
         console.error('[Webhook] Failed to register webhook on creation:', err);
       }
