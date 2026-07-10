@@ -31,6 +31,7 @@ export class ChatBot extends Model<InferAttributes<ChatBot>, InferCreationAttrib
   declare api_hash: CreationOptional<string | null>;
   declare type: 'telegram' | 'facebook';
   declare bot_role: CreationOptional<'sales' | 'faq' | 'support' | 'custom'>;
+  declare telegram_username: CreationOptional<string | null>;
   declare custom_system_prompt: CreationOptional<string | null>;
   declare handover_timeout_mins: CreationOptional<number>;
   declare default_language: CreationOptional<string>;
@@ -412,6 +413,10 @@ export function initModels(sequelize: Sequelize) {
         type: DataTypes.ENUM('sales', 'faq', 'support', 'custom'),
         allowNull: false,
         defaultValue: 'sales',
+      },
+      telegram_username: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
       },
       custom_system_prompt: {
         type: DataTypes.TEXT,

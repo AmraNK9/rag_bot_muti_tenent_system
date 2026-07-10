@@ -133,6 +133,7 @@ router.get('/chatbot-admin/profile', chatbotAdminAuthMiddleware, async (req: Req
         description: chatbot.description,
         type: chatbot.type,
         bot_role: chatbot.bot_role,
+        telegram_username: chatbot.telegram_username,
         custom_system_prompt: chatbot.custom_system_prompt,
         default_language: chatbot.default_language,
       } : null,

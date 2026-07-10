@@ -3,7 +3,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useChatbot } from '../../contexts/ChatbotContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, Monitor, Settings, Zap, LogOut, ChevronRight } from 'lucide-react';
+import { Sun, Moon, Monitor, Settings, Zap, LogOut, ChevronRight, Copy } from 'lucide-react';
+import { useToast } from '../../contexts/ToastContext';
 
 interface SidebarDrawerProps {
   drawerOpen: boolean;
@@ -14,10 +15,19 @@ interface SidebarDrawerProps {
 
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDrawerOpen, onOpenSettings, onOpenBilling }) => {
   const { profile, logout } = useAuth();
-  const { credits, businessPlanInfo } = useChatbot();
+  const { chatbot, credits, businessPlanInfo } = useChatbot();
   const { theme, setTheme } = useTheme();
   const { t, i18n } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
+  const { showToast } = useToast();
+
+  const handleCopyUsername = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (chatbot?.telegram_username) {
+      navigator.clipboard.writeText(`@${chatbot.telegram_username}`);
+      showToast('success', tc('copied', 'Copied!'), tc('copied_username', 'Bot username copied to clipboard.'));
+    }
+  };
 
   const isTelegramConnected = businessPlanInfo?.telegram_chat_id != null;
   const planLimit: number = businessPlanInfo?.plan_query_limit ?? 0;
@@ -79,6 +89,55 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
               </div>
             </div>
           </div>
+
+          {/* ── Chatbot Identity Card ── */}
+          {chatbot && (
+            <div style={{
+              margin: '0 16px 16px',
+              padding: '12px 16px',
+              background: 'rgba(10, 132, 255, 0.05)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid rgba(10, 132, 255, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}>
+              <div style={{
+                width: 38,
+                height: 38,
+                borderRadius: '8px',
+                background: 'rgba(10, 132, 255, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)',
+                flexShrink: 0,
+              }}>
+                <Monitor size={20} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {chatbot.name}
+                </div>
+                {chatbot.telegram_username ? (
+                  <div 
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 500, cursor: 'pointer' }}
+                    onClick={handleCopyUsername}
+                    title="Copy Username"
+                  >
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      @{chatbot.telegram_username}
+                    </span>
+                    <Copy size={12} style={{ opacity: 0.7 }} />
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {chatbot.bot_role} bot
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Credits & Topup (Standalone Only) ── */}
           {profile?.isStandalone && (
