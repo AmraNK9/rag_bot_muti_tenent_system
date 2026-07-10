@@ -64,7 +64,7 @@ export const MainLayout: React.FC = () => {
         </div>
       )
     },
-    ...(profile?.canManageKnowledge ? [{ id: 'knowledge' as TabId, label: tc('nav.smartItems', 'Smart Items'), icon: <BookOpen size={20} /> }] : []),
+    { id: 'knowledge' as TabId, label: tc('nav.smartItems', 'Smart Items'), icon: <BookOpen size={20} /> }
   ];
 
   return (
@@ -138,11 +138,9 @@ export const MainLayout: React.FC = () => {
             <div style={{ display: (activeTab === 'chats' || activeTab === 'actions') ? 'flex' : 'none', flexDirection: 'column', height: '100%', minHeight: 0 }}>
               <ChatsTab currentTab={activeTab} onActionCountChange={setActionCount} />
             </div>
-            {profile?.canManageKnowledge && (
-              <div style={{ display: activeTab === 'knowledge' ? 'flex' : 'none', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-                <SmartItemsTab />
-              </div>
-            )}
+            <div style={{ display: activeTab === 'knowledge' ? 'flex' : 'none', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              <SmartItemsTab />
+            </div>
           </>
         )}
       </main>
