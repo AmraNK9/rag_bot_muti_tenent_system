@@ -8,6 +8,7 @@ import { ChatsTab } from '../features/chats/ChatsTab';
 import { SmartItemsTab } from '../features/smart-items/SmartItemsTab';
 import { BillingTab } from '../features/billing/BillingTab';
 import { CreateBotModal } from '../features/chatbot/CreateBotModal';
+import { InAppTour } from '../features/tour/InAppTour';
 import { Bot, Zap, Menu, MessageSquare, BookOpen, Unplug, X, BellRing, Send, ListTodo } from 'lucide-react';
 import { getSystemBotInfo } from '../../api/client';
 
@@ -83,7 +84,7 @@ export const MainLayout: React.FC = () => {
           </div>
         </div>
 
-        <div className="nav-profile" onClick={() => setDrawerOpen(true)} style={{ background: 'transparent', border: 'none', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', position: 'relative' }}>
+        <div id="tour-settings-btn" className="nav-profile" onClick={() => setDrawerOpen(true)} style={{ background: 'transparent', border: 'none', padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', position: 'relative' }}>
           <Menu size={24} color="var(--text-main)" />
           {businessPlanInfo?.telegram_chat_id == null && (
             <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: 'var(--red)', border: '2px solid var(--bg-glass)' }} />
@@ -97,6 +98,8 @@ export const MainLayout: React.FC = () => {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenBilling={() => { setIsSettingsOpen(false); setIsBillingOpen(true); }}
       />
+
+      <InAppTour />
 
       {isSettingsOpen && <SettingsScreen onClose={() => setIsSettingsOpen(false)} />}
       
@@ -180,6 +183,7 @@ export const MainLayout: React.FC = () => {
         {tabs.map(tab => (
           <button
             key={tab.id}
+            id={`tour-${tab.id}-tab`}
             className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >

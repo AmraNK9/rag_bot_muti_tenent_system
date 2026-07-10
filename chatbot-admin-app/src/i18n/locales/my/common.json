@@ -89,5 +89,24 @@
     "privacy": "ကိုယ်ရေးကိုယ်တာ မူဝါဒ",
     "terms": "အသုံးပြုမှု စည်းမျဉ်းများ",
     "about": "ကျွန်ုပ်တို့အကြောင်း"
+  },
+  "tour": {
+    "next": "ရှေ့သို့",
+    "back": "နောက်သို့",
+    "close": "ပိတ်မည်",
+    "skip": "ကျော်မည်",
+    "last": "ပြီးပြီ",
+    "welcomeTitle": "Bot Admin မှ ကြိုဆိုပါတယ်!",
+    "welcomeDesc": "AI Chatbot အသစ်ကို ဘယ်လိုစီမံရမလဲဆိုတာ အမြန်လေ့လာကြည့်ရအောင်။",
+    "chatsTitle": "စကားဝိုင်းများ (Chats Tab)",
+    "chatsDesc": "ဒီနေရာမှာ Bot နဲ့ Customer တွေ ပြောနေတဲ့ စကားဝိုင်းတွေကို Live စောင့်ကြည့်နိုင်ပါတယ်။",
+    "actionsTitle": "လုပ်ဆောင်ချက်များ (Actions Tab)",
+    "actionsDesc": "Customer ဘက်မှ Admin နဲ့ စကားပြောလိုတဲ့အခါ (Human Takeover) ဒီနေရာမှာ ဝင်ရောက် အကြောင်းပြန်ပေးနိုင်ပါတယ်။",
+    "smartItemsTitle": "Smart Items",
+    "smartItemsDesc": "Bot ကို သင်ပေးချင်တဲ့ အမေးအဖြေ (FAQs)၊ ထုတ်ကုန် (Products) နဲ့ အခြား အချက်အလက်တွေကို ဒီနေရာမှာ ထည့်သွင်းနိုင်ပါတယ်။",
+    "settingsTitle": "Settings & Profile",
+    "settingsDesc": "ဒီနေရာကိုနှိပ်ပြီး Bot ရဲ့ Settings တွေ၊ System Prompts နဲ့ အခြားအချက်အလက်တွေကို ပြင်ဆင်နိုင်ပါတယ်။",
+    "finalTitle": "အားလုံး အဆင်သင့်ဖြစ်ပါပြီ!",
+    "finalDesc": "သင့်ရဲ့ Bot အသစ်လေး အလုပ်လုပ်ဖို့ အသင့်ဖြစ်နေပါပြီ။ ခုပဲ Telegram မှာ သွားရောက် စမ်းသပ်ကြည့်လိုက်ပါ: "
   }
 }

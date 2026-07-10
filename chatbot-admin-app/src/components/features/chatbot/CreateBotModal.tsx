@@ -47,7 +47,7 @@ const ROLE_OPTIONS = [
 ];
 
 export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
-  const { setChatbot } = useChatbot();
+  const { setChatbot, setShowInAppTour } = useChatbot();
   const { t } = useTranslation('bot');
   const { t: tc } = useTranslation('common');
 
@@ -91,6 +91,10 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
       const data = await createChatbot(name, token, type, role, force, systemPrompt);
       if (data.success && data.chatbot) {
         setChatbot(data.chatbot);
+        const inAppTourDone = localStorage.getItem('chatbot_admin_intro_completed');
+        if (!inAppTourDone) {
+          setShowInAppTour(true);
+        }
         onClose();
       }
     } catch (e: any) {

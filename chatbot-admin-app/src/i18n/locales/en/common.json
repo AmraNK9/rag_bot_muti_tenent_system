@@ -89,5 +89,24 @@
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
     "about": "About Us"
+  },
+  "tour": {
+    "next": "Next",
+    "back": "Back",
+    "close": "Close",
+    "skip": "Skip",
+    "last": "Done",
+    "welcomeTitle": "Welcome to Bot Admin!",
+    "welcomeDesc": "Let's take a quick tour to help you manage your new AI Chatbot.",
+    "chatsTitle": "Chats Tab",
+    "chatsDesc": "Monitor live conversations between your bot and users here.",
+    "actionsTitle": "Actions Tab",
+    "actionsDesc": "Check here for human-takeover requests or actions that require your attention.",
+    "smartItemsTitle": "Smart Items",
+    "smartItemsDesc": "Add your products, FAQs, or guidelines here to train your bot.",
+    "settingsTitle": "Settings & Profile",
+    "settingsDesc": "Click here to manage your bot settings, system prompts, and subscription.",
+    "finalTitle": "You're All Set!",
+    "finalDesc": "Your bot is ready. Test it now on Telegram: "
   }
 }
