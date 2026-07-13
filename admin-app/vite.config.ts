@@ -17,7 +17,11 @@ export default defineConfig({
     proxy: {
       // Proxy /api/* to backend during development — avoids CORS issues
       '/api': {
-        target: 'http://localhost:3300',
+        target: 'http://localhost:4321',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:4321',
         changeOrigin: true,
       },
     },
