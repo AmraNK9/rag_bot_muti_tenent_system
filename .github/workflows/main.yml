@@ -1,0 +1,32 @@
+name: Deploy to VPS
+
+# main branch ကို push လုပ်တိုင်း ဒီ Action ကို အလုပ်လုပ်မယ်လို့ သတ်မှတ်တာပါ
+on:
+  push:
+    branches:
+      - development-2.0 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # port: 22 # တကယ်လို့ VPS ရဲ့ SSH port က 22 မဟုတ်ရင် ဒီမှာ ပြောင်းထည့်ပေးပါ
+          script: |
+            # Project ရှိတဲ့ လမ်းကြောင်းကို ဝင်မယ် (သင့် VPS ပေါ်က အမှန်တကယ် လမ်းကြောင်းကို ပြင်ပါ)
+            cd /rag-bot-system/rag_bot_muti_tenent_system
+            
+            # နောက်ဆုံး Code တွေကို GitHub ကနေ ဆွဲချမယ်
+            git pull origin development-2.0
+            
+            # Docker Container အဟောင်းတွေကို ရပ်ပြီး ဖျက်မယ် (Optional)
+            docker compose down
+            
+            # Image အသစ်တွေရှိရင် ပြန် Build ပြီး Background (Detached mode) နဲ့ ပြန် Run မယ်
+            docker compose up -d --build
