@@ -1,0 +1,27 @@
+import { AuthService } from '../../modules/auth/auth.service';
+import { SubscriptionService } from '../../modules/subscription/subscription.service';
+import { BusinessService } from '../../modules/business/business.service';
+import { KnowledgeService } from '../../modules/knowledge/knowledge.service';
+import { SmartItemService } from '../../modules/knowledge/smart-item.service';
+import { ChatbotWebhookService } from '../../modules/chatbot/chatbot-webhook.service';
+import { VoyageEmbeddingService } from '../../infrastructure/embeddings/voyage.service';
+import { PgVectorStoreService } from '../../infrastructure/vectorstore/pgvector.service';
+import { TelegramService } from '../../infrastructure/telegram/telegram.service';
+import { tunnelService } from '../../infrastructure/tunnel/tunnel.service';
+import { ChatbotAdminAuthService } from '../../modules/auth/chatbot-admin-auth.service';
+import { SystemBotService } from '../../modules/system-bot/system-bot.service';
+import { ProfileSyncService } from '../../modules/chat/services/profile-sync.service';
+
+export const authService = new AuthService();
+export const subscriptionService = new SubscriptionService();
+export const vectorStore = new PgVectorStoreService();
+export const embeddingService = new VoyageEmbeddingService();
+export const businessService = new BusinessService(vectorStore);
+export const knowledgeService = new KnowledgeService(embeddingService, vectorStore);
+export const smartItemService = new SmartItemService(embeddingService, vectorStore);
+export const telegramService = new TelegramService();
+export const chatbotWebhookService = new ChatbotWebhookService(telegramService, tunnelService);
+export const chatbotAdminAuthService = new ChatbotAdminAuthService();
+export const systemBotService = new SystemBotService(telegramService);
+export const profileSyncService = new ProfileSyncService();
+export { tunnelService };

@@ -1,0 +1,15 @@
+{
+  "title": "System Prompt",
+  "subtitle": "Define your AI Bot's character and behavior here",
+  "currentPrompt": "Current System Prompt",
+  "previewWarning": "⚠️ Modifying the System Prompt will directly impact how your AI answers.",
+  "editMode": "Edit Mode",
+  "previewMode": "Preview (Read-only)",
+  "promptPlaceholder": "e.g., You are a friendly customer service agent. Always answer politely.",
+  "saveChanges": "Save Changes",
+  "toast": {
+    "savedTitle": "System prompt saved",
+    "savedMsg": "Your AI bot will now use the updated prompt.",
+    "errorTitle": "Update failed"
+  }
+}

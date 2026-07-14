@@ -2,17 +2,20 @@ import 'dotenv/config';
 import { SequelizeService } from './infrastructure/db/sequelize.service';
 import { DeepSeekService } from './infrastructure/llm/deepseek.service';
 import { VoyageEmbeddingService } from './infrastructure/embeddings/voyage.service';
-import { ChromaVectorStoreService } from './infrastructure/vectorstore/chroma.service';
+import { PgVectorStoreService } from './infrastructure/vectorstore/pgvector.service';
 import { ToolCallingRegistry } from './infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from './infrastructure/prompt/prompt.factory';
-import { QueryExtractionTool } from './modules/chat/query-extraction.tool';
+import { QueryExtractionTool } from './modules/chat/tools/query-extraction.tool';
 import { BusinessService } from './modules/business/business.service';
 import { KnowledgeService } from './modules/knowledge/knowledge.service';
-import { ChatMemoryService } from './modules/chat/chat-memory.service';
-import { Business, ChatBot } from './infrastructure/db/models';
+import { ChatMemoryService } from './modules/chat/services/chat-memory.service';
+import { Business, ChatBot, SystemBotConfig } from './infrastructure/db/models';
 import { chunkMyanmarText } from './modules/knowledge/myanmar-chunker';
 import { startServer } from './presentation/server';
+import { startResellerCronJobs } from './modules/reseller/reseller.cron';
 import { tunnelService } from './infrastructure/tunnel/tunnel.service';
+import { ChatbotAnalyticsService } from './modules/chat/services/chatbot-analytics.service';
+import { SystemBotService } from './modules/system-bot/system-bot.service';
 
 declare const process: {
   env: {
@@ -21,14 +24,15 @@ declare const process: {
     DEEPSEEK_API_KEY?: string;
     DEEPSEEK_BASE_URL?: string;
     VOYAGE_API_KEY?: string;
-    CHROMA_URL?: string;
     PORT?: string;
     TELEGRAM_BOT_TOKEN?: string;
   };
 };
 
 async function bootstrap() {
-  console.log('=== SaaS Chatbot Platform MVP Backend (Sequelize & Express Web Server) ===\n');
+  console.log('=== SaaS Chatbot Platform MVP Backend (PostgreSQL + pgvector) ===\n');
+  ChatbotAnalyticsService.startScheduler();
+
 
   // 1. Verify Myanmar Chunker
   const sampleMyanmarText = `ပထမစာပိုဒ်။ ဤသည်မှာ မြန်မာဘာသာစကားအတွက် စမ်းသပ်ထားသော စာသားဖြစ်သည်။\n\nဒုတိယစာပိုဒ်။ ဤနေရာတွင် RAG စနစ်၏ လုပ်ဆောင်ပုံကို ရှင်းပြထားပါသည်။ Vector Database တွင် သိမ်းဆည်းရန်အတွက် ဖြစ်သည်။`;
@@ -38,7 +42,7 @@ async function bootstrap() {
 
   // 2. Instantiate Services for Seeding check
   const embeddingService = new VoyageEmbeddingService();
-  const vectorStore = new ChromaVectorStoreService();
+  const vectorStore = new PgVectorStoreService();
   const businessService = new BusinessService(vectorStore);
   const knowledgeService = new KnowledgeService(embeddingService, vectorStore);
   
@@ -97,7 +101,18 @@ async function bootstrap() {
     console.log(`\n[3] ngrok tunnel active:`);
     console.log(`    📡 Public URL  : ${publicUrl}`);
     console.log(`    🔗 Webhook URL : ${publicUrl}/webhook/<businessId>/<chatbotId>`);
-    console.log(`    ℹ️  Call POST /api/test/chatbot/register-webhook to bind to Telegram.`);
+
+    // Register System Core Bot webhook if configured
+    try {
+      const systemBotConfig = await SystemBotConfig.findOne({ where: { is_active: true } });
+      if (systemBotConfig && systemBotConfig.bot_token && systemBotConfig.bot_token !== 'mock-system-bot-token') {
+        const sysBotService = new SystemBotService();
+        await sysBotService.registerWebhook(systemBotConfig.bot_token, publicUrl);
+        console.log(`    🤖 System Core Bot registered to Telegram webhook.`);
+      }
+    } catch (sbErr) {
+      console.error('    ⚠️ Failed to auto-register System Core Bot webhook:', sbErr);
+    }
   } catch (err) {
     console.warn(`\n[3] ⚠️  ngrok tunnel failed to start:`, err);
     console.warn(`    Server will run locally only — real Telegram webhooks will not work.`);
@@ -105,6 +120,9 @@ async function bootstrap() {
   
   // 5. Start the Express Presentation Server
   startServer(port);
+
+  // 6. Start Reseller Cron Jobs
+  startResellerCronJobs();
 }
 
 bootstrap().catch(console.error);

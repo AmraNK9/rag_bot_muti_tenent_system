@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: chatbot_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: chat-bot-sass
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chat-bot-sass"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 1.5 Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: chatbot_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # 2. Backend API & Webhook Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatbot_backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 4321
+      DATABASE_URL: postgresql://postgres:mysecretpassword@postgres:5432/chat-bot-sass
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-in-production}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+      NGROK_DOMAIN: ${NGROK_DOMAIN}
+      PUBLIC_URL: ${PUBLIC_URL}
+      DEBUG_MODE: "true"
+    ports:
+      - "4321:4321"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # 3. Chatbot Admin App (Frontend)
+  chatbot-admin-app:
+    build:
+      context: ./chatbot-admin-app
+      dockerfile: Dockerfile
+    container_name: chatbot_admin_app
+    restart: always
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+
+  # 4. Reseller App (Frontend)
+  reseller-app:
+    build:
+      context: ./reseller-app
+      dockerfile: Dockerfile
+    container_name: reseller_app
+    restart: always
+    ports:
+      - "5175:80"
+    depends_on:
+      - backend
+
+  # 5. Total / Super Admin App (Frontend)
+  total-admin-app:
+    build:
+      context: ./total-admin-app
+      dockerfile: Dockerfile
+    container_name: total_admin_app
+    restart: always
+    ports:
+      - "5176:80"
+    depends_on:
+      - backend
+
+  # 6. Business Admin App (Frontend)
+  admin-app:
+    build:
+      context: ./admin-app
+      dockerfile: Dockerfile
+    container_name: admin_app
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  uploads_data:

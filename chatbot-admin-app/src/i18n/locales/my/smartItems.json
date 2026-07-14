@@ -1,0 +1,54 @@
+{
+  "title": "ထုတ်ကုန်/ဒေတာများ",
+  "subtitle": "ကုန်ပစ္စည်းနှင့် FAQ များ စီမံပါ",
+  "addBtn": "ထည့်",
+  "itemCount": "{{count}} ခု",
+  "emptyTitle": "ထုတ်ကုန်/ဒေတာများ မရှိသေးပါ",
+  "emptyDesc": "AI Bot ကို ကောင်းကောင်း ဖြေကြားနိုင်ရန် ကုန်ပစ္စည်းများ သို့မဟုတ် FAQ တွေ ထည့်ပါ",
+  "addFirstBtn": "ပထမဆုံး Item ထည့်ရန်",
+  "searchPlaceholder": "နာမည် သို့မဟုတ် ကြောင်းအရာနဲ့ ရှာပါ...",
+  "filterAll": "အားလုံး",
+  "filterProduct": "ကုန်ပစ္စည်း",
+  "filterInfo": "အချက်အလက် / FAQ",
+  "noResults": "ရှာဖွေမှု နဲ့ ကိုက်ညီတဲ့ Item မရှိပါ",
+  "type": {
+    "product": "ကုန်ပစ္စည်း",
+    "info": "အချက်အလက်"
+  },
+  "meta": {
+    "price": "ဈေးနှုန်း",
+    "autoTrack": "Auto-track"
+  },
+  "deleteConfirm": "\"{{title}}\" ကို ဖျက်မည်လား?",
+  "form": {
+    "addTitle": "Item ထည့်ရန်",
+    "editTitle": "Item ပြင်ရန်",
+    "typeLabel": "အမျိုးအစား",
+    "physicalProduct": "ရုပ်ဝတ္ထုကုန်ပစ္စည်း",
+    "infoFaq": "သတင်းအချက်အလက် / FAQ",
+    "productName": "ကုန်ပစ္စည်းအမည်",
+    "topicQuestion": "ခေါင်းစဉ် / မေးခွန်း",
+    "productNamePlaceholder": "ဥပမာ - ဖိနပ်",
+    "topicPlaceholder": "ဥပမာ - ဆိုင်ဖွင့်ချိန် ဘယ်နှစ်နာရီ?",
+    "description": "ဖော်ပြချက်",
+    "detailsAnswer": "အသေးစိတ် / ဖြေကြားချက်",
+    "descriptionPlaceholder": "ကုန်ပစ္စည်း ဖော်ပြချက် ရေးပါ...",
+    "answerPlaceholder": "ဖြေကြားချက် ရေးပါ...",
+    "price": "ဈေးနှုန်း",
+    "stockCount": "လက်ကျန်ပစ္စည်း",
+    "autoTrackLabel": "Stock အလိုအလျောက် မှတ်တမ်းတင်မည်",
+    "autoTrackSub": "Order တစ်ခုချင်းစီတွင် Stock အလိုအလျောက် လျှော့ချမည်",
+    "saveChanges": "ပြင်ဆင်မှု သိမ်း",
+    "addItem": "Item ထည့်"
+  },
+  "toast": {
+    "addedTitle": "Item ထည့်ပြီးပါပြီ",
+    "addedMsg": "\"{{title}}\" ကို ထုတ်ကုန်/ဒေတာများ တွင် ထည့်သွင်းပြီးပါပြီ",
+    "updatedTitle": "ပြင်ဆင်မှု သိမ်းပြီး",
+    "updatedMsg": "\"{{title}}\" ကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ",
+    "deletedTitle": "Item ဖျက်ပြီး",
+    "deletedMsg": "\"{{title}}\" ကို ဖျက်ပြီးပါပြီ",
+    "titleRequired": "ခေါင်းစဉ် ဖြည့်ရန် လိုအပ်သည်",
+    "contentRequired": "အကြောင်းအရာ ဖြည့်ရန် လိုအပ်သည်"
+  }
+}

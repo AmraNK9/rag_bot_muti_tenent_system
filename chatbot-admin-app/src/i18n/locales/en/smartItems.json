@@ -1,0 +1,54 @@
+{
+  "title": "Smart Items",
+  "subtitle": "Manage products & knowledge base",
+  "addBtn": "Add",
+  "itemCount": "{{count}} Items",
+  "emptyTitle": "No Smart Items yet",
+  "emptyDesc": "Add products or FAQs so your AI can assist customers effectively",
+  "addFirstBtn": "Add First Item",
+  "searchPlaceholder": "Search by name or content...",
+  "filterAll": "All",
+  "filterProduct": "Products",
+  "filterInfo": "Info / FAQ",
+  "noResults": "No items match your search",
+  "type": {
+    "product": "Product",
+    "info": "Info"
+  },
+  "meta": {
+    "price": "Price",
+    "autoTrack": "Auto-track"
+  },
+  "deleteConfirm": "Delete \"{{title}}\"?",
+  "form": {
+    "addTitle": "Add New Item",
+    "editTitle": "Edit Item",
+    "typeLabel": "Item Type",
+    "physicalProduct": "Physical Product",
+    "infoFaq": "Info / FAQ",
+    "productName": "Product Name",
+    "topicQuestion": "Topic / Question",
+    "productNamePlaceholder": "e.g., Running Shoes",
+    "topicPlaceholder": "e.g., What are your store hours?",
+    "description": "Description",
+    "detailsAnswer": "Details / Answer",
+    "descriptionPlaceholder": "Full product description...",
+    "answerPlaceholder": "Type the detailed answer here...",
+    "price": "Price",
+    "stockCount": "Stock Count",
+    "autoTrackLabel": "Auto-track stock",
+    "autoTrackSub": "Reduce stock count automatically on each order",
+    "saveChanges": "Save Changes",
+    "addItem": "Add Item"
+  },
+  "toast": {
+    "addedTitle": "Item added",
+    "addedMsg": "\"{{title}}\" is now in your Smart Items",
+    "updatedTitle": "Item updated",
+    "updatedMsg": "\"{{title}}\" has been saved",
+    "deletedTitle": "Item deleted",
+    "deletedMsg": "\"{{title}}\" has been removed",
+    "titleRequired": "Title is required",
+    "contentRequired": "Content is required"
+  }
+}

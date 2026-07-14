@@ -2,15 +2,22 @@ import express from 'express';
 import path from 'path';
 import testRouter from './testing/routes';
 import apiRouter from './api/routes';
-import { WebhookController } from '../modules/chat/webhook.controller';
-import { RetrievalGenerationService } from '../modules/chat/retrieval-generation.service';
-import { ChatMemoryService } from '../modules/chat/chat-memory.service';
+import { WebhookController } from '../modules/chat/controllers/webhook.controller';
+import { RetrievalGenerationService } from '../modules/chat/services/retrieval-generation.service';
+import { ChatMemoryService } from '../modules/chat/services/chat-memory.service';
 import { DeepSeekService } from '../infrastructure/llm/deepseek.service';
 import { VoyageEmbeddingService } from '../infrastructure/embeddings/voyage.service';
-import { ChromaVectorStoreService } from '../infrastructure/vectorstore/chroma.service';
+import { PgVectorStoreService } from '../infrastructure/vectorstore/pgvector.service';
 import { ToolCallingRegistry } from '../infrastructure/registry/tool-calling.registry';
 import { SystemPromptFactory } from '../infrastructure/prompt/prompt.factory';
-import { QueryExtractionTool } from '../modules/chat/query-extraction.tool';
+import { QueryExtractionTool } from '../modules/chat/tools/query-extraction.tool';
+import { RequestHumanAgentTool } from '../modules/chat/tools/request-human-agent.tool';
+import { UpdateUserProfileTool } from '../modules/chat/tools/update-user-profile.tool';
+import { FetchProductsTool } from '../modules/chat/tools/fetch-products.tool';
+import { SocketService } from '../infrastructure/socket/socket.service';
+import { redisService } from '../infrastructure/redis/redis.service';
+import { SubscriptionService } from '../modules/subscription/subscription.service';
+import cron from 'node-cron';
 import { Request, Response } from 'express';
 
 declare const process: {
@@ -23,21 +30,12 @@ declare const process: {
   };
 };
 
+
 const app = express();
 
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
 app.use((req: Request, res: Response, next) => {
-  const requestOrigin = req.headers.origin;
-
-  if (requestOrigin && (allowedOrigins.includes('*') || allowedOrigins.includes(requestOrigin))) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigins.includes('*') ? '*' : requestOrigin);
-    res.setHeader('Vary', 'Origin');
-  }
-
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 
@@ -48,7 +46,16 @@ app.use((req: Request, res: Response, next) => {
   return next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+import fs from 'fs';
+const uploadsDir = path.join(__dirname, '../../uploads/receipts');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+
 
 // ─── Environment-gated Testing UI & Routes ───────────────────────────────────
 // Test routes and the testing dashboard UI are ONLY available in non-production.
@@ -68,10 +75,13 @@ app.use('/api/v1', apiRouter);
 // Services are instantiated once here and reused for all incoming webhook calls.
 const _llmService = new DeepSeekService();
 const _embeddingService = new VoyageEmbeddingService();
-const _vectorStore = new ChromaVectorStoreService();
+const _vectorStore = new PgVectorStoreService();
 const _promptFactory = new SystemPromptFactory();
 const _toolRegistry = new ToolCallingRegistry();
 _toolRegistry.registerTool(new QueryExtractionTool());
+_toolRegistry.registerTool(new RequestHumanAgentTool());
+_toolRegistry.registerTool(new UpdateUserProfileTool());
+_toolRegistry.registerTool(new FetchProductsTool());
 const _chatMemoryService = new ChatMemoryService(_llmService);
 
 // Keyword extraction: local (default, fast) or tool-calling (LLM-based, slower but more accurate)
@@ -124,7 +134,17 @@ app.post(
 export function startServer(port: number) {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  return app.listen(port, () => {
+  // Connect to Redis asyncly, don't block server startup
+  redisService.connect().catch(err => console.error('[Redis] Startup connect error', err));
+
+  // Initialize DB Sync Cron Job (runs every 15 minutes)
+  const subscriptionService = new SubscriptionService();
+  cron.schedule('*/15 * * * *', () => {
+    void subscriptionService.syncCreditsToDB();
+  });
+  console.log('[Config] Credit DB Sync Cron Job scheduled (every 15 minutes)');
+
+  const server = app.listen(port, () => {
     console.log(`\n============================================================`);
     console.log(`🚀 Chatbot Management Prototype Server Running!`);
     console.log(`🔧 Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
@@ -136,4 +156,7 @@ export function startServer(port: number) {
     console.log(`📡 Webhook endpoint:    /webhook/:businessId/:chatbotId`);
     console.log(`============================================================\n`);
   });
+
+  SocketService.init(server);
+  return server;
 }

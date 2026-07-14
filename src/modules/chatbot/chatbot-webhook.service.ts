@@ -58,6 +58,18 @@ export class ChatbotWebhookService {
     // 4. Register the webhook with Telegram
     const telegramResponse = await this.telegramService.setWebhook(chatbot.token, webhookUrl);
 
+    // 5. Fetch and save the bot's telegram username
+    try {
+      const meResponse = await this.telegramService.getMe(chatbot.token);
+      if (meResponse.ok && meResponse.result?.username) {
+        chatbot.telegram_username = meResponse.result.username;
+        await chatbot.save();
+        console.log(`[ChatbotWebhookService] Saved telegram_username: @${chatbot.telegram_username}`);
+      }
+    } catch (err) {
+      console.warn(`[ChatbotWebhookService] Failed to fetch bot username:`, err);
+    }
+
     console.log(
       `[ChatbotWebhookService] Webhook registered for ChatBot "${chatbot.name}" ` +
       `(ID: ${chatbotId}) → ${webhookUrl}`
