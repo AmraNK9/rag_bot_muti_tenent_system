@@ -12,6 +12,7 @@ export interface AdminProfile {
   id: number;
   name: string;
   email: string;
+  role?: string;
   isStandalone: boolean;
   canManageKnowledge: boolean;
   canManageSystemPrompt: boolean;
