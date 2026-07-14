@@ -4,7 +4,7 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - development-2.0 
+      - main
 
 jobs:
   deploy:
@@ -23,7 +23,7 @@ jobs:
             cd /rag-bot-system/rag_bot_muti_tenent_system
             
             # နောက်ဆုံး Code တွေကို GitHub ကနေ ဆွဲချမယ်
-            git pull origin development-2.0
+            git pull origin main
             
             # Docker Container အဟောင်းတွေကို ရပ်ပြီး ဖျက်မယ် (Optional)
             docker compose down
