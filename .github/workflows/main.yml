@@ -1,4 +1,4 @@
-name: Deploy to VPS
+name: Deploy to Production
 
 # main branch ကို push လုပ်တိုင်း ဒီ Action ကို အလုပ်လုပ်မယ်လို့ သတ်မှတ်တာပါ
 on:
