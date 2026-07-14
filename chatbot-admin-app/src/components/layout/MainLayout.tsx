@@ -9,7 +9,7 @@ import { SmartItemsTab } from '../features/smart-items/SmartItemsTab';
 import { BillingTab } from '../features/billing/BillingTab';
 import { CreateBotModal } from '../features/chatbot/CreateBotModal';
 import { InAppTour } from '../features/tour/InAppTour';
-import { Bot, Zap, Menu, MessageSquare, BookOpen, Unplug, X, BellRing, Send, ListTodo } from 'lucide-react';
+import { Zap, Menu, MessageSquare, BookOpen, Unplug, X, BellRing, Send, ListTodo } from 'lucide-react';
 import { getSystemBotInfo } from '../../api/client';
 
 import { ChevronLeft } from 'lucide-react';
@@ -72,7 +72,7 @@ export const MainLayout: React.FC = () => {
       {/* TOP BAR */}
       <nav className="top-nav">
         <div className="nav-brand">
-          <span className="brand-icon" style={{ display: 'flex', alignItems: 'center' }}><Bot size={22} color="var(--primary)" /></span>
+          <span className="brand-icon" style={{ display: 'flex', alignItems: 'center' }}><img src="/logo.png" alt="Logo" style={{ width: 34, height: 34, objectFit: 'contain', transform: 'scale(1.2)' }} /></span>
           <span className="brand-name">{chatbot ? chatbot.name : tc('layout.botAdmin', 'Bot Admin')}</span>
           <div 
             className={`nav-credits ${profile?.isStandalone ? 'clickable-credits' : ''}`} 
