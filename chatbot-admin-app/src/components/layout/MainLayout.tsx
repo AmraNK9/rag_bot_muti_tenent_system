@@ -73,7 +73,7 @@ export const MainLayout: React.FC = () => {
       <nav className="top-nav">
         <div className="nav-brand">
           <span className="brand-icon" style={{ display: 'flex', alignItems: 'center' }}><img src="/logo.png" alt="Logo" style={{ width: 34, height: 34, objectFit: 'contain', transform: 'scale(1.2)' }} /></span>
-          <span className="brand-name">{chatbot ? chatbot.name : tc('layout.botAdmin', 'Bot Admin')}</span>
+          <span className="brand-name">PhyayPay</span>
           <div 
             className={`nav-credits ${profile?.isStandalone ? 'clickable-credits' : ''}`} 
             onClick={() => profile?.isStandalone && setIsBillingOpen(true)}

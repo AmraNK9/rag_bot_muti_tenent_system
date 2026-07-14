@@ -22,7 +22,7 @@
     "billing": "Billing"
   },
   "layout": {
-    "botAdmin": "Bot Admin",
+    "botAdmin": "PhyayPay",
     "emptyBotTitle": "Connect Your First Bot",
     "emptyBotDesc": "Connect your first AI Chatbot and start automating customer replies 24/7.",
     "createBotBtn": "Create My First Bot",

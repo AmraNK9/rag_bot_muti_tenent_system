@@ -58,8 +58,8 @@ export const LoginScreen: React.FC = () => {
   return (
     <div className="auth-screen">
       <div className="auth-hero">
-        <div className="auth-logo-wrap"><img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit', transform: 'scale(1.25)' }} /></div>
-        <h1>{t('login.heroTitle', 'Chatbot Admin')}</h1>
+        <div className="auth-logo-wrap"><img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
+        <h1>{t('login.heroTitle', 'PhyayPay')}</h1>
         <p>{t('login.heroDesc', 'AI Chatbot ကို ၅ မိနစ်အတွင်း ချိတ်ဆက်ပြီး Customer ဖြေကြားမှုကို အလိုအလျောက် ပြုလုပ်ပါ')}</p>
       </div>
 

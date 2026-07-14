@@ -22,7 +22,7 @@
     "billing": "ငွေပေးချေမှု"
   },
   "layout": {
-    "botAdmin": "Bot Admin",
+    "botAdmin": "PhyayPay",
     "emptyBotTitle": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပါ",
     "emptyBotDesc": "ပထမဆုံး AI Chatbot ကို ချိတ်ဆက်ပြီး Customer တွေကို ၂၄နာရီ အလိုအလျောက် ဖြေဆိုနိုင်ပါပြီ။",
     "createBotBtn": "ပထမဆုံး Bot ဖန်တီးမည်",

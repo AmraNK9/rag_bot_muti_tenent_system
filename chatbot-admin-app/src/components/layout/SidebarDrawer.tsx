@@ -80,13 +80,14 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
             }}>
               {avatarLetter}
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {profile?.name}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {profile?.email}
-              </div>
+            {/* User Info */}
+            <div style={{ marginLeft: '12px', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                PhyayPay Admin
+              </span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                {profile?.role === 'owner' ? t('settings.role', 'Owner') : t('settings.role', 'Admin')}
+              </span>
             </div>
           </div>
 
@@ -117,7 +118,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ drawerOpen, setDra
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {chatbot.name}
+                  PhyayPay
                 </div>
                 {chatbot.telegram_username ? (
                   <div 
