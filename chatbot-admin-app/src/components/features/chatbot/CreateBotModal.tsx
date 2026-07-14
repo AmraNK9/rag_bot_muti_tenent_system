@@ -323,7 +323,13 @@ export const CreateBotModal: React.FC<CreateBotModalProps> = ({ onClose }) => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowHelp(true)}
+                    onClick={() => {
+                      // Open Telegram bot with pre-filled message
+                      const msg = encodeURIComponent('Bot Token ဘယ်လိုယူရမလဲ');
+                      window.open(`https://t.me/PhyayPay_Cus_bot?text=${msg}`, '_blank');
+                      // Old in-app help modal logic (kept, not deleted)
+                      // setShowHelp(true);
+                    }}
                     style={{
                       background: 'var(--primary-bg)',
                       border: '1px solid rgba(10,132,255,0.25)',
