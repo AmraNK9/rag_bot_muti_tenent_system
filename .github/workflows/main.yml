@@ -20,7 +20,7 @@ jobs:
           # port: 22 # တကယ်လို့ VPS ရဲ့ SSH port က 22 မဟုတ်ရင် ဒီမှာ ပြောင်းထည့်ပေးပါ
           script: |
             # Project ရှိတဲ့ လမ်းကြောင်းကို ဝင်မယ် (သင့် VPS ပေါ်က အမှန်တကယ် လမ်းကြောင်းကို ပြင်ပါ)
-            cd /rag-bot-system/rag_bot_muti_tenent_system
+            cd /root/rag-bot-system/rag_bot_muti_tenent_system
             
             # နောက်ဆုံး Code တွေကို GitHub ကနေ ဆွဲချမယ်
             git pull origin main
