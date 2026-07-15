@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.ragbot.nayamyanmar.com",
+    "sha256_cert_fingerprints": [
+      "DF:45:6C:4F:57:72:33:96:37:5D:07:4C:CD:33:59:66:C6:A1:2F:A7:99:95:CE:FD:EA:BA:76:71:0B:03:A5:51"
+    ]
+  }
+}]
