@@ -6,6 +6,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LandingOnboarding } from './components/auth/LandingOnboarding';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { MainLayout } from './components/layout/MainLayout';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 
 const AppContent: React.FC = () => {
   const { token, initialized } = useAuth();
@@ -40,6 +42,8 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <AppContent />
+          <PWAInstallPrompt />
+          <PWAUpdatePrompt />
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
